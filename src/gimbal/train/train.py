@@ -370,12 +370,21 @@ def main() -> None:
                 len(v) * trainer.model_cfg.seq_len)), "eval_seconds": time.perf_counter() - t0,
                 "tokens": done * tokens_per_step})
             t_last += time.perf_counter() - t0  # evaluation time is not step time
+        # Diagnostics and checkpoints are overheads: like evaluation, they are timed separately
+        # and kept out of the step times (Phase 08 reports them apart from the step time).
         if done % int(cfg["log"]["diag_every"]) == 0:
-            emit(diag, {"step": done, **diagnostics(trainer.spec, trainer.buckets, state, done)})
+            jax.block_until_ready(state)
+            t0 = time.perf_counter()
+            rec = diagnostics(trainer.spec, trainer.buckets, state, done)
+            emit(diag, {"step": done, "diag_seconds": time.perf_counter() - t0, **rec})
+            t_last += time.perf_counter() - t0
         ck = int(cfg["log"].get("ckpt_every", 0))
         if ck and done % ck == 0 and done < stop:
             jax.block_until_ready(params)
+            t0 = time.perf_counter()
             checkpoint.save(ckpt_dir, done, params, state)
+            emit(diag, {"step": done, "checkpoint_seconds": time.perf_counter() - t0})
+            t_last += time.perf_counter() - t0
     if pending is not None and not diverged:
         ps, ploss, pgnorm, plr = pending
         now = time.perf_counter()
