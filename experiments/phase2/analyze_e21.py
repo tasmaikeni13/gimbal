@@ -31,6 +31,9 @@ PEERS = ["soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh"]
 METHODS = ["gimbal", "soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh", "gimbal_k4",
            "gimbal_k4_c012", "gimbal_noshrink", "gimbal_v03"]
 RERUN = ("gimbal", "gimbal_k4")  # re-run after C-013
+# Optimizers a practitioner would run; the exact-eigenvector controls (pooled_eigh, kl_eigh)
+# recompute an eigendecomposition every step and are idealized references.
+PRACTICAL = ("soap", "soap_rt", "klsoap")
 
 
 def read_jsonl(path: pathlib.Path) -> list[dict]:
@@ -252,6 +255,18 @@ def main() -> None:
                        *centering_effect(rows, summary), ""]
         gates[f"{suite}_k4_all_wins_best"] = all(r["best"].get("gimbal_k4_wins_all", False)
                                                  for r in summary)
+        # Holm-adjusted over all five peers, so conservative for this subset
+        beats = {fmt_cell(r): [q for q in PRACTICAL if r["best"]["holm_p_k4"].get(q, 1.0) >= 0.05]
+                 for r in summary}
+        gates[f"{suite}_k4_beats_practical_all"] = all(not v for v in beats.values())
+        lost = {fmt_cell(r): [q for q in PEERS if r["best"]["holm_p_k4"].get(q, 1.0) >= 0.05]
+                for r in summary}
+        report += [f"Default (frame_every = 4) below SOAP, SOAP real-time and KL-SOAP (Holm "
+                   f"p < 0.05) in every cell of suite `{suite}`: "
+                   f"**{gates[f'{suite}_k4_beats_practical_all']}**. Cells where some peer or "
+                   "exact-eigenvector control is not significantly worse: "
+                   + ("; ".join(f"{c} ({', '.join(v)})" for c, v in lost.items() if v)
+                      or "none") + ".", ""]
         if suite == "main":
             sep = [r for r in summary if r["gamma"] == 0.0]
             nonsep = [r for r in summary if r["gamma"] > 0.0]

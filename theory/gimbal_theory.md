@@ -519,6 +519,12 @@ Phase 2 measures both costs by Monte Carlo for every method on the same gradient
   $g(z)=z/(D+z^2/\nu)$ (hypothesis H6); its Fisher weights change accordingly. The split-sample
   noise estimate of Proposition 5.5 already adapts the variance estimate to heavy tails.
 * Richer shrinkage targets for $\log D$ (low rank instead of additive; per-row factors $c_i$).
+* Flat separable spectra: there the KL-factor weights are themselves efficient (Theorem 3.3), and
+  KL-SOAP's frame KL is slightly below the default's in the two flattest separable E2.1 cells (the
+  only cells where a practical peer is not significantly worse; `experiments/phase2/results/
+  e21_report.md`, within G2.1's non-inferiority margin). The E2.9 ablations point to the damping
+  $\delta$, which slows nearly degenerate pairs; a damping that decays as the variance estimates
+  sharpen is a candidate repair, to be derived before it is tested.
 * Interaction with momentum: the frame flow uses the innovation with respect to the momentum
   (Proposition 5.7) while the step uses the momentum itself; Theorem 8.1 covers $\beta_1=0$ only. The
   mean plug-in of Proposition 5.7 assumes a mean that is stationary over Adam's windows.
