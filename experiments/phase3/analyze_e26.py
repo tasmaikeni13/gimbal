@@ -30,34 +30,40 @@ from common import nonseparability_index  # noqa: E402  (shared helpers in exper
 RESULTS = pathlib.Path(__file__).parent / "results"
 
 
+def einsum(spec: str, *ops: np.ndarray) -> np.ndarray:
+    """np.einsum with an optimized contraction order: the three-operand products here would
+    otherwise run as one naive loop over every index (hours instead of seconds)."""
+    return np.einsum(spec, *ops, optimize=True)
+
+
 def eigh_desc(s):
     w, v = np.linalg.eigh(0.5 * (s + s.T))
     return v[:, ::-1]
 
 
 def heldout_score(ql, qr, g_eval):
-    z = np.einsum("ia,kij,jb->kab", ql, g_eval, qr)
+    z = einsum("ia,kij,jb->kab", ql, g_eval, qr)
     d = (z * z).mean(axis=0)
     return 0.5 * float(np.sum(np.log(d + 1e-300)))
 
 
 def pooled_frame(g):
-    return eigh_desc(np.einsum("kij,klj->il", g, g)), eigh_desc(np.einsum("kji,kjl->il", g, g))
+    return eigh_desc(einsum("kij,klj->il", g, g)), eigh_desc(einsum("kji,kjl->il", g, g))
 
 
 def kl_frame(g, iters=15, damp=1e-4):
     k, m, n = g.shape
-    lf = np.einsum("kij,klj->il", g, g) / (n * k)
-    rf = np.einsum("kji,kjl->il", g, g) / (m * k)
+    lf = einsum("kij,klj->il", g, g) / (n * k)
+    rf = einsum("kji,kjl->il", g, g) / (m * k)
     for _ in range(iters):
         wr, vr = np.linalg.eigh(rf)
         wr = wr.clip(min=0) + damp * wr.clip(min=0).mean() + 1e-300
         r_inv = (vr / wr) @ vr.T
-        lf = np.einsum("kij,jl,kml->im", g, r_inv, g) / (n * k)
+        lf = einsum("kij,jl,kml->im", g, r_inv, g) / (n * k)
         wl, vl = np.linalg.eigh(lf)
         wl = wl.clip(min=0) + damp * wl.clip(min=0).mean() + 1e-300
         l_inv = (vl / wl) @ vl.T
-        rf = np.einsum("kji,jl,klm->im", g, l_inv, g) / (m * k)
+        rf = einsum("kji,jl,klm->im", g, l_inv, g) / (m * k)
     return eigh_desc(lf), eigh_desc(rf)
 
 
@@ -92,20 +98,20 @@ def gimbal_mle_frame(g, ql, qr, iters=60, step=0.5, damping=0.003, floor=1e-8, s
     are the empirical-Bayes estimate of Proposition 5.5, as in the optimizer."""
     k, m, n = g.shape
     for _ in range(iters):
-        z = np.einsum("ia,kij,jb->kab", ql, g, qr)
+        z = einsum("ia,kij,jb->kab", ql, g, qr)
         if shrink:
             d = eb_variances(z, floor)[0]
         else:
             d = (z * z).mean(axis=0)
             d = d + floor * d.mean() + 1e-300
         a = 1.0 / d
-        s_l = np.einsum("kij,klj->il", z, z * a) / k
+        s_l = einsum("kij,klj->il", z, z * a) / k
         e_l = s_l - s_l.T
         f_l = d @ a.T
         f_l = (f_l + f_l.T - 2 * n).clip(min=0)
         om_l = -step * e_l / (f_l + damping * n)
         np.fill_diagonal(om_l, 0)
-        s_r = np.einsum("kji,kjl->il", z, z * a) / k
+        s_r = einsum("kji,kjl->il", z, z * a) / k
         e_r = s_r - s_r.T
         f_r = d.T @ a
         f_r = (f_r + f_r.T - 2 * m).clip(min=0)
@@ -141,7 +147,7 @@ def analyze_file(path: pathlib.Path) -> list[dict]:
             "gimbal_mle": heldout_score(ql_g, qr_g, g_eval),
             "gimbal_eb": heldout_score(ql_e, qr_e, g_eval),
         }
-        z = np.einsum("ia,kij,jb->kab", ql_p, g_fit, qr_p)
+        z = einsum("ia,kij,jb->kab", ql_p, g_fit, qr_p)
         d_pooled = (z * z).mean(axis=0) + 1e-300
         rows.append({
             "run": run_id, "step": step, "matrix": name, "shape": list(g.shape[1:]),

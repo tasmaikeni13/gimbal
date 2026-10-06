@@ -1,0 +1,3 @@
+| soap_lr0.004_s0_snap | 800 | blocks.3.w_down.weight | 0.009 | 0.51 | 71850.2 | 4270.4 | 114.6 | 4062.4 |
+
+Matrices: 48; Gimbal frame better than SOAP's on held-out gradients in 48/48; median gain 1897.4 nats; median κ 0.005.
