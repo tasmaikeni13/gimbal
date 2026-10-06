@@ -84,6 +84,12 @@ class Gimbal(Optimizer):
         (amortizes the retraction, polish and Fisher costs; see ``_flow``). The default 4 keeps
         the optimizer's cost below SOAP's in the cost model (Proposition 9, E2.8) at a frame
         quality within a few percent of moving every step (E2.1, E2.9); change C-012.
+    frame_schedule:
+        ``"fixed"`` moves the frame every ``frame_every`` steps. ``"adaptive"`` moves it every
+        ``k_t = clamp(round(frame_every · rot_rate / α_t), 1, frame_every)`` steps, where ``α_t`` is
+        the scheduled rotation rate: the amortized step matches the per-step flow to first order
+        in ``k·α`` (Section 5), so the product is held at its steady-state value and the early,
+        fast-moving phase is not amortized (candidate repair R1 for F-027).
     flow_beta:
         Variance estimate used by the frame flow. ``None`` reuses Adam's second moment (memory set
         by ``betas[1]``). A float keeps a separate EMA with that coefficient; ``"tied"`` uses
@@ -137,6 +143,7 @@ class Gimbal(Optimizer):
         max_rotation: float = 1.0,
         polish_every: int = 1,
         frame_every: int = 4,
+        frame_schedule: str = "fixed",
         flow_beta: float | str | None = "tied",
         flow_shrink: bool = True,
         flow_center: bool | str = "adaptive",
@@ -149,6 +156,8 @@ class Gimbal(Optimizer):
             raise ValueError(f"unknown init {init!r}")
         if flow_center not in (False, True, "adaptive"):
             raise ValueError(f"unknown flow_center {flow_center!r}")
+        if frame_schedule not in ("fixed", "adaptive"):
+            raise ValueError(f"unknown frame_schedule {frame_schedule!r}")
         defaults = dict(
             lr=lr,
             betas=betas,
@@ -163,6 +172,7 @@ class Gimbal(Optimizer):
             max_rotation=max_rotation,
             polish_every=polish_every,
             frame_every=frame_every,
+            frame_schedule=frame_schedule,
             flow_beta=flow_beta,
             flow_shrink=flow_shrink,
             flow_center=flow_center,
@@ -409,7 +419,10 @@ class Gimbal(Optimizer):
             score, fisher, groups = self._score_and_fisher(z, d, a, side)
             acc[key] = score if acc["count"] == 1 else acc[key] + score
             fishers[key] = (fisher, groups)
-        if acc["count"] < group["frame_every"]:
+        k = group["frame_every"]
+        if group["frame_schedule"] == "adaptive" and k > 1 and alpha > 0:
+            k = int(min(k, max(1, round(k * group["rot_rate"] / alpha))))
+        if acc["count"] < k:
             return
         rate = 1.0 - acc["keep"]
         moves = {}

@@ -1,0 +1,1 @@
+{"run_id": "gimbal_adapt_lr0.004_s11_f027", "method": "gimbal_adapt", "lr": 0.004, "seed": 11, "steps": 800, "final_val_loss": 1.5086020410060883, "wall_seconds": 638.0940980571322, "optimizer_seconds": 118.19687336776406, "diverged": false}

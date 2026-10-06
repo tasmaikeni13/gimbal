@@ -3,7 +3,9 @@
 Reads ``results/lm/*.summary.json`` and the per-step logs. Stage A (seed 0, LR grid) selects one
 LR per optimizer by final validation loss; Stage B adds seeds at that LR. Gimbal is compared with
 every peer on the seeds both have at their selected LR: paired differences, one-sided paired
-t-test (Holm-corrected across peers) and the "lower on every seed" criterion of the gate.
+t-test (Holm-corrected across peers) and the "lower on every seed" criterion of the gate. The gate
+G3.5 concerns the competitors of the study (AdamW and SOAP, D-003); the other peers are reported
+with the same statistics.
 
 Usage: python experiments/phase3/analyze_e27.py [--tag TAG]
 """
@@ -24,6 +26,7 @@ from common import holm  # noqa: E402  (shared helpers in experiments/phase2)
 from run_e27_sweep import GRIDS
 
 RESULTS = pathlib.Path(__file__).parent / "results"
+STUDY = ("adamw", "soap")  # competitors of the TPU study (D-003); G3.5 is evaluated on these
 
 
 def load(tag: str) -> list[dict]:
@@ -96,9 +99,14 @@ def main() -> None:
             every_seed[m] = bool(np.all(d < 0))
             pvals[m] = float(scipy.stats.ttest_1samp(d, 0.0, alternative="less").pvalue)
         adj = holm(pvals)
+        # Holm over the gated competitors only; the full family is reported alongside.
+        adj_study = holm({m: pvals[m] for m in STUDY if m in pvals})
+        study_ok = [m in every_seed and (every_seed[m] or adj_study.get(m, 1.0) < 0.05)
+                    for m in STUDY]
         res = {"minus_peer_by_seed": diffs, "lower_on_every_seed": every_seed,
-               "holm_p_one_sided": adj,
-               "loss_criterion": bool(every_seed) and all(every_seed.values())}
+               "holm_p_one_sided": adj, "holm_p_one_sided_study": adj_study,
+               "loss_criterion_all_peers": bool(every_seed) and all(every_seed.values()),
+               "loss_criterion": bool(all(study_ok))}
         gate[ours] = res
         report += ["", f"## {ours} vs peers (paired by seed; negative = {ours} better)", "",
                    "```", json.dumps(res, indent=1), "```"]

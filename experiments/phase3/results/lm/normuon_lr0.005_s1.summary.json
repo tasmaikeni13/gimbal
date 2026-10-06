@@ -1,0 +1,1 @@
+{"run_id": "normuon_lr0.005_s1", "method": "normuon", "lr": 0.005, "seed": 1, "steps": 800, "final_val_loss": 1.5154243499040603, "wall_seconds": 579.6934731460642, "optimizer_seconds": 46.09983314364217, "diverged": false}

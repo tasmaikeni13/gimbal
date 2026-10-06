@@ -1,0 +1,1 @@
+{"run_id": "aro_lr0.004_s2", "method": "aro", "lr": 0.004, "seed": 2, "steps": 800, "final_val_loss": 1.518396806716919, "wall_seconds": 643.0610818008427, "optimizer_seconds": 87.2368934256956, "diverged": false}

@@ -1,0 +1,1 @@
+{"run_id": "soap_sb099_lr0.004_s12_f027", "method": "soap_sb099", "lr": 0.004, "seed": 12, "steps": 800, "final_val_loss": 1.5126002132892609, "wall_seconds": 571.0937173741404, "optimizer_seconds": 59.94812608137727, "diverged": false}

@@ -1,0 +1,1 @@
+{"run_id": "adamw_lr0.001_s0", "method": "adamw", "lr": 0.001, "seed": 0, "steps": 800, "final_val_loss": 1.647161415219307, "wall_seconds": 575.0500208830927, "optimizer_seconds": 3.9588412197772413, "diverged": false}

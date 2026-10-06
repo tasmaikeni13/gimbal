@@ -1,0 +1,1 @@
+{"run_id": "splus_lr0.05_s0", "method": "splus", "lr": 0.05, "seed": 0, "steps": 800, "final_val_loss": 1.6393046498298645, "wall_seconds": 546.129102806095, "optimizer_seconds": 32.21899071778171, "diverged": false}

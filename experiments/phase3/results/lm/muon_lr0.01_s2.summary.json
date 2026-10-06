@@ -1,0 +1,1 @@
+{"run_id": "muon_lr0.01_s2", "method": "muon", "lr": 0.01, "seed": 2, "steps": 800, "final_val_loss": 1.511283853650093, "wall_seconds": 591.95164587209, "optimizer_seconds": 44.65475195879117, "diverged": false}

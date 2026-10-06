@@ -1,0 +1,80 @@
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+/home/tasma/gimbal/experiments/phase3/e27_small_lm.py:136: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  rec = {"step": step, "loss": float(loss)}
+B adamw     lr=0.001    seed=2 val=1.6620 opt_s=4
+B adamw     lr=0.001    seed=1 val=1.6809 opt_s=4
+B normuon   lr=0.005    seed=2 val=1.5207 opt_s=45
+B splus     lr=0.05     seed=2 val=1.6451 opt_s=33
+B muon      lr=0.01     seed=1 val=1.5136 opt_s=44
+B normuon   lr=0.005    seed=1 val=1.5154 opt_s=46
+B soap      lr=0.004    seed=2 val=1.4962 opt_s=60
+B splus     lr=0.05     seed=1 val=1.6391 opt_s=33
+B muon      lr=0.01     seed=2 val=1.5113 opt_s=45
+B soap      lr=0.004    seed=1 val=1.4959 opt_s=61
+B aro       lr=0.004    seed=1 val=1.5149 opt_s=84
+B gimbal    lr=0.004    seed=2 val=1.5052 opt_s=113
+B gimbal    lr=0.004    seed=1 val=1.5002 opt_s=112
+B aro       lr=0.004    seed=2 val=1.5184 opt_s=87
+B soap_rt   lr=0.004    seed=1 val=1.4918 opt_s=167
+B soap_rt   lr=0.004    seed=2 val=1.4919 opt_s=169
+B gimbal_k1 lr=0.004    seed=2 val=1.4944 opt_s=215
+B klsoap    lr=0.004    seed=2 val=1.4823 opt_s=223
+B klsoap    lr=0.004    seed=1 val=1.4789 opt_s=230
+B gimbal_k1 lr=0.004    seed=1 val=1.4908 opt_s=224

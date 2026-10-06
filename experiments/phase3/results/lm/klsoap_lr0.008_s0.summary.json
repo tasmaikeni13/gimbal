@@ -1,0 +1,1 @@
+{"run_id": "klsoap_lr0.008_s0", "method": "klsoap", "lr": 0.008, "seed": 0, "steps": 800, "final_val_loss": 1.4964484870433807, "wall_seconds": 790.2885970778298, "optimizer_seconds": 236.8514104168862, "diverged": false}

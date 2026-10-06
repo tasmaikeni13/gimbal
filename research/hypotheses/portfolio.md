@@ -47,3 +47,20 @@ changes the mechanism.
 * 2026-10-06: H1 selected as the main line after the literature pass (no overlap found) and two
   prototype checks (basis KL Monte Carlo; noisy quadratic). Prototype numbers are exploratory and
   are superseded by the Phase 2 runs recorded under `experiments/phase2/`.
+
+## Repair cards for F-027 (G3.5: the default lost to SOAP on the small LM)
+
+Selection seeds 10–12 (not used by the gate), learning rate 4e-3 (Gimbal's selected one), 800
+steps of E3.2; raw `experiments/phase3/results/lm/*_f027.*`. The gate is re-run on fresh seeds
+with the full E3.2 protocol after a choice is made.
+
+| Card | Change | Mechanism hypothesis | Unique prediction | Kill criterion | Cost on TPU |
+|---|---|---|---|---|---|
+| R1 adaptive amortization | move every `k_t = clamp(round(K α/α_t), 1, K)` steps (K = 4) | the amortized flow matches the per-step flow to first order in kα; with the bias-corrected rate (α_t ≈ 1/t early) a fixed k = 4 is far outside that regime for the first ~100 steps, which costs a deficit that never closes | removes most of the k = 4 vs k = 1 gap at step 100, part of it at the end | final loss not lower than k = 4 by ≥ half the k = 4 → k = 1 gap | none after ~100 steps |
+| R2 per-step flow | k = 1 (undo C-012) | amortization also costs in the steady state (staleness of a frame that is still moving) | best loss | — | every step pays a frame move (F-019) |
+| R3 shorter warm start | T_w = 20 | the deficit comes from the pre-warm-start phase | early gap closes | no gain over k = 4 | none |
+| R4 shorter memory | rot_rate α = 1 − β₂ = 0.05 (frame, flow variances and Adam's V share one window of effective size 39; SOAP's default `shampoo_beta = β₂` is the same convention) | the default α = 0.02 (C-002) was chosen on stationary synthetic streams; LM gradient statistics drift, and a 100-step memory lags | larger α lowers the loss for every k | larger α not better at k = 4 and k = 1 | none |
+
+Outcome so far (mean final validation loss over seeds 10–12; SOAP 1.4981): k = 4, α = 0.02:
+1.5108; R3: 1.5117 (killed); R1: 1.5018; R2: 1.4949; R4 at k = 4: α = 0.04 1.5029, α = 0.08 1.5001;
+R1 + R4 (α = 0.04): 1.4968; R2 + R4 (α = 0.04): 1.4900.

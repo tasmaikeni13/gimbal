@@ -1,0 +1,1 @@
+{"run_id": "gimbal_lr0.008_s0", "method": "gimbal", "lr": 0.008, "seed": 0, "steps": 800, "final_val_loss": 1.5378540307283401, "wall_seconds": 661.0261549190618, "optimizer_seconds": 115.38313172152266, "diverged": false}

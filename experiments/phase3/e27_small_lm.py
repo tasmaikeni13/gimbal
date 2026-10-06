@@ -39,9 +39,25 @@ MATRIX_KW = {
     "aro": dict(),
     "gimbal": dict(betas=(0.9, 0.95)),
     "gimbal_k1": dict(betas=(0.9, 0.95), frame_every=1),
+    # F-027 repair candidates (selection on seeds 10-12, then the gate on fresh seeds)
+    "gimbal_adapt": dict(betas=(0.9, 0.95), frame_schedule="adaptive"),
+    "gimbal_tw20": dict(betas=(0.9, 0.95), warm_start_steps=20),
+    "gimbal_adapt_tw20": dict(betas=(0.9, 0.95), frame_schedule="adaptive",
+                              warm_start_steps=20),
+    # F-027 diagnosis: is the frame memory (rot_rate 0.02, ~100 steps) too long for LM training?
+    "gimbal_a04": dict(betas=(0.9, 0.95), rot_rate=0.04),
+    "gimbal_a08": dict(betas=(0.9, 0.95), rot_rate=0.08),
+    "gimbal_k1_a04": dict(betas=(0.9, 0.95), frame_every=1, rot_rate=0.04),
+    "gimbal_adapt_a04": dict(betas=(0.9, 0.95), frame_schedule="adaptive", rot_rate=0.04),
+    "gimbal_adapt_a05": dict(betas=(0.9, 0.95), frame_schedule="adaptive", rot_rate=0.05),
+    "gimbal_adapt_a08": dict(betas=(0.9, 0.95), frame_schedule="adaptive", rot_rate=0.08),
+    "gimbal_k1_a05": dict(betas=(0.9, 0.95), frame_every=1, rot_rate=0.05),
+    # the same memory knob for SOAP (Phase 06 Stage C grid), for an equal selection budget
+    "soap_sb090": dict(betas=(0.9, 0.95), weight_decay=0.0, shampoo_beta=0.9),
+    "soap_sb099": dict(betas=(0.9, 0.95), weight_decay=0.0, shampoo_beta=0.99),
 }
 # Variants that are a registered optimizer with different settings.
-ALIASES = {"gimbal_k1": "gimbal"}
+ALIASES = {m: m.split("_")[0] for m in MATRIX_KW if m.startswith(("gimbal_", "soap_sb"))}
 OTHER_KW = dict(lr=3e-3, betas=(0.9, 0.95), weight_decay=0.0)
 
 
