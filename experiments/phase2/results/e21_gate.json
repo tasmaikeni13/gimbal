@@ -1,27 +1,38 @@
 {
  "main_k4_all_wins_best": false,
+ "main_k4_beats_practical_all": false,
  "G2.1_k4_nonseparable_all_wins_best": true,
  "G2.1_k4_nonseparable_all_wins_matched": true,
- "G2.1_k4_separable_worst_ratio_vs_best_peer": 1.10385193184317,
- "G2.1_k4_separable_worst_upper_ratio": 1.1190592940490494,
+ "G2.1_k4_separable_worst_ratio_vs_best_peer": 1.104170135116105,
+ "G2.1_k4_separable_worst_upper_ratio": 1.1207168910588146,
  "G2.1_k4_pass": true,
  "G2.1_nonseparable_all_wins_best": true,
  "G2.1_nonseparable_all_wins_matched": true,
- "G2.1_separable_worst_ratio_vs_best_peer": 1.092260901576782,
+ "G2.1_separable_worst_ratio_vs_best_peer": 1.0911067935756915,
  "G2.1_separable_within_25pct": true,
- "G2.1_separable_worst_upper_ratio": 1.108195779618331,
+ "G2.1_separable_worst_upper_ratio": 1.106538126739698,
  "G2.1_separable_upper_within_25pct": true,
+ "random_effects_factor_vs_gimbal_k4": {
+  "soap": 24.564483835122417,
+  "soap_rt": 24.0496023306791,
+  "klsoap": 15.610000029761041,
+  "pooled_eigh": 24.13341924930117,
+  "kl_eigh": 16.29589086670107
+ },
  "random_effects_factor_vs_gimbal": {
-  "soap": 25.97334455664358,
-  "soap_rt": 25.428188991070673,
-  "klsoap": 16.50468387868649,
-  "pooled_eigh": 25.51689526966514,
-  "kl_eigh": 17.229610761899817
+  "soap": 25.82604559937638,
+  "soap_rt": 25.28438650992785,
+  "klsoap": 16.41070033545665,
+  "pooled_eigh": 25.372533606108195,
+  "kl_eigh": 17.131577582268967
  },
  "tie_k4_all_wins_best": true,
+ "tie_k4_beats_practical_all": true,
  "G2.2_tie_all_wins": true,
  "drift_k4_all_wins_best": true,
+ "drift_k4_beats_practical_all": true,
  "G2.3_drift_all_wins": true,
  "tails_k4_all_wins_best": true,
+ "tails_k4_beats_practical_all": true,
  "G2.4h_tails_all_wins": true
 }

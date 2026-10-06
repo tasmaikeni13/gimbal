@@ -22,12 +22,20 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
   one-sided paired Wilcoxon with Holm correction per cell; bootstrap intervals; random-effects
   pooling across cells. Algorithm: C-004 defaults (C-008 fix bit-identical, 141/141 checks).
 * Code: `experiments/phase2/e21_frame_efficiency.py`, `analyze_e21.py`.
-* Result: Gimbal below every peer and control in every cell of every suite, at best and at matched
-  memory; separable cells included (bootstrap upper bound of the ratio to the best peer below 1).
-  The amortized variant (`frame_every=4`) also wins every cell. Exploratory runs (seeds 0–9, C-002)
-  and pilots (seeds 21–32) are archived and not used.
-* Raw: `results/e21_*.jsonl.gz`, report `results/e21_report.md`, gates `results/e21_gate.json`.
-* Decision: G2.1 and G2.3 pass; G2.2 needed E2.2b (F-016).
+* Result as first analyzed (KL-SOAP before its fix C-011, default before C-013): Gimbal below every
+  peer and control in every cell of every suite. Superseded by the re-runs below.
+* Result after C-011 (KL rows re-run) and C-013 (Gimbal rows re-run on the same seeds; earlier rows
+  kept as `*_c012`): the default (`frame_every = 4`) is below every peer and both exact-eigenvector
+  controls (Holm-corrected) in every non-separable, tie, drift and heavy-tail cell, at best and at
+  matched memory. In the six separable cells it is below SOAP and SOAP real-time everywhere and
+  below KL-SOAP except in the two flattest (γ = 0, s = 0.5), where KL-SOAP and the exact KL control
+  are slightly better: on separable arrays KL weights are efficient (Theorem 3.3); the gap is inside
+  G2.1's non-inferiority margin and recorded as an open item (theory §7). C-013 moves frame KL on
+  these zero-mean streams by a few percent at most, in both directions (centering-effect tables).
+  Exploratory runs (seeds 0–9, C-002) and pilots (seeds 21–35) are archived and not used.
+* Raw: `results/e21_*.jsonl.gz` (re-runs `*_peerfix`, `*_c013`), report `results/e21_report.md`,
+  gates `results/e21_gate.json`.
+* Decision: G2.1, G2.3 pass; G2.2 needed E2.2b (F-016).
 
 ## E2.2b — Consistency in a tied plane (Phase 02)
 * Question: does Gimbal's error vanish with the horizon in tied cells, where pooled factors cannot
