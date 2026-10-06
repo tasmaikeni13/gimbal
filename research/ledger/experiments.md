@@ -108,6 +108,10 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
 
 ## E2.12 — Numerical behaviour (Phase 02)
 * Question: float32 vs float64, long-run orthogonality, scale invariance, degenerate inputs.
-* Result: passes after the F-014 fix (absolute constants) and the F-015 test redesign.
-* Raw: `results/e212_numerics.json`, report `results/e212_report.md`.
+* Result: passes after the F-014 fix (absolute constants) and the F-015 test redesign. Re-run with
+  the C-013 default and a new degenerate case, a constant (noise-free) gradient, for which the
+  centered statistic is pure rounding residue: every part passes, the frames stay finite and
+  orthogonal.
+* Raw: `results/e212_numerics.json`, report `results/e212_report.md`; after C-013
+  `results/e212_numerics_c013.json`, `results/e212_report_c013.md`.
 
