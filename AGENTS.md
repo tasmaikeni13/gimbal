@@ -21,7 +21,7 @@ its successors at 125M parameters / 2.5B FineWeb-Edu tokens.
 | `theory.md` | readable overview of the theory and equations (keep consistent with the paper below) |
 | `theory/gimbal_theory.md` | living theory: statements, proofs, evidence labels L1–L5, changelog |
 | `formal/` | Lean 4 + Mathlib proofs (`formal/README.md` maps theorems to Lean names) |
-| `experiments/phase1/`, `experiments/phase2/` | executable experiments; raw outputs in `results/` |
+| `experiments/phase1/`–`phase3/` | executable experiments; raw outputs in `results/` (large JSONL gzipped) |
 | `research/` | literature frontier, hypotheses, ledgers (experiments, failures, decisions, claims), state |
 | `phases/` | protocol (`README.md`), phase files `01`–`10`, `STATUS.md`, `dependencies.md` |
 | `scripts/data/` | data download scripts; downloaded data goes to `data/raw/` (git-ignored) |
@@ -42,13 +42,15 @@ cd formal && lake build && lake env lean audit/Axioms.lean   # after any Lean ch
 python experiments/phase1/check_identities.py --quick        # after any change to the theory or to gimbal.py
 ```
 
-Experiments (CPU):
+Experiments (CPU). Phase 02 trains no model; the small-LM experiments live in Phase 03:
 
 ```bash
-python scripts/data/fetch_fineweb_edu_sample.py              # FineWeb-Edu sample for the small LM
-experiments/phase2/run_e21_all.sh && python experiments/phase2/analyze_e21.py
-OMP_NUM_THREADS=1 python experiments/phase2/e25_noisy_quadratic.py
-python experiments/phase2/e27_small_lm.py --method gimbal --lr 3e-3 --seed 0 --steps 800
+experiments/phase2/run_e21_all.sh && experiments/phase2/run_e21_ext.sh   # E2.1-E2.4 + grid extension
+python experiments/phase2/analyze_e21.py
+experiments/phase2/run_phase2_rest.sh             # E2.10-E2.12, E2.5, E2.9, E2.8
+python experiments/phase2/make_report.py          # experiments/phase2/report.md and the gates
+python scripts/data/fetch_fineweb_edu_sample.py   # Phase 03: FineWeb-Edu sample for the small LM
+python experiments/phase3/run_e27_sweep.py --stage A   # Phase 03: small-LM sweep (E3.2)
 ```
 
 Set `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1` for any multi-process experiment; otherwise BLAS

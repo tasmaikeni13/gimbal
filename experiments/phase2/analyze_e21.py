@@ -105,6 +105,52 @@ def summarize(rows: list[dict]) -> list[dict]:
     return out
 
 
+def per_seed_best(rows: list[dict], cell: dict, method: str) -> dict:
+    """Per-seed scores of a method at its best memory (lowest mean over seeds) in one cell."""
+    by_mem = defaultdict(dict)
+    for r in rows:
+        if (cell_key(r) == (cell["gamma"], cell["slope"], tuple(cell["shape"]), cell["tie"],
+                            cell["nu"], cell["drift"]) and r["method"] == method):
+            by_mem[r["memory"]][r["seed"]] = r["kl_second_half"]
+    best = min(by_mem, key=lambda mem: np.mean(list(by_mem[mem].values())))
+    return by_mem[best]
+
+
+def separable_upper_ratio(rows: list[dict], cell: dict) -> float:
+    """Bootstrap 95% upper bound of the geometric-mean ratio Gimbal / best peer (paired)."""
+    best_peer = min(PEERS, key=lambda p: cell["best"]["mean_kl"][p])
+    g = per_seed_best(rows, cell, "gimbal")
+    q = per_seed_best(rows, cell, best_peer)
+    diff = np.array([np.log(g[s]) - np.log(q[s]) for s in sorted(g)])
+    return float(np.exp(paired_bootstrap_ci(diff)[2]))
+
+
+def random_effects(summary: list[dict]) -> dict:
+    """DerSimonian–Laird pooling over cells of the mean paired log-ratio peer / Gimbal."""
+    out = {}
+    for peer in PEERS:
+        means, variances = [], []
+        for r in summary:
+            lo, hi = r["best"]["kl_factor_vs_gimbal"][peer][1:]
+            mean = np.log(r["best"]["kl_factor_vs_gimbal"][peer][0])
+            se = (np.log(hi) - np.log(lo)) / (2 * 1.96)  # from the bootstrap interval
+            means.append(mean)
+            variances.append(max(se**2, 1e-12))
+        y, v = np.array(means), np.array(variances)
+        w = 1 / v
+        fixed = np.sum(w * y) / np.sum(w)
+        q = float(np.sum(w * (y - fixed) ** 2))
+        k = len(y)
+        tau2 = max(0.0, (q - (k - 1)) / (np.sum(w) - np.sum(w**2) / np.sum(w)))
+        w_re = 1 / (v + tau2)
+        mu = np.sum(w_re * y) / np.sum(w_re)
+        se_mu = np.sqrt(1 / np.sum(w_re))
+        out[peer] = {"factor": float(np.exp(mu)), "lo": float(np.exp(mu - 1.96 * se_mu)),
+                     "hi": float(np.exp(mu + 1.96 * se_mu)),
+                     "i2": float(max(0.0, (q - (k - 1)) / q)) if q > 0 else 0.0, "k": k}
+    return out
+
+
 def fmt_cell(r: dict) -> str:
     parts = [f"γ={r['gamma']}", f"s={r['slope']}", f"{r['shape'][0]}x{r['shape'][1]}"]
     if r["tie"]:
@@ -170,6 +216,21 @@ def main() -> None:
             )
             gates["G2.1_separable_worst_ratio_vs_best_peer"] = worst
             gates["G2.1_separable_within_25pct"] = bool(worst <= 1.25)
+            # C-006: the paired bootstrap 95% upper bound of the geometric-mean ratio Gimbal / best
+            # peer must also be below 1.25 in every separable cell.
+            uppers = [separable_upper_ratio(rows, r) for r in sep]
+            gates["G2.1_separable_worst_upper_ratio"] = max(uppers)
+            gates["G2.1_separable_upper_within_25pct"] = bool(max(uppers) <= 1.25)
+            pooled = random_effects(summary)
+            report += ["## Random-effects pooling across main-suite cells", "",
+                       "Paired log-ratio log(KL_peer / KL_Gimbal) per seed at best memories; "
+                       "DerSimonian–Laird pooling of the per-cell means (cells as studies).", "",
+                       "| peer | pooled factor | 95% CI | I² | cells |", "|---|---|---|---|---|"]
+            for peer, v in pooled.items():
+                report.append(f"| {peer} | {v['factor']:.2f} | [{v['lo']:.2f}, {v['hi']:.2f}] |"
+                              f" {v['i2']:.2f} | {v['k']} |")
+            report.append("")
+            gates["random_effects_factor_vs_gimbal"] = {k: v["factor"] for k, v in pooled.items()}
         if suite == "tie":
             gates["G2.2_tie_all_wins"] = all(r["best"]["gimbal_wins_all"] for r in summary)
             report += ["### Tie suite: mean frame KL by memory (longer memory to the right for "

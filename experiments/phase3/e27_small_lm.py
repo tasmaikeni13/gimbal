@@ -1,12 +1,12 @@
-"""E2.7 (and E2.6 snapshots): byte-level LM on a FineWeb-Edu sample, CPU (Phase 02).
+"""E3.2 (formerly E2.7; also E3.1 snapshots): byte-level LM on a FineWeb-Edu sample (Phase 03).
 
 Every optimizer trains the same model from the same initialization on the same sequence of
 batches for a given seed (paired design). Hidden matrices use the optimizer under test; the
 embedding, output head and norms use one AdamW configuration shared by all methods.
 
 Usage:
-  python experiments/phase2/e27_small_lm.py --method gimbal --lr 3e-3 --seed 0 --steps 800
-  python experiments/phase2/e27_small_lm.py --method adamw --lr 3e-3 --seed 0 \
+  python experiments/phase3/e27_small_lm.py --method gimbal --lr 3e-3 --seed 0 --steps 800
+  python experiments/phase3/e27_small_lm.py --method adamw --lr 3e-3 --seed 0 \
       --snapshots 100,400,800
 """
 
@@ -75,7 +75,7 @@ def evaluate(model: TinyLM, val: torch.Tensor, n_batches: int, batch: int) -> fl
 
 
 def gradient_snapshot(model, train, n_samples, batch, seed, names):
-    """Independent minibatch gradients of selected matrices at fixed weights (E2.6)."""
+    """Independent minibatch gradients of selected matrices at fixed weights (E3.1)."""
     params = dict(model.named_parameters())
     it = batches(train, batch, model.cfg.seq_len, seed=seed)
     out = {n: [] for n in names}

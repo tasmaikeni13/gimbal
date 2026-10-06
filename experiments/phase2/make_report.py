@@ -1,7 +1,7 @@
 """Assemble experiments/phase2/report.md from the generated per-experiment reports and gates.
 
-Every number in the report comes from a file in ``results/`` written by an analysis script; this
-script only collects them and evaluates the gate summary of phases/02.
+Every number in the report comes from a file in ``results/`` written by an analysis or experiment
+script; this script only collects them and evaluates the gate summary of phases/02.
 
 Usage: python experiments/phase2/make_report.py
 """
@@ -11,11 +11,8 @@ from __future__ import annotations
 import json
 import pathlib
 
-import numpy as np
-
 HERE = pathlib.Path(__file__).parent
 RESULTS = HERE / "results"
-KAPPA_MIN = 0.05  # G2.5 operationalization (decision C-005, fixed before E2.6 was run)
 
 
 def load_json(name: str):
@@ -32,75 +29,79 @@ def section(name: str) -> list[str]:
     return [("#" + line) if line.startswith("#") else line for line in text] + [""]
 
 
+def verdict(ok) -> str:
+    return "pass" if ok else ("fail" if ok is not None else "pending")
+
+
 def gate_rows() -> list[tuple[str, str, str]]:
     rows = []
     e21 = load_json("e21_gate.json") or {}
     if e21:
-        g21 = (e21.get("G2.1_nonseparable_all_wins_best")
-               and e21.get("G2.1_separable_within_25pct"))
         worst = e21.get("G2.1_separable_worst_ratio_vs_best_peer", float("nan"))
-        rows.append(("G2.1 efficiency", "pass" if g21 else "fail",
-                     f"non-separable all wins (best memory): "
+        upper = e21.get("G2.1_separable_worst_upper_ratio", float("nan"))
+        g21 = (e21.get("G2.1_nonseparable_all_wins_best") and e21.get("G2.1_separable_within_25pct")
+               and e21.get("G2.1_separable_upper_within_25pct", False))
+        rows.append(("G2.1 efficiency", verdict(g21),
+                     f"non-separable cells, Gimbal below every peer (best memory): "
                      f"{e21.get('G2.1_nonseparable_all_wins_best')}; matched memory: "
-                     f"{e21.get('G2.1_nonseparable_all_wins_matched')}; separable worst ratio to "
-                     f"best peer {worst:.3f}"))
-        rows.append(("G2.2 identifiability", "pass" if e21.get("G2.2_tie_all_wins") else "fail",
-                     "tie suite: Gimbal below every peer in every cell (see memory table)"))
-        rows.append(("G2.3 tracking", "pass" if e21.get("G2.3_drift_all_wins") else "fail",
+                     f"{e21.get('G2.1_nonseparable_all_wins_matched')}; separable cells, worst "
+                     f"ratio to the best peer {worst:.3f} (bootstrap upper bound {upper:.3f})"))
+        rows.append(("G2.2 identifiability", verdict(e21.get("G2.2_tie_all_wins")),
+                     "tie suite: Gimbal below every peer in every cell; frame KL against memory in "
+                     "the E2.2 table"))
+        rows.append(("G2.3 tracking", verdict(e21.get("G2.3_drift_all_wins")),
                      "drift suite: Gimbal's best-memory error below every peer's"))
-        rows.append(("(E2.4 tails)", "pass" if e21.get("G2.4h_tails_all_wins") else "fail",
-                     "Student-t suite, not a predeclared gate item"))
+        rows.append(("(E2.4 heavy tails)", verdict(e21.get("G2.4h_tails_all_wins")),
+                     "Student-t suite; reported, not a gate item"))
     e25 = load_json("e25_gate.json")
-    if e25:
-        rows.append(("G2.4 optimization", "pass" if e25["G2.4"] else "fail",
-                     "; ".join(f"{k}: {'pass' if v['pass'] else 'fail'}"
-                               for k, v in e25["configs"].items())))
-    e26 = load_json("e26_real_gradients.json")
-    if e26:
-        kap = np.array([r["kappa_pooled_frame"] for r in e26])
-        gain = np.array([r["gain_gimbal_vs_soap_nats"] for r in e26])
-        ok = bool(np.median(kap) >= KAPPA_MIN)
-        rows.append(("G2.5 premise", "pass" if ok else "fail",
-                     f"median κ {np.median(kap):.3f} (threshold {KAPPA_MIN}); Gimbal's frame beats "
-                     f"SOAP's on held-out gradients in {int((gain > 0).sum())}/{len(gain)} "
-                     f"matrices"))
-    e27 = load_json("e27_gate.json")
+    rows.append(("G2.4 optimization", verdict(e25["G2.4"] if e25 else None),
+                 "; ".join(f"{k}: {'pass' if v['pass'] else 'fail'}"
+                           for k, v in e25["configs"].items()) if e25 else "E2.5 pending"))
+    e210 = load_json("e210_theory_vs_simulation.json")
+    if e210:
+        parts = ", ".join(f"({k}) {verdict(e210[k]['pass'])}" for k in "abcde")
+        pre = e210.get("b_preregistered", {}).get("pass")
+        rows.append(("G2.5 theory–simulation", verdict(e210["G2.5"]),
+                     f"{parts}; pre-registered (b) with the leading-order formula: "
+                     f"{verdict(pre)} (F-013, re-run after the theory revision)"))
+    else:
+        rows.append(("G2.5 theory–simulation", "pending", "E2.10 pending"))
+    e211 = load_json("e211_gate.json")
+    e212 = load_json("e212_numerics.json")
     e28 = load_json("e28_cost_model.json")
-    if e27 and e28:
-        cost = e28["analytic"]["optimizers"]
-        for ours, kname in (("gimbal", "gimbal_k1"), ("gimbal_k4", "gimbal_k4")):
-            if ours not in e27:
-                continue
-            cheaper = cost[kname]["pct_of_model_c10"] <= cost["soap"]["pct_of_model_c10"]
-            bench = e28.get("cpu_benchmark_ms_per_step")
-            cpu_txt = ""
-            if bench:
-                ours_ms = sum(v[kname]["mean_ms"] for v in bench.values())
-                soap_ms = sum(v["soap"]["mean_ms"] for v in bench.values())
-                cpu_txt = f"; CPU ms/step over the 125M shapes {ours_ms:.0f} vs SOAP {soap_ms:.0f}"
-            ok = e27[ours]["loss_criterion"] and cheaper
-            loss_ok = e27[ours]["loss_criterion"]
-            rows.append((f"G2.6 small LM ({ours})", "pass" if ok else "fail",
-                         f"lower loss than every peer on every seed: {loss_ok}; "
-                         f"analytic cost (QR at 10x matmul) {cost[kname]['pct_of_model_c10']:.2f}% "
-                         f"vs SOAP {cost['soap']['pct_of_model_c10']:.2f}%{cpu_txt}"))
+    cost_ok, cost_txt = None, "E2.8 pending"
+    if e28:
+        c = e28["analytic"]["optimizers"]
+        cost_ok = c["gimbal_k1"]["pct_of_model_c10"] <= c["soap"]["pct_of_model_c10"]
+        cost_txt = (f"analytic cost with QR/eigh at 10× matmul: Gimbal (k=1) "
+                    f"{c['gimbal_k1']['pct_of_model_c10']:.2f}%, k=4 "
+                    f"{c['gimbal_k4']['pct_of_model_c10']:.2f}%, SOAP "
+                    f"{c['soap']['pct_of_model_c10']:.2f}% of model compute")
+    land = e211["G2.6_i"] if e211 else None
+    num = e212["G2.6_iii"] if e212 else None
+    all6 = None if None in (land, cost_ok, num) else bool(land and cost_ok and num)
+    rows.append(("G2.6 landscape, cost, numerics", verdict(all6),
+                 f"(i) landscape {verdict(land)}; (ii) cost (default k=1) {verdict(cost_ok)}: "
+                 f"{cost_txt}; (iii) numerics {verdict(num)}"))
     return rows
 
 
 def main() -> None:
     lines = ["# Phase 02 report (generated by make_report.py)", "",
-             "Algorithm: Gimbal with the defaults of change C-004 (`src/gimbal/torch/gimbal.py`, "
-             "`theory/gimbal_theory.md` v0.4). Confirmatory seeds: E2.1–E2.4 seeds 10–19; E2.5 "
-             "tuning seeds 0–2, evaluation seeds 100–111; E2.7 seeds 0–2; E2.9 seeds 40–47. "
-             "Seeds 0–9 (E2.1) and 21–32 were exploratory or pilot and are not reported here.", "",
+             "Algorithm: Gimbal with the defaults of change C-004 and the numerical fix C-008 "
+             "(`src/gimbal/torch/gimbal.py`, `theory/gimbal_theory.md` v0.5). Seeds: E2.1–E2.4 "
+             "10–19; E2.5 tuning 0–2, evaluation 100–111; E2.9 40–47; E2.10–E2.12 fixed seeds in "
+             "the scripts (50+). Seeds 0–9 (E2.1 exploratory) and 21–32 (pilots) are not reported "
+             "here. Phase 02 trains no language model (C-006).", "",
              "## Gate summary", "", "| item | result | evidence |", "|---|---|---|"]
     lines += [f"| {a} | **{b}** | {c} |" for a, b, c in gate_rows()]
     lines += [""]
     for title, name in (("E2.1–E2.4 frame estimation", "e21_report.md"),
                         ("E2.5 noisy quadratics", "e25_report.md"),
-                        ("E2.6 real-gradient premise", "e26_report.md"),
-                        ("E2.7 small language model", "e27_report.md"),
-                        ("E2.9 ablations", "e29_report.md")):
+                        ("E2.9 ablations", "e29_report.md"),
+                        ("E2.10 theory–simulation agreement", "e210_report.md"),
+                        ("E2.11 landscape and global convergence", "e211_report.md"),
+                        ("E2.12 numerical behaviour", "e212_report.md")):
         lines += [f"## {title}", ""] + section(name)
     e28 = load_json("e28_cost_model.json")
     lines += ["## E2.8 cost model", ""]
@@ -124,7 +125,7 @@ def main() -> None:
                              + " |")
         lines.append("")
     (HERE / "report.md").write_text("\n".join(lines))
-    print("\n".join(lines[:20]))
+    print("\n".join(lines[:16]))
 
 
 if __name__ == "__main__":

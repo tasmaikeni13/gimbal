@@ -220,7 +220,7 @@ class Gimbal(Optimizer):
         # Variances seen by the flow, then one natural-gradient step of the likelihood.
         flow_beta = group["flow_beta"]
         if flow_beta is None:
-            d = v_hat + (group["floor"] * v_hat.mean() + 1e-30)
+            d = v_hat + (group["floor"] * v_hat.mean() + torch.finfo(v_hat.dtype).tiny)
         else:
             beta_d = 1.0 - group["rot_rate"] if flow_beta == "tied" else float(flow_beta)
             vf = state.setdefault("VF", torch.zeros_like(g))
@@ -238,7 +238,7 @@ class Gimbal(Optimizer):
                 d = self._shrunk_variances(vf, vf_odd, w_full, w_odd, group["floor"])
             else:
                 v_flow = vf / w_full
-                d = v_flow + (group["floor"] * v_flow.mean() + 1e-30)
+                d = v_flow + (group["floor"] * v_flow.mean() + torch.finfo(v_flow.dtype).tiny)
         if not restarted:
             self._flow(state, z, d, group)
 
@@ -256,7 +256,9 @@ class Gimbal(Optimizer):
         """
         m, n = vf.shape
         v_hat = vf / w_full
-        fl = floor * v_hat.mean() + 1e-30
+        # The smallest normal number guards against log(0) without breaking scale invariance
+        # (an absolute constant such as 1e-30 would dominate gradients below ~1e-15; F-014).
+        fl = floor * v_hat.mean() + torch.finfo(v_hat.dtype).tiny
         log_v = (v_hat + fl).log()
         row = log_v.mean(dim=1, keepdim=True)
         col = log_v.mean(dim=0, keepdim=True)

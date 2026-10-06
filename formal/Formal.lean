@@ -5,3 +5,4 @@ import Formal.Transport
 import Formal.Equivariance
 import Formal.Flow
 import Formal.Variance
+import Formal.PairCost

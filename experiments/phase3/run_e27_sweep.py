@@ -1,4 +1,4 @@
-"""Driver for E2.7: equal-budget LR sweep then confirmation seeds for every optimizer.
+"""Driver for E3.2 (formerly E2.7): equal-budget LR sweep, then confirmation seeds.
 
 Stage A: every optimizer gets the same number of learning rates (factor-2 grid around a
 literature-based centre) on seed 0. Stage B: the selected LR is re-run on fresh seeds. Runs are
@@ -7,8 +7,8 @@ skipped if their summary already exists, so the sweep can be resumed.
 Runs execute in parallel (``--jobs`` processes, ``--threads`` BLAS threads each; one thread per
 process gives the best throughput for this model size on CPU).
 
-Usage: python experiments/phase2/run_e27_sweep.py --stage A
-       python experiments/phase2/run_e27_sweep.py --stage B --seeds 1 2
+Usage: python experiments/phase3/run_e27_sweep.py --stage A
+       python experiments/phase3/run_e27_sweep.py --stage B --seeds 1 2
 """
 
 from __future__ import annotations
@@ -23,17 +23,17 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = pathlib.Path(__file__).parent
 RESULTS = HERE / "results" / "lm"
 
-GRIDS = {
-    "adamw": [1e-3, 2e-3, 4e-3, 8e-3],
+GRIDS = {  # ordered: ours, the core peers, then the extended set (ARO) last
+    "gimbal": [1e-3, 2e-3, 4e-3, 8e-3],
+    "gimbal_k4": [1e-3, 2e-3, 4e-3, 8e-3],
     "soap": [1e-3, 2e-3, 4e-3, 8e-3],
     "soap_rt": [1e-3, 2e-3, 4e-3, 8e-3],
     "klsoap": [1e-3, 2e-3, 4e-3, 8e-3],
+    "adamw": [1e-3, 2e-3, 4e-3, 8e-3],
     "muon": [5e-3, 1e-2, 2e-2, 4e-2],
     "normuon": [2.5e-3, 5e-3, 1e-2, 2e-2],
     "splus": [0.1, 0.2, 0.4, 0.8],
     "aro": [1e-3, 2e-3, 4e-3, 8e-3],
-    "gimbal": [1e-3, 2e-3, 4e-3, 8e-3],
-    "gimbal_k4": [1e-3, 2e-3, 4e-3, 8e-3],
 }
 
 
@@ -54,10 +54,33 @@ def run(method: str, lr: float, seed: int, steps: int, threads: int, tag: str) -
     return json.loads(path.read_text())
 
 
+def stage_a_rows(method: str, tag: str) -> list[dict]:
+    """All seed-0 runs of a method (initial grid plus any edge extensions)."""
+    rows = []
+    for path in RESULTS.glob(f"{method}_lr*_s0{tag}.summary.json"):
+        r = json.loads(path.read_text())
+        if r["method"] == method:
+            rows.append(r)
+    return sorted(rows, key=lambda r: r["lr"])
+
+
 def best_lr(method: str, tag: str) -> float:
-    rows = [json.loads(summary_path(method, lr, 0, tag).read_text()) for lr in GRIDS[method]]
-    ok = [r for r in rows if not r["diverged"]]
+    ok = [r for r in stage_a_rows(method, tag) if not r["diverged"]]
     return min(ok, key=lambda r: r["final_val_loss"])["lr"]
+
+
+def edge_extension(method: str, tag: str) -> float | None:
+    """Next learning rate outward if the best one sits on the edge of those run, else None."""
+    rows = stage_a_rows(method, tag)
+    lrs = [r["lr"] for r in rows]
+    if not any(not r["diverged"] for r in rows):
+        return min(lrs) / 2  # everything diverged: go lower
+    best = best_lr(method, tag)
+    if best == max(lrs):
+        return best * 2
+    if best == min(lrs):
+        return best / 2
+    return None
 
 
 def main() -> None:
@@ -83,6 +106,14 @@ def main() -> None:
 
     with ThreadPoolExecutor(args.jobs) as pool:
         list(pool.map(one, todo))
+        if args.stage == "A":
+            # Equal treatment: extend any grid whose optimum is on its edge (at most twice).
+            for _ in range(2):
+                ext = [(m, lr, 0) for m in args.methods
+                       if (lr := edge_extension(m, args.tag)) is not None]
+                if not ext:
+                    break
+                list(pool.map(one, ext))
 
 
 if __name__ == "__main__":

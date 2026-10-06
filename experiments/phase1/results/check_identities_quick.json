@@ -46,7 +46,7 @@
     "pass": true
   },
   "gimbal_step_equivariance": {
-    "equivariance_err": 2.5598469455268003e-09,
+    "equivariance_err": 2.5599478647997387e-09,
     "pass": true
   }
 }

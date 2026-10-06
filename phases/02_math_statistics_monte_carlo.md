@@ -1,10 +1,16 @@
-# Phase 02 — Mathematical, statistical and Monte Carlo analysis (iterate until Gimbal wins)
+# Phase 02 — Mathematical, numerical, statistical and Monte Carlo analysis (iterate until Gimbal wins)
 
 ## Purpose
 
-Test the predictions of Phase 01 quantitatively, against every peer, before any expensive
-hardware is used. The phase iterates on the mathematics (protocol §4) until Gimbal matches or beats
-all peers on the predeclared metrics, or until the evidence shows it cannot (protocol §9).
+Test the theory of Phase 01 quantitatively, against every peer, with several independent methods
+before any language model is trained or any accelerator is used: formal proofs (Lean), mathematical
+derivations, deterministic numerical analysis, Monte Carlo simulation and statistical inference.
+The phase iterates on the mathematics (protocol §4) until Gimbal matches or beats all peers on the
+predeclared criteria, or until the evidence shows it cannot (protocol §9).
+
+Scope (decision C-006, at the user's instruction): this phase trains no language model. Everything
+that needs language-model training (the real-gradient premise check and the small-LM benchmark,
+formerly E2.6 and E2.7) belongs to Phase 03 and is executed there.
 
 ## Depends on
 
@@ -13,65 +19,100 @@ Phase 01 (theory, peer table, Lean), `src/gimbal/torch/` (reference optimizers).
 ## Produces
 
 * `experiments/phase2/*.py` — every experiment as a script with a fixed seed list and CLI config
-* `experiments/phase2/results/` — raw outputs (JSON/CSV), never edited by hand
-* `experiments/phase2/report.md` — generated tables and figures with uncertainty
-* `research/ledger/experiments.md`, `failures.md`, `claims.md` updated
+* `experiments/phase2/results/` — raw outputs (JSON/JSONL, gzipped when large), never edited by hand
+* `experiments/phase2/report.md` — generated tables with uncertainty (`make_report.py`)
+* `formal/` — Lean statements for every new exact claim used by this phase
+* `research/ledger/experiments.md`, `failures.md`, `claims.md`, `decisions.md` updated
 
 ## Skills
 
-`experimental-research` (design, measurement model, uncertainty), `ml-research` (controls,
-tuning fairness, claims), `theory-research` (when a prediction fails).
+`theory-research` (predictions, proof audit, refutation), `experimental-research` (design,
+measurement model, uncertainty), `ml-research` (controls, tuning fairness, claims),
+`literature-frontier` (novelty checks for any new mechanism), `mechanism-transfer` (repairs).
+
+## Methods
+
+| Method | Used for | Where |
+|---|---|---|
+| Formal proof (Lean 4 + Mathlib) | exact identities and inequalities the experiments rely on | `formal/` |
+| Mathematical derivation | asymptotic predictions with explicit assumptions and labels | `theory/gimbal_theory.md` |
+| Deterministic numerics | population (noise-free) flows, exact asymptotic variances, Hessians, cost counts, floating-point behaviour | E2.8, E2.10–E2.12 |
+| Monte Carlo | estimator and optimizer behaviour on synthetic streams with known ground truth | E2.1–E2.5, E2.9, E2.10 |
+| Statistical inference | paired non-parametric tests with multiplicity control, bootstrap intervals, non-inferiority bounds, random-effects pooling across cells | all comparative experiments |
 
 ## Experiments
 
-All experiments are paired: for a given seed, every method sees the same problem instance and the
-same noise/data stream. The experimental unit is the seed (Monte Carlo) or the training run (LM).
+All comparative experiments are paired: for a given seed every method sees the same problem
+instance and the same noise stream. The experimental unit is the seed.
 
 | ID | Question | Design | Primary metric |
 |---|---|---|---|
-| E2.1 | Frame-estimation efficiency | Gradient streams from KRD$(U^\star,D)$ with $\log D_{ij}=a_i+b_j+\gamma c_{ij}$, spectra slope $s$; grid $\gamma\in\{0,0.5,1,2\}$, $s\in\{0.5,1,1.5\}$, shapes $(32,48),(64,64)$; memories matched by effective sample size; ≥10 seeds | time-averaged frame KL $J(\hat U)$ (Prop. 1) |
-| E2.2 | Identifiability stress | Crossing profiles with tied row sums (Example 1 family) | $J(\hat U)$, angle error in the tied plane |
+| E2.1 | Frame-estimation efficiency | Gradient streams from KRD$(U^\star,D)$ with $\log D_{ij}=a_i+b_j+\gamma c_{ij}$, spectra slope $s$; grid $\gamma\in\{0,0.5,1,2\}$, $s\in\{0.5,1,1.5\}$, shapes $(32,48),(64,64)$; every method at a grid of memories, extended equally for all methods while any best memory is on a grid edge; 10 confirmatory seeds (10–19) | time-averaged frame KL $J(\hat U)$ (Prop. 1) over the second half |
+| E2.2 | Identifiability stress | Crossing profiles with tied row sums (Example 1 family) | $J$; $J$ against memory length |
 | E2.3 | Tracking under drift | $U^\star(t)$ rotates at angular velocity $\omega$; best memory per method | time-averaged $J$ |
-| E2.4 | Heavy tails | Student-$t$ noise ($\nu\in\{3,5,\infty\}$) | $J$; tests hypothesis H6 |
-| E2.5 | Noisy quadratic optimization | Loss $\tfrac12\sum H_{ij}(Q_L^{\star\top}(W-W^\star)Q_R^\star)_{ij}^2$, gradient noise with KRD covariance $\propto H$, noise levels (batch sizes) × $\gamma$ grid; LR tuned per method on an equal grid; ≥8 seeds | final loss, steps to target |
-| E2.6 | Premise check on real gradients | Train a small LM; at checkpoints, collect gradients and measure the non-separability index $\kappa$ of $D$ in SOAP's frame and the frame KL of SOAP vs Gimbal on held-out gradient snapshots | $\kappa$, $J$ |
-| E2.7 | Small-LM benchmark (CPU) | Byte-level Llama-style LM on a FineWeb-Edu sample; equal LR-grid budget per optimizer; ≥3 seeds at the chosen LR | validation loss at equal steps; loss vs wall-clock |
-| E2.8 | Cost model | FLOPs/memory per optimizer for the 125M config (Prop. 9) and CPU microbenchmarks per matrix shape; projected TPU step time | optimizer-step time |
-| E2.9 | Ablations | $\alpha$, $\delta$, $\rho$, transport on/off, init eigh vs identity, retraction order | E2.1/E2.5/E2.7 metrics |
+| E2.4 | Heavy tails | Student-$t$ noise ($\nu\in\{3,5,\infty\}$) | $J$ |
+| E2.5 | Noisy quadratic optimization | Loss $\tfrac12\sum H_{ij}(Q_L^{\star\top}(W-W^\star)Q_R^\star)_{ij}^2$, gradient noise with KRD covariance $\propto H$, noise levels × $\gamma$ grid; LR tuned per method on an equal 7-point grid (seeds 0–2), evaluated on fresh seeds 100–111 | final loss |
+| E2.8 | Cost model | Multiply–accumulate counts and state for the 125M configuration (Prop. 9), QR/eigh counted separately; CPU microbenchmarks per matrix shape | % of model compute, state, ms per step |
+| E2.9 | Ablations | One setting of the default changed at a time: transport, initialization, warm-start length, shrinkage, flow variance source, $\delta$, $\rho$, trust region, schedule, amortization $k$, polish period; 8 seeds (40–47) | $J$ relative to the default |
+| E2.10 | Theory–simulation agreement | (a) predicted frame KL from the asymptotic variances of Theorem 3 and the expansion $J\approx\tfrac12\sum_pF_p\theta_p^2$ against measured E2.1 values (pooled factors exactly; Gimbal against the Cramér–Rao value); (b) Lemma 5.4.2's plug-in inflation against its exact value on random pairs; (c) Proposition 5.5's split-sample noise estimate and shrinkage factor against the truth; (d) Theorem 4.2's gap-independent contraction against SOAP's power-iteration rate, by deterministic one-step perturbation; (e) Hessian of $J$ at $U^\star$ against the Fisher information | ratios measured/predicted |
+| E2.11 | Landscape and global convergence (Conjecture 4.1) | Noise-free population flow (exact expected score at the current frame) from Haar-random starts on separable, non-separable, tied and near-degenerate arrays; Riemannian Hessian at every end point that is not the global minimum | fraction converged to $J<10^{-8}$; type of other end points |
+| E2.12 | Numerical behaviour | float32 vs float64 on E2.1 cells; 10⁴-step orthogonality; gradient scales $10^{\pm30}$ (float64) and $10^{\pm15}$ (float32); zero gradients, dead rows, rank-one gradients, variance range $10^{12}$ | NaN/Inf count, orthogonality defect, $J$ ratio fp32/fp64, frame deviation across scales |
 
 Peers: AdamW, SOAP (f=10), SOAP real-time (per-step frame from factors including the current
-gradient), KL-SOAP (F=1), KL-Shampoo (frame only, in E2.1–E2.3), Muon, NorMuon, SPlus; ARO and
-Shampoo-with-grafting when time allows (record if omitted).
+gradient), KL-SOAP (F=1), Muon, NorMuon, SPlus, ARO; exact pooled-factor and KL-factor
+eigenvectors at every step as controls in E2.1–E2.4.
 
 ## Exit gate (predeclared)
 
 * **G2.1 (efficiency).** In every E2.1 cell with $\gamma>0$, Gimbal's frame KL is lower than SOAP,
   SOAP real-time and KL-SOAP (paired one-sided Wilcoxon over seeds, Holm-corrected, $p<0.05$). At
-  $\gamma=0$ Gimbal is within 25% of the best peer (theory predicts parity with KL-Shampoo there).
-* **G2.2 (identifiability).** In E2.2 Gimbal identifies the tied plane (angle error → 0 with samples)
-  while pooled-factor frames do not.
+  $\gamma=0$ Gimbal is within 25% of the best peer (theory predicts parity with KL-Shampoo there);
+  C-006 adds that the paired bootstrap 95% upper bound of the geometric-mean ratio to the best peer
+  is also below 1.25.
+* **G2.2 (identifiability).** In E2.2 Gimbal identifies the tied plane (its frame KL keeps falling as
+  memory lengthens) while pooled-factor frames do not, and Gimbal is below every peer in every tie
+  cell.
 * **G2.3 (tracking).** In E2.3 Gimbal's best-memory tracking error ≤ every peer's best-memory error.
 * **G2.4 (optimization).** In E2.5 Gimbal has the lowest mean final loss in every configuration with
   $\gamma\ge1$ (paired bootstrap 95% CI of the difference to each peer excludes 0) and is not
   significantly worse than the best peer anywhere.
-* **G2.5 (premise).** E2.6 finds $\kappa$ clearly above 0 on real LM gradients, at a level where E2.1
-  predicts a material advantage (operationalized by C-005: median noise-corrected $\kappa\ge0.05$
-  over snapshot matrices and checkpoints).
-* **G2.6 (small LM).** In E2.7 Gimbal's mean final validation loss is lower than every peer's at equal
-  steps (paired over seeds; Holm-corrected one-sided paired test $p<0.05$, or lower on every seed when
-  only 3 seeds are affordable), and its optimizer step costs no more than SOAP's in E2.8 (C-005:
-  analytic cost with QR/eigh at 10× matmul cost, for the same configuration as the loss
-  comparison; CPU microbenchmarks reported alongside).
+* **G2.5 (theory–simulation agreement; C-006).**
+  (i) Pooled-factor control: measured/predicted frame KL in $[0.75,1.33]$ in every E2.1 main cell
+  where the prediction is in the linear regime: pairs whose predicted angle s.d. exceeds 0.15 rad
+  carry at most 15% of the predicted frame KL (C-009; as first written — largest per-pair s.d.
+  ≤ 0.15 rad — the criterion excluded every cell, because nearly degenerate pairs always exceed it
+  while carrying under 11% of $J$).
+  (ii) Lemma 5.4.2: the second-order inflation formula is within 15% of the exact excess
+  $V_w F-1$ for pairs with predicted excess ≤ 1 and $\bar\varepsilon^2\le0.02$.
+  (iii) Proposition 5.5: the split-sample noise estimate has relative bias within ±15% for Gaussian
+  streams at every tested time and memory, and the mean shrinkage factor is within 0.1 of the oracle
+  factor $S/(S+\nu)$.
+  (iv) Theorem 4.2: the measured one-step contraction of the population flow is within 10% of
+  $1-\alpha F_{ik}/(F_{ik}+\delta n)$ for every tested pair, across eigen-gaps spanning at least 100×.
+  (v) The Hessian of $J$ at $U^\star$ equals the Fisher information to relative error $10^{-4}$.
+* **G2.6 (landscape, cost, numerics; C-006).**
+  (i) E2.11: for arrays with pairwise-distinct profiles, ≥ 99% of random starts reach the global
+  minimum; every other end point found is a strict saddle. A spurious local minimum refutes
+  Conjecture 4.1 and triggers the protocol loop (the theory, not the gate, changes first).
+  (ii) E2.8: the analytic optimizer cost of the default configuration, with QR/eigh at 10× matmul
+  cost, is no more than SOAP's (C-005).
+  (iii) E2.12: no NaN/Inf anywhere; float32 orthogonality defect ≤ 1e-5 over 10⁴ steps; float32
+  frame KL within 10% of float64 in every tested cell; float64 frames at scales $10^{\pm30}$ equal
+  those at scale 1 to 1e-8.
+
+Reported alongside (not gates): matched-memory comparisons; Gimbal's measured frame KL relative to
+the Cramér–Rao prediction; random-effects pooling across cells of the paired log-ratios; E2.9
+ablation effects.
 
 ## Iteration rule
 
 If a gate item fails, run the protocol loop. Candidate repairs already in the portfolio: damping and
-floor schedules, rotation-rate schedule (Robbins–Monro start, constant tail), Lie-algebra momentum
-(H5), robust score (H6), variance transport (H2), eigenvalue-rule changes (H3). Every repair is first
-justified in the theory document and, where it changes a theorem, re-checked in Lean (Phase 01 files
-become stale through protocol §5). Statistical gates are re-run on fresh seeds after a repair.
+floor schedules, rotation-rate schedule, Lie-algebra momentum (H5), robust score (H6), variance
+transport (H2), eigenvalue-rule changes (H3). Every repair is first justified in the theory document
+and, where it changes a theorem, re-checked in Lean (Phase 01 files become stale through protocol
+§5). Statistical gates are re-run on fresh seeds after a repair.
 
 ## Invalidation triggers
 
 Changes to the Gimbal update rule or defaults, to any peer implementation, or to the theory items
-that define the metrics (Prop. 1, Thm. 3).
+that define the metrics (Prop. 1, Thm. 3, Lemma 5.4, Prop. 5.5).

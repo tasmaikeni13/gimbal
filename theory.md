@@ -2,7 +2,7 @@
 
 This note explains the ideas and the equations behind Gimbal in one pass. The full statements,
 proofs and evidence labels are in [`theory/gimbal_theory.md`](theory/gimbal_theory.md); the
-machine-checked parts are in [`formal/`](formal/README.md) (Lean 4 + Mathlib, 45 theorems).
+machine-checked parts are in [`formal/`](formal/README.md) (Lean 4 + Mathlib, 52 theorems).
 
 ## 1. What SOAP does, and the inconsistency inside it
 
@@ -169,7 +169,9 @@ The effect is that the estimator **chooses its own model**:
 
 Shrinkage only changes variance, never bias: whatever the weights, the expected score vanishes at
 the true frame. In both limits the variances are consistent, so the flow remains asymptotically
-efficient.
+efficient. The principle, shrinking toward Kronecker separability by an amount the data decide,
+is Hoff, McCormack and Zhang's core shrinkage for matrix-variate covariances (2023); here it is
+applied to the diagonal core of the KRD model, on the log scale.
 
 ## 7. Invariances and guarantees
 
@@ -236,7 +238,8 @@ a heteroscedastic Gaussian as the non-linearity. Fisher normalization is Amari's
 The identifiability condition (profiles must differ) is Pham and Cardoso's condition for
 separating non-stationary sources, with the other tensor mode playing the role of time. What
 transfers is the estimating equation; what does not is the independence of sources, which is why
-everything here is stated for the working likelihood.
+everything here is stated for the working likelihood. The variance shrinkage of section 6 transfers
+core shrinkage (Hoff, McCormack and Zhang, 2023) from matrix-variate statistics.
 
 ## 12. What is proved, what is measured, what is open
 

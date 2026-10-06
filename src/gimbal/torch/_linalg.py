@@ -17,7 +17,8 @@ def eye_like(n: int, ref: torch.Tensor) -> torch.Tensor:
 def eigh_desc(sym: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Eigenvectors and eigenvalues of a symmetric matrix, sorted in descending order."""
     sym = 0.5 * (sym + sym.T)
-    jitter = 1e-30 * eye_like(sym.shape[0], sym)
+    # Smallest normal number: no effect at ordinary scales, no scale dependence (F-014).
+    jitter = torch.finfo(sym.dtype).tiny * eye_like(sym.shape[0], sym)
     evals, evecs = torch.linalg.eigh(sym + jitter)
     return evecs.flip(1), evals.flip(0)
 

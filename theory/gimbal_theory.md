@@ -229,7 +229,7 @@ afterwards. This is the same identity that justifies Adam's bias correction. (Le
 exact average.
 
 **Lemma 5.4 (the variances seen by the flow; item 1 L5, item 2 L5 for the identity and L3 for the
-expansion, item 3 L3).** Fix a pair $(i,k)$ of rows (the right side is symmetric) and write
+expansion, checked by Monte Carlo in E2.10 (b), item 3 L3).** Fix a pair $(i,k)$ of rows (the right side is symmetric) and write
 $\langle u,u'\rangle=\sum_jD_{ij}D_{kj}u_ju'_j$.
 
 1. *Profile likelihood with forgetting.* For weights $w_s\ge0$ and a fixed frame, the weighted
@@ -248,8 +248,18 @@ $\langle u,u'\rangle=\sum_jD_{ij}D_{kj}u_ju'_j$.
    independent relative errors of variance $\bar\varepsilon^2$, independent of the current gradient,
    then to second order $E\|w_\perp\|^2=\bar\varepsilon^2(F_{ik}+2n-R_{ik})$ with
    $R_{ik}=\sum_j(D_{ij}-D_{kj})^2(D_{ij}^{-2}+D_{kj}^{-2})/F_{ik}\ge0$, so
-   $$V/V_{\mathrm{CR}}\approx1+\bar\varepsilon^2\Big(1+\frac{2n-R_{ik}}{F_{ik}}\Big).$$
-   Pairs whose profiles are similar ($F_{ik}\ll n$) lose most.
+   $$V/V_{\mathrm{CR}}=1+\bar\varepsilon^2\,\frac{K_{ik}}{F_{ik}}+\bar\varepsilon^4C_{ik}+O(\bar\varepsilon^6),
+   \qquad K_{ik}=F_{ik}+2n-R_{ik}.$$
+   Pairs whose profiles are similar ($F_{ik}\ll n$) lose most. For Gaussian relative errors the
+   next coefficient is (v0.5, F-013), with $c_j=D_{ij}-D_{kj}$, $m_j=D_{ij}D_{kj}$, $g_j=c_j^2/m_j$,
+   $$C_{ik}F_{ik}=6F+12n+2R+8+\frac{Q-18U+6nR-9R^2}{F}+\frac{18X-6Q-6W+6Z_1}{F^2},$$
+   $Q=\sum g_j^2$, $U=\sum m_jc_j(D_{kj}^{-3}-D_{ij}^{-3})$, $X=\sum c_j^3(D_{kj}^{-3}-D_{ij}^{-3})$,
+   $W=\sum g_jc_j^2(D_{ij}^{-2}+D_{kj}^{-2})$, $Z_1=\sum m_jc_j^2(D_{ij}^{-2}+D_{kj}^{-2})^2$ (pair indices
+   dropped). It comes from the growth of $\mathrm{Var}(1/(1+\varepsilon))=\bar\varepsilon^2+8\bar\varepsilon^4$, the
+   mean shift of the weights along $w^\star$, the fluctuation of the sensitivity $\langle w,w^\star\rangle$, and
+   third- and fourth-moment cross terms; it vanishes for $n=1$, where the exact excess is 0. The
+   leading term alone underestimates the excess by up to ≈20% at $\bar\varepsilon^2=0.02$ when the
+   excess is near 1 (E2.10 (b)).
 3. *Orthogonality.* At the true frame the frame score is odd under the sign flip $Z_{i\cdot}\to-Z_{i\cdot}$
    while the variance score is even, so the Fisher information is block-diagonal between frame and
    variances. Estimating $D$ therefore costs nothing at first order; item 2 is a finite-memory
@@ -264,7 +274,9 @@ $\sum_jw_j(D_{ij}-D_{kj})=\langle w,w^\star\rangle$, the variance formula of The
 $\|w\|^2/\langle w,w^\star\rangle^2$; decompose $w=cw^\star+w_\perp$. For the expansion,
 $\delta w_j=\varepsilon_{ij}/D_{ij}-\varepsilon_{kj}/D_{kj}$ to first order, whose squared norm has mean
 $\bar\varepsilon^2\sum_j(D_{kj}/D_{ij}+D_{ij}/D_{kj})=\bar\varepsilon^2(F_{ik}+2n)$; its component along
-$w^\star$ contributes $\bar\varepsilon^2R_{ik}$. (3) Sign symmetry of the Gaussian KRD law; adaptivity of
+$w^\star$ contributes $\bar\varepsilon^2R_{ik}$. Exactly, $V_wF_{ik}-1=(d_2-d_1^2)/(1+d_1)^2$ with
+$d_1=\langle\delta w,w^\star\rangle/F_{ik}$ and $d_2=\|\delta w\|^2/F_{ik}$; expanding $(1+d_1)^{-2}$ and taking
+Gaussian moments of $1/(1+\varepsilon)$ through fourth order gives $C_{ik}$. (3) Sign symmetry of the Gaussian KRD law; adaptivity of
 estimating equations under block-diagonal information (Newey and McFadden, 1994, §6). ∎
 
 **Proposition 5.5 (empirical-Bayes variances; the risk identity L5, the noise estimate L3).** Write
@@ -295,7 +307,11 @@ which affects both halves alike. Consequences:
   rotated coordinates and row/column means commute with permutations (Theorem 6 holds).
 
 The cost is $O(mn)$ elementwise work (two logarithms, one exponential, row and column means) and one
-extra $m\times n$ buffer for the odd-step average.
+extra $m\times n$ buffer for the odd-step average. *Source.* Shrinking toward Kronecker separability
+by an empirical-Bayes factor that adapts to the degree of separability is the core-shrinkage idea
+of Hoff, McCormack and Zhang (JRSSB 2023, arXiv:2207.12484) for matrix-variate covariances. Here
+the core is diagonal (the KRD model), the shrinkage acts on log-variances, the noise level comes
+from an interleaved split, and the result weights the frame's likelihood score.
 
 **Remark 5.6 (pooled warm start as a one-step estimator; the weighting L5, the rest L3).** With
 `init="pooled"`, Gimbal accumulates the pooled factors $\sum_{s\le T_w}G_sG_s^\top$ and
@@ -353,7 +369,11 @@ re-ordering of $V$ is the special case where $P$ is a signed permutation. (Lean:
    $S$ is homogeneous of degree $0$ in $(Z,D)$ jointly and so is $F$. The frame dynamics does not
    depend on gradient scale.
 (Lean: `frobenius_adjoint`, `descent`, `descent_strict`, `generator_scale_invariant`,
-`fisher_scale_invariant`.)
+`fisher_scale_invariant`.) The statement is about the flow from a given frame. The implementation
+keeps it to rounding at every scale only if no absolute constant enters a scale-free formula (F-014)
+and the initial frame is well defined: the eigenvectors of a rank-deficient single-gradient factor
+(for example $G^\top G$ when $m<n$) are an arbitrary basis of its null space, so tiny perturbations
+can select different, equivalent initial frames (F-015; E2.12 measures both cases).
 
 **Proposition 9 (cost; L4).** Per step for an $m\times n$ layer, counting multiply–adds (generated
 totals for the 125M model are in `experiments/phase2/results/e28_cost_model.json`; with fused QKV
@@ -452,3 +472,7 @@ Failures found while auditing (all in the checking code, none in a theorem) are 
   separable-cell failure of the exploratory E2.1 run (F-010) and the pilot that followed C-003
   (flat separable spectra still behind SOAP, diagnosed as plug-in noise for pairs with small
   Fisher information).
+* 2026-10-06 — v0.5 (Phase 02, F-013): Lemma 5.4.2 gains its next-order coefficient $C_{ik}$. The
+  pre-registered check of the leading-order formula (E2.10 (b), gate G2.5 (ii)) failed: up to 23.5%
+  error at $\bar\varepsilon^2=0.02$ near the edge of the gated range. With the second-order term the
+  error on the same pairs fell to 5.6% (median 0.7%); the gate is re-run on fresh pairs.

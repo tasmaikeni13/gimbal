@@ -165,8 +165,8 @@ A phase may also rewrite *itself* or later phases when it learns something that 
 | Phase | File | Depends on | Main gate |
 |---|---|---|---|
 | 01 | `01_formal_theory_and_lean.md` | — | Theory of ours and peers stated and audited; core results machine-checked in Lean |
-| 02 | `02_math_statistics_monte_carlo.md` | 01 | Gimbal matches or beats every peer on predeclared Monte Carlo and small-LM metrics |
-| 03 | `03_reference_implementations.md` | 02 | PyTorch and JAX implementations of all optimizers, cross-checked |
+| 02 | `02_math_statistics_monte_carlo.md` | 01 | Gimbal matches or beats every peer on predeclared criteria checked by formal, numerical, statistical and Monte Carlo methods (no model training) |
+| 03 | `03_reference_implementations.md` | 02 | PyTorch and JAX implementations of all optimizers, cross-checked; small-LM validation and real-gradient premise check |
 | 04 | `04_tpu_kernels_and_distribution.md` | 03 | TPU v4-32 implementation; Gimbal step time ≤ SOAP's |
 | 05 | `05_data_and_training_pipeline.md` | 04 | 2.5B-token FineWeb-Edu pipeline and 125M model; AdamW baseline reproduces |
 | 06 | `06_fair_tuning.md` | 05 | Equal-budget tuning; configs frozen |

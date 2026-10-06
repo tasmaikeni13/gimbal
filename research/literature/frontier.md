@@ -35,6 +35,7 @@ Search current through **2026-10-06**. Maintained under the `literature-frontier
 | 2026-10-06 | web | Kronecker eigenbasis rotation learning 2026 | Bregman/Kronecker 2606.00542, Adam-or-GN 2510.13680 | divergence-weighted residuals, BregTop | — |
 | 2026-10-06 | web | eigenbasis staleness, Oja, Givens, Riemannian | TurboSoap (blog), basis-rotation async PP 2602.03515, ARO 2602.09006, Pion 2605.12492 | Brockett direction, symmetry teleportation | TurboSoap is a blog, not peer reviewed |
 | 2026-10-06 | web | **novelty checks**: joint diagonalization / common principal components / EASI / Pham-Cardoso / Flury FG + optimizer | none applying them to optimizer bases | CPC, FG algorithm, nonstationary BSS | patents and non-English venues not searched |
+| 2026-10-06 | web (extended) | **novelty check for C-004**: James–Stein / empirical-Bayes shrinkage of second moments toward Kronecker-separable structure in optimizers; online joint diagonalization by natural gradient | core shrinkage 2207.12484 (Hoff, McCormack, Zhang), Stein-rule gradient shrinkage 2602.01777, natural-gradient AJD (Yeredor, Ziehe, Müller 2004), Pro-KLShampoo 2605.06316, survey 2605.09176 | Kronecker-core decomposition, core shrinkage | survey body (65 pages) not read; only its abstract |
 | 2026-10-06 | web | TPU eigh/QR cost; Gram-Newton-Schulz; Polar Express | JAX eigh docs (QDWH default on TPU), 2505.16932, 2606.00371 | QDWH | no public TPU benchmark of SOAP's QR |
 
 ## 3. Evidence cards (compact)
@@ -63,6 +64,11 @@ Search current through **2026-10-06**. Maintained under the `literature-frontier
 | E20 | Muon (Jordan 2024), Muon is scalable (arXiv:2502.16982) | Newton–Schulz orthogonalized momentum | — | [R] |
 | E21 | JAX `eigh` docs | QDWH is the TPU default; Jacobi available | TPU | [R] |
 | E22 | Flury 1984; Flury & Gautschi 1986; Pham 2001; Pham & Cardoso 2001; Cardoso & Laheld 1996 | Common principal components / joint diagonalization MLE; Jacobi-type pairwise rotations; EASI relative-gradient serial updates; identifiability of nonstationary sources from variance profiles | statistics / signal processing | [R] |
+
+| E23 | Pro-KLShampoo, arXiv:2605.06316 | Restricts one KL-Shampoo factor to a "spike-and-flat" spectrum (tracked r-dimensional subspace + one shared eigenvalue, orthogonalization on the flat part); better loss, memory and wall-clock than KL-Shampoo | GPT-2 124M/350M, LLaMA 134M/450M | [V] (abstract) |
+| E24 | Core shrinkage covariance estimation, Hoff, McCormack & Zhang, JRSSB 2023, arXiv:2207.12484 | Kronecker-core decomposition of a covariance; empirical-Bayes shrinkage of the core toward the separable (Kronecker) part, adapting to the degree of separability | matrix-variate statistics | [R] — statistical precedent of Proposition 5.5 |
+| E25 | Stein-rule shrinkage for stochastic gradients, arXiv:2602.01777 | Shrinks minibatch gradients toward a momentum-based estimator with a data-driven intensity from second-moment noise estimates | optimizer | [V] — shrinks gradients, not variance profiles |
+| E26 | Yeredor, Ziehe & Müller, ICA 2004 | Natural-gradient multiplicative updates for (non-orthogonal) approximate joint diagonalization, batch | signal processing | [R] — solver precedent alongside E22 |
 
 ## 4. SOAP weakness taxonomy (what an improvement must fix)
 
@@ -141,5 +147,6 @@ Searched (2026-10-06): "joint approximate diagonalization optimizer precondition
 | Solver | natural-gradient flow on O(m)×O(n), Fisher F_ik = Σ_j (D_ij−D_kj)²/(D_ij D_kj) | EASI (relative gradient, ICA); TurboSoap (tangent flow on pooled L) | component precedent / analogous |
 | Use as optimizer basis with Adam | yes | SOAP, KL-SOAP | adjacent |
 | Removes Kronecker factor buffers | yes | ARO, AdaDiag (no factors, different principle) | adjacent |
+| Weights of the score: variances shrunk toward their separable fit by an empirical-Bayes factor (C-004) | James–Stein factor on the log-interaction, split-sample noise level | Hoff–McCormack–Zhang core shrinkage (E24): EB shrinkage of a covariance toward Kronecker separability | component precedent (different field); new here: diagonal core in log space, split-sample noise estimate, use as score weights of an online frame likelihood inside an optimizer |
 
 **Outcome:** no close overlap found within the searched scope (web search over arXiv, OpenReview, NeurIPS/ICLR/ICML pages, blogs) through 2026-10-06. Patents, non-English venues and closed workshops were not searched. This is "apparently distinct", not a proof of novelty.

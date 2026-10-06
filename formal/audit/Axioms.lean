@@ -47,3 +47,10 @@ import Formal
 #print axioms Gimbal.shrinkage_risk_ge
 #print axioms Gimbal.shrinkage_risk_eq_iff
 #print axioms Gimbal.restart_closed_form
+#print axioms Gimbal.pair_rotation_product
+#print axioms Gimbal.pair_rotation_cost_nonneg
+#print axioms Gimbal.pair_rotation_cost_le
+#print axioms Gimbal.pair_rotation_cost_sum_le
+#print axioms Gimbal.sin_sq_mul_cos_sq_le
+#print axioms Gimbal.pair_rotation_cost_le_half_fisher_sq
+#print axioms Gimbal.gimbal_state_le_soap

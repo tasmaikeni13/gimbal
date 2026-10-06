@@ -29,7 +29,7 @@ inefficient way to find the frame, and they can fail to identify it at all. The 
   bias-corrected exponential average (Theorem 4.4, machine-checked).
 
 `theory.md` explains the ideas and equations; `theory/gimbal_theory.md` has statements, proofs and
-evidence labels; `formal/` has 45 Lean 4 + Mathlib theorems.
+evidence labels; `formal/` has 52 Lean 4 + Mathlib theorems.
 
 ## Status
 
@@ -39,12 +39,13 @@ dependency-aware protocol (`phases/README.md`). Current state: `phases/STATUS.md
 | Phase | Content | State |
 |---|---|---|
 | 01 | Formal theory of Gimbal and its peers; Lean formalization | done |
-| 02 | Mathematical, statistical and Monte Carlo analysis; small-LM benchmark | see `phases/STATUS.md` |
-| 03–08 | Reference/JAX implementations, TPU v4-32 kernels, FineWeb-Edu pipeline, fair tuning, 125M × 2.5B-token runs (2 seeds per optimizer), analysis | planned |
+| 02 | Formal, mathematical, numerical, statistical and Monte Carlo analysis against every peer (no model training) | see `phases/STATUS.md` |
+| 03–08 | Reference/JAX implementations and small-LM validation, TPU v4-32 kernels, FineWeb-Edu pipeline, fair tuning, 125M × 2.5B-token runs (2 seeds per optimizer), analysis | planned |
 | 09–10 | Paper; release | planned |
 
-Results so far are generated into `experiments/phase1/results/` and `experiments/phase2/results/`
-(`*_report.md`). No large-scale language-model result exists yet; nothing here claims one.
+Results so far are generated into `experiments/phase1/results/` and `experiments/phase2/results/`;
+`experiments/phase2/report.md` collects them with the gate verdicts. No language-model result exists
+yet; nothing here claims one.
 
 ## Quick start
 

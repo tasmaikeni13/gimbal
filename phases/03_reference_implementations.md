@@ -9,7 +9,8 @@ TPU). Correctness is established here, on CPU, so that Phase 4 only has to make 
 ## Depends on
 
 Phase 02 (frozen Gimbal algorithm and defaults; peer list). If Phase 02 changed the algorithm,
-`theory/gimbal_theory.md` §5 is the specification, not this file's examples.
+`theory/gimbal_theory.md` §5 is the specification, not this file's examples. The FineWeb-Edu sample
+(`scripts/data/fetch_fineweb_edu_sample.py`) for E3.1–E3.2.
 
 ## Produces
 
@@ -60,6 +61,38 @@ same settings for all optimizers. Fused QKV is treated as one matrix for every o
 * G3.2 `docs/optimizers.md` documents every rule and default with its source.
 * G3.3 Phase 2's E2.5 noisy-quadratic results reproduce with the JAX implementations within
   seed-level noise (a cross-framework check of the science, not only of the code).
+* G3.4 (premise, formerly G2.5) E3.1 finds the non-separability index $\kappa$ clearly above 0 on
+  real LM gradients: median noise-corrected $\kappa\ge0.05$ over snapshot matrices and checkpoints
+  (C-005). The held-out frame comparison (Gimbal vs SOAP vs KL) is reported as supporting evidence.
+* G3.5 (small LM, formerly G2.6) In E3.2 Gimbal's mean final validation loss is lower than every
+  peer's at equal steps (paired over seeds; Holm-corrected one-sided paired test $p<0.05$, or lower
+  on every seed when only 3 seeds are affordable), for the configuration that passed Phase 02's
+  cost gate.
+
+## Small-scale validation on real gradients (moved from Phase 02 by C-006)
+
+These two experiments need language-model training, so they run here, on the user's hardware,
+with the PyTorch reference optimizers (and again with JAX once it exists). The scripts are ready in
+`experiments/phase3/`; nothing in Phase 02 trains a model.
+
+| ID | Question | Design | Primary metric |
+|---|---|---|---|
+| E3.1 (formerly E2.6) | Premise check on real gradients | Train the small byte-level LM; at steps 100, 400, 800 collect 96 independent minibatch gradients of selected matrices at fixed weights; on a fit half, estimate the pooled (SOAP), KL and Gimbal (batch likelihood with empirical-Bayes variances) frames; score them on the held-out half | $\kappa$; held-out log-likelihood gain in nats |
+| E3.2 (formerly E2.7) | Small-LM benchmark | Byte-level Llama-style LM (d=128, 4 layers) on the FineWeb-Edu sample; every optimizer gets the same 4-point LR grid (factor 2), extended outward while its best LR is on an edge; 3 seeds at the selected LR; Gimbal at the Phase 02 default and with `frame_every=4` | validation loss at equal steps; loss vs wall-clock |
+
+```bash
+python scripts/data/fetch_fineweb_edu_sample.py                      # data (once)
+python experiments/phase3/run_e27_sweep.py --stage A --jobs 4        # E3.2 stage A (seed 0, LR grid)
+python experiments/phase3/run_e27_sweep.py --stage B --seeds 1 2     # E3.2 stage B
+python experiments/phase3/analyze_e27.py                             # G3.5
+for m in soap gimbal; do                                             # E3.1 snapshots
+  python experiments/phase3/e27_small_lm.py --method $m --lr <selected> --seed 0 \
+    --snapshots 100,400,800 --tag _snap
+done
+python experiments/phase3/analyze_e26.py                             # G3.4
+```
+
+Use `OMP_NUM_THREADS=1` per process when running several in parallel on a CPU.
 
 ## Failure handling
 
