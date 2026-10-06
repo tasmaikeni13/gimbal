@@ -3,6 +3,7 @@
 set -uo pipefail
 # Run once on a clean runs/smoke (logs are appended).
 cd /home/tasma/gimbal
+export GIMBAL_CODE=$(scripts/tpu/snapshot.sh smoke_$(date +%Y%m%d_%H%M%S))
 L=runs/logs/smoke
 T="python -m gimbal.train.train"
 run() { local name=$1; shift; scripts/tpu/launch.sh $L/$name "$T $* --run-dir runs/smoke/$name"; echo "$name exit=$?"; }

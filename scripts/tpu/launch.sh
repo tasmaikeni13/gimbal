@@ -10,7 +10,7 @@ LOGDIR=$1; shift
 CMD="$*"
 mkdir -p "$LOGDIR"
 for h in w1 w2 w3; do ssh "$h" "mkdir -p $LOGDIR"; done
-ENVSET="cd $ROOT && export PATH=$ROOT/.venv/bin:\$PATH && export PYTHONPATH=$ROOT/src:\${PYTHONPATH:-}"
+ENVSET="cd $ROOT && export PATH=/home/tasma/gimbal/.venv/bin:\$PATH && export PYTHONPATH=$ROOT/src:\${PYTHONPATH:-}"
 pids=()
 for k in 1 2 3; do
   ssh "w$k" "$ENVSET && export GIMBAL_WORKER=$k && $CMD" > "$LOGDIR/host$k.log" 2>&1 &
