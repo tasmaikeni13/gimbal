@@ -191,7 +191,9 @@ explains why), with defaults $\alpha=0.02$, $\delta=0.003$ (change C-002). One s
 $$\Omega_L=-\alpha_t\,\frac{S_L-S_L^\top}{F_L+\delta n},\qquad
 F_L=DA^\top+AD^\top-2n\,\mathbf 1\mathbf 1^\top,\quad A=D^{\circ-1},$$
 (entrywise division; diagonal set to zero; entries clipped to $[-\theta_{\max},\theta_{\max}]$; spectral norm
-capped at $1$), then $Q_L\leftarrow \mathrm{polish}\big(Q_L\,(I+\Omega_L+\tfrac12\Omega_L^2)\big)$. The
+capped at $1$, estimated by eight power iterations started from the column of $\Omega_L$ with the
+largest norm, an estimate that is unchanged under $\Omega_L\mapsto S\Omega_LS$ for diagonal sign
+matrices $S$, change C-015), then $Q_L\leftarrow \mathrm{polish}\big(Q_L\,(I+\Omega_L+\tfrac12\Omega_L^2)\big)$. The
 right flow is symmetric with $S_R=Z^\top(Z\odot A)$, $F_R=D^\top A+A^\top D-2m$, damping $\delta m$. Note
 $(DA^\top+AD^\top)_{ik}-2n=\sum_j(D_{ij}/D_{kj}+D_{kj}/D_{ij}-2)=F^L_{ik}$, so $F_L$ is the Fisher
 information of Theorem 2 evaluated at the current estimates; dividing by it is Amari's natural
@@ -443,7 +445,11 @@ by $(P,R)$, and the parameter updates satisfy $\Delta W'=P\,\Delta W\,R^\top$. A
 in this sense; SOAP and Shampoo are. (Lean: `rotated_coords_invariant`, `update_covariant`. The eigh
 initialization is equivariant up to the sign of each eigenvector, to which the update is
 invariant; with repeated eigenvalues the initial frame is a gauge choice and equivariance holds
-from any pair of initial frames related by $(P,R)$.)
+from any pair of initial frames related by $(P,R)$. The sign invariance requires every quantity
+computed from $\Omega$ to be invariant under $\Omega\mapsto S\Omega S$; the spectral-norm estimate of
+the trust region was not before C-015 (it started from a fixed vector), so the update depended on
+the signs that the eigensolver happened to return whenever the cap was active, F-024. Checked in
+`tests/test_jax_optimizers.py::test_gimbal_ignores_eigenvector_signs`.)
 
 **Theorem 7 (second-moment transport; L5).** If the frame moves by an orthogonal $P$ (new frame
 $QP$), the diagonal of a diagonal covariance $\mathrm{diag}(d)$ seen in the new frame is $(P^{\circ2})^\top d$;
@@ -460,7 +466,12 @@ re-ordering of $V$ is the special case where $P$ is a signed permutation. (Lean:
    $S$ is homogeneous of degree $0$ in $(Z,D)$ jointly and so is $F$. The frame dynamics does not
    depend on gradient scale.
 (Lean: `frobenius_adjoint`, `descent`, `descent_strict`, `generator_scale_invariant`,
-`fisher_scale_invariant`.) The statement is about the flow from a given frame. The implementation
+`fisher_scale_invariant`.) At the first step the frame is the first gradient's own singular basis,
+so $Z$ is diagonal in exact arithmetic and its computed off-diagonal entries are rounding errors;
+Adam's normalization $Z/(\sqrt{\hat V}+\epsilon)$ maps those that exceed $\epsilon$ to entries of size
+$\approx1$, so the first increment carries implementation-specific rounding (F-025). For
+language-model gradients the errors are far below $\epsilon$, and the first step is taken at the
+smallest warm-up learning rate. The statement is about the flow from a given frame. The implementation
 keeps it to rounding at every scale only if no absolute constant enters a scale-free formula (F-014)
 and the initial frame is well defined: the eigenvectors of a rank-deficient single-gradient factor
 (for example $G^\top G$ when $m<n$) are an arbitrary basis of its null space, so tiny perturbations
@@ -588,4 +599,13 @@ Failures found while auditing (all in the checking code, none in a theorem) are 
   configuration (F-020). One new Lean theorem (`ema_weight_sq_sum`, the momentum's noise factor
   $\eta$); the optimal factor reuses `shrinkage_risk_eq_iff`. Notation §1, §5 and the open items
   updated; earlier statements are unchanged (they concern the zero-mean model, where $c^\star=0$).
+* 2026-10-06 — v0.8 (Phase 03, C-015): the spectral-norm estimate of the trust region starts its
+  power iteration from the largest column of $\Omega$ instead of a fixed vector, so it is invariant
+  under the eigenvector sign gauge and Theorem 6's note holds for the implementation. Found by the
+  cross-framework golden test: JAX and PyTorch agreed to $10^{-12}$ in float64 until the first
+  capped frame move and differed by up to $6\cdot10^{-2}$ afterwards because their eigensolvers
+  return different signs (F-024). Every Phase 02 experiment that executes the update was re-run
+  with the seeds of C-013 (tag `_c015`); all gates pass and the paired effect on the frame KL is
+  within seed noise (`experiments/phase2/report.md`). Theorem 8 gains the first-step note (F-025).
+  No Lean statement is affected (the trust region is not formalized).
 

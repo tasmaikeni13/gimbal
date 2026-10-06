@@ -88,11 +88,16 @@ def qr_orth(a: torch.Tensor) -> torch.Tensor:
 
 
 def skew_spectral_norm(omega: torch.Tensor, iters: int = 8) -> float:
-    """Power-iteration estimate of ``||Ω||_2`` (slightly inflated to be safe)."""
-    n = omega.shape[0]
-    idx = torch.arange(1, n + 1, dtype=omega.dtype, device=omega.device)
-    v = torch.sin(1.618 * idx)  # fixed, deterministic start vector
-    v = v / v.norm()
+    """Power-iteration estimate of ``||Ω||_2`` (slightly inflated to be safe).
+
+    The iteration starts from the column of Ω with the largest norm. For every diagonal sign
+    matrix ``S`` the estimate is then the same for Ω and ``S Ω S``, so the update does not depend
+    on the signs that ``eigh`` gives the eigenvectors of the initial frames (Theorem 6). A fixed
+    start vector broke this whenever the cap was active (F-024, change C-015).
+    """
+    col = omega.norm(dim=0)
+    v = omega[:, int(col.argmax())]
+    v = v / (v.norm() + 1e-30)
     sigma = torch.zeros((), dtype=omega.dtype)
     for _ in range(iters):
         w = omega.T @ (omega @ v)

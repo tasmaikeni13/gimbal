@@ -11,7 +11,9 @@ across peers within a cell) and a paired bootstrap interval of the log-ratio.
 
 Rows of ``gimbal`` and ``gimbal_k4`` re-run after change C-013 (files ``*_c013``) replace the
 earlier ones; those stay in the analysis as the ablation ``*_c012`` (the same configuration with
-frame statistics on the raw gradient), compared with the default on the same streams.
+frame statistics on the raw gradient), compared with the default on the same streams. Rows re-run
+after change C-015 (sign-equivariant spectral-norm estimate, files ``*_c015``, same seeds) are the
+default; the C-013 rows stay as ``*_c013`` and give the paired effect of C-015.
 
 Usage: python experiments/phase2/analyze_e21.py
 """
@@ -30,7 +32,7 @@ RESULTS = pathlib.Path(__file__).parent / "results"
 PEERS = ["soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh"]
 METHODS = ["gimbal", "soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh", "gimbal_k4",
            "gimbal_k4_c012", "gimbal_noshrink", "gimbal_v03"]
-RERUN = ("gimbal", "gimbal_k4")  # re-run after C-013
+RERUN = ("gimbal", "gimbal_k4")  # re-run after C-013 and again after C-015
 # Optimizers a practitioner would run; the exact-eigenvector controls (pooled_eigh, kl_eigh)
 # recompute an eigendecomposition every step and are idealized references.
 PRACTICAL = ("soap", "soap_rt", "klsoap")
@@ -56,30 +58,37 @@ def load(suite: str) -> list[dict]:
                  f"e21_{suite}_peerfix.jsonl", f"e21_{suite}_ext_peerfix.jsonl"):
         for r in read_jsonl(RESULTS / name):
             rows[(cell_key(r), r["seed"], r["method"], r["memory"])] = r
-    rerun = (read_jsonl(RESULTS / f"e21_{suite}_c013.jsonl")
-             + read_jsonl(RESULTS / f"e21_{suite}_ext_c013.jsonl"))
-    if rerun:
+    for change, previous in (("c013", "c012"), ("c015", "c013")):
+        rerun = (read_jsonl(RESULTS / f"e21_{suite}_{change}.jsonl")
+                 + read_jsonl(RESULTS / f"e21_{suite}_ext_{change}.jsonl"))
+        if not rerun:
+            continue
         for key in [k for k in rows if k[2] in RERUN]:
             old = rows.pop(key)
-            old = {**old, "method": f"{old['method']}_c012"}
+            old = {**old, "method": f"{old['method']}_{previous}"}
             rows[(key[0], key[1], old["method"], key[3])] = old
         for r in rerun:
             rows[(cell_key(r), r["seed"], r["method"], r["memory"])] = r
     return list(rows.values())
 
 
-def centering_effect(rows: list[dict], summary: list[dict]) -> list[str]:
-    """Paired effect of C-013 on frame KL: default / ``*_c012`` at each one's best memory."""
-    lines = ["| cell | k = 4: default / before C-013 | k = 1: default / before C-013 |",
+def centering_effect(rows: list[dict], summary: list[dict], after: str = "_c013",
+                     before: str = "_c012", change: str = "C-013") -> list[str]:
+    """Paired effect of a change on frame KL: ``<method><after>`` / ``<method><before>`` at each
+    one's best memory (``after = ""`` is the current default). C-013's effect is measured on the
+    rows before C-015, so that the two changes are not mixed."""
+    lines = [f"| cell | k = 4: with / before {change} | k = 1: with / before {change} |",
              "|---|---|---|"]
     for cell in summary:
         cells = []
         for ours in RERUN[::-1]:
-            if f"{ours}_c012" not in cell["best"]["mean_kl"]:
+            have = cell["best"]["mean_kl"]
+            num = f"{ours}{after}" if f"{ours}{after}" in have else ours
+            if f"{ours}{before}" not in have:
                 cells.append("—")
                 continue
-            a = per_seed_best(rows, cell, ours)
-            b = per_seed_best(rows, cell, f"{ours}_c012")
+            a = per_seed_best(rows, cell, num)
+            b = per_seed_best(rows, cell, f"{ours}{before}")
             diff = np.array([np.log(a[s]) - np.log(b[s]) for s in sorted(a)])
             mean, lo, hi = (float(np.exp(x)) for x in paired_bootstrap_ci(diff))
             cells.append(f"{mean:.3f} [{lo:.3f}, {hi:.3f}]")
@@ -245,6 +254,14 @@ def main() -> None:
         for label in ("best", "matched"):
             report += [f"## Suite `{suite}` — {label} memory (mean frame KL, lower is better)", "",
                        markdown(summary, label), ""]
+        if any(r["method"].endswith("_c013") for r in rows):
+            report += [f"### Suite `{suite}`: effect of C-015 (sign-equivariant spectral-norm "
+                       "estimate)", "",
+                       "Same seeds and streams; geometric mean over seeds of the paired frame-KL "
+                       "ratio, current default / the same configuration before C-015, at each "
+                       "one's best memory, percentile-bootstrap 95% interval.", "",
+                       *centering_effect(rows, summary, after="", before="_c013",
+                                         change="C-015"), ""]
         if any(r["method"].endswith("_c012") for r in rows):
             report += [f"### Suite `{suite}`: effect of C-013 (frame statistics on the "
                        "empirical-Bayes innovation)", "",

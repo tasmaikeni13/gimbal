@@ -23,3 +23,4 @@ Each theory item and the places that consume it. When an item changes, every row
 | Prop. 9 (cost) | — | `e28_cost_model.py` | E2.8 | 04, 08 | Method, Experiments |
 | Defaults $(\alpha,\delta,\rho,\theta_{\max})$ | — | `Gimbal.__init__` | E2.9 | 03–07 | Hyper-parameter table |
 | Peer set and their rules (incl. C-011, KL-SOAP initialization) | — | `src/gimbal/torch/*` | E2.1–E2.5, E3.1–E3.2 | 03–08 | Baselines |
+| Trust-region spectral-norm estimate (C-015: power iteration from the largest column of Ω) | — (not formalized) | `_linalg.skew_spectral_norm` (PyTorch, JAX) | all Phase 02 experiments that execute the update (`run_c015.sh`); `test_gimbal_ignores_eigenvector_signs` | 02, 03, 04 | Method (Theorem 6 note) |
