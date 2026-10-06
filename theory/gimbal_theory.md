@@ -19,11 +19,16 @@ $E[G^\top G]$, which is the maximum-likelihood recipe for a different model (a K
 covariance, $D=\lambda\mu^\top$). Gimbal estimates the frame under SOAP's own model. The
 maximum-likelihood frame is a joint diagonalization (common principal components) problem; Gimbal
 solves it online with a natural-gradient flow on $O(m)\times O(n)$ that uses only matrix
-multiplications, needs no Kronecker factor buffers and no QR or eigendecomposition after the first
-step. The theory below shows the estimator is identifiable in strictly more situations than pooled
+multiplications and, after a short warm start (two symmetric eigendecompositions in total, at steps
+1 and $T_w=50$), needs no Kronecker factor buffers and no QR or eigendecomposition. The theory below
+shows the estimator is identifiable in strictly more situations than pooled
 factors (Theorem 2), statistically efficient where every single-factor estimator is not (Theorem 3),
 locally contracting at a gap-independent rate (Theorem 4), orthogonality-preserving (Theorem 5),
-equivariant (Theorem 6), and scale-invariant (Theorem 8).
+equivariant (Theorem 6), and scale-invariant (Theorem 8). The variances that weight the flow's score
+are estimated with the frame's own memory and shrunk toward their separable (Kronecker) fit by an
+empirical-Bayes factor (Lemma 5.4, Proposition 5.5), so the estimator behaves like KL-Shampoo's
+efficient estimator on separable spectra and like the free maximum-likelihood estimator on
+non-separable ones, choosing between them from the measured non-separability.
 
 ## 1. Setting and notation
 
@@ -169,9 +174,14 @@ likelihood flow is no larger than that of any single-factor method at its best m
 
 ## 5. The Gimbal flow
 
-Let $V$ be Adam's second-moment EMA of $Z_U(G)^{\circ2}$ (bias corrected) and
-$D=V+\rho\,\overline V$ (relative floor $\rho$, $\overline V$ the mean). One step of the left flow:
-$$\Omega_L=-\alpha\,\frac{S_L-S_L^\top}{F_L+\delta n},\qquad
+Let $V^F$ be an exponential moving average of $Z_U(G)^{\circ2}$ with coefficient $\beta_D=1-\alpha$
+(bias corrected; "tied" to the frame's memory, change C-003, Lemma 5.4), and let $D$ be its
+empirical-Bayes shrinkage toward the separable fit (change C-004, Proposition 5.5), with a
+relative floor $\rho$. Adam's own second moment $V$ (coefficient $\beta_2$) is used only for the
+step. The rotation rate follows the
+bias-corrected schedule $\alpha_t=\alpha/(1-(1-\alpha)^t)$, capped at $\alpha_{\max}=0.5$ (Theorem 4.4
+explains why), with defaults $\alpha=0.02$, $\delta=0.003$ (change C-002). One step of the left flow:
+$$\Omega_L=-\alpha_t\,\frac{S_L-S_L^\top}{F_L+\delta n},\qquad
 F_L=DA^\top+AD^\top-2n\,\mathbf 1\mathbf 1^\top,\quad A=D^{\circ-1},$$
 (entrywise division; diagonal set to zero; entries clipped to $[-\theta_{\max},\theta_{\max}]$; spectral norm
 capped at $1$), then $Q_L\leftarrow \mathrm{polish}\big(Q_L\,(I+\Omega_L+\tfrac12\Omega_L^2)\big)$. The
@@ -180,6 +190,13 @@ $(DA^\top+AD^\top)_{ik}-2n=\sum_j(D_{ij}/D_{kj}+D_{kj}/D_{ij}-2)=F^L_{ik}$, so $
 information of Theorem 2 evaluated at the current estimates; dividing by it is Amari's natural
 gradient, and $\delta$ is a Levenberg–Marquardt damping that bounds the step for near-degenerate
 pairs.
+
+**Amortized flow** (`frame_every` $=k$). The score $S-S^\top$ is accumulated for $k$ steps with the
+frame fixed, and the frame then takes one step with the mean score and the effective rate
+$1-\prod_{s}(1-\alpha_s)$ over those $k$ steps. Every gradient still enters the estimate; the
+retraction, the polish and the Fisher matrix are paid once per $k$ steps. In the linear regime the
+amortized and per-step recursions agree to first order in $k\alpha$ (L3); Monte Carlo (E2.1 pilot)
+shows unchanged final frame quality for $k\in\{4,10\}$ and a slower first ~$200$ steps.
 
 **Theorem 4 (fixed points, local rate, noise; item 1 L5, item 2 L3 (linearization around $U^\star$ with
 $D$ known), item 3 L5 for the recursion and checked by Monte Carlo within 7%).**
@@ -200,6 +217,101 @@ $D$ known), item 3 L5 for the recursion and checked by Monte Carlo within 7%).**
 displaced parameter equals Fisher times displacement to first order; the natural-gradient step
 divides by $F$. (3) Standard AR(1) algebra. ∎ (Lean, L5: `stationary_generator`,
 `variance_recursion_closed_form`, `variance_recursion_tendsto`.)
+
+**Theorem 4.4 (bias-corrected rotation schedule; L5).** For $\beta=1-\alpha\in[0,1)$ and inputs
+$x_s$, the recursion $\theta_{t+1}=\theta_t+a_{t+1}(x_t-\theta_t)$ with $a_t=(1-\beta)/(1-\beta^t)$
+satisfies $\theta_t=\big(\sum_{s<t}\beta^{t-1-s}(1-\beta)x_s\big)/(1-\beta^t)$, the bias-corrected
+exponential average. In the linearized frame dynamics (Theorem 4.2) the inputs are the per-sample
+natural-gradient estimates, so with Gimbal's schedule the frame error is the bias-corrected EMA of
+i.i.d. estimates: a uniform (batch) average for $t\ll1/\alpha$ and a tracker with memory $\approx2/\alpha$
+afterwards. This is the same identity that justifies Adam's bias correction. (Lean:
+`bias_corrected_schedule`.) The cap $\alpha_{\max}$ makes the first step(s) more conservative than the
+exact average.
+
+**Lemma 5.4 (the variances seen by the flow; item 1 L5, item 2 L5 for the identity and L3 for the
+expansion, item 3 L3).** Fix a pair $(i,k)$ of rows (the right side is symmetric) and write
+$\langle u,u'\rangle=\sum_jD_{ij}D_{kj}u_ju'_j$.
+
+1. *Profile likelihood with forgetting.* For weights $w_s\ge0$ and a fixed frame, the weighted
+   log-likelihood $\sum_sw_s\,\ell(G_s;U,D)$ is maximized over $D$, entry by entry, exactly at
+   $D_{ij}=\sum_sw_sZ_{s,ij}^2/\sum_sw_s$. With $w_s=\beta^{t-s}$ this is the bias-corrected EMA with
+   coefficient $\beta$. A flow driven by $V^F$ with $\beta_D=1-\alpha$ is therefore a stochastic
+   approximation of the profile likelihood in which the frame and the variances share one forgetting
+   factor (effective sample size $\approx(2-\alpha)/\alpha$ for both, Theorem 4.3). (Lean:
+   `weighted_profile_variance`, `weighted_profile_variance_eq_iff`.)
+2. *The cost of plug-in weights.* The flow's score for the pair uses column weights
+   $w_j=1/\hat D_{kj}-1/\hat D_{ij}$; the efficient weights are $w^\star_j=1/D_{kj}-1/D_{ij}$, with
+   $\|w^\star\|^2=F_{ik}$. For any weights, the variance of the weighted estimating equation is exactly
+   $$V_w=\frac{\|w\|^2}{\langle w,w^\star\rangle^2}=\frac1{F_{ik}}+\frac{\|w_\perp\|^2}{\langle w,w^\star\rangle^2},$$
+   where $w_\perp\perp w^\star$ is the part of $w$ orthogonal to the efficient weights (Lean:
+   `excess_variance_identity`, `excess_component_orthogonal`). If $\hat D=D\odot(1+\varepsilon)$ with
+   independent relative errors of variance $\bar\varepsilon^2$, independent of the current gradient,
+   then to second order $E\|w_\perp\|^2=\bar\varepsilon^2(F_{ik}+2n-R_{ik})$ with
+   $R_{ik}=\sum_j(D_{ij}-D_{kj})^2(D_{ij}^{-2}+D_{kj}^{-2})/F_{ik}\ge0$, so
+   $$V/V_{\mathrm{CR}}\approx1+\bar\varepsilon^2\Big(1+\frac{2n-R_{ik}}{F_{ik}}\Big).$$
+   Pairs whose profiles are similar ($F_{ik}\ll n$) lose most.
+3. *Orthogonality.* At the true frame the frame score is odd under the sign flip $Z_{i\cdot}\to-Z_{i\cdot}$
+   while the variance score is even, so the Fisher information is block-diagonal between frame and
+   variances. Estimating $D$ therefore costs nothing at first order; item 2 is a finite-memory
+   (second-order) effect. For Gaussian entries an EMA with coefficient $\beta$ has
+   $\bar\varepsilon^2=2(1-\beta)/(1+\beta)=2/N_{\mathrm{eff}}$: Adam's $\beta_2=0.95$ gives $0.051$, the tied
+   $\beta_D=0.98$ gives $0.020$. For a 48-column layer and a pair with $F_{ik}=5$ the inflation is
+   $\approx2.0$ versus $\approx1.4$.
+
+*Proof.* (1) $\sum_sw_s\ell=-\tfrac12\sum_{ij}[W\log D_{ij}+\sum_sw_sZ_{s,ij}^2/D_{ij}]$ with
+$W=\sum_sw_s$; each term is the per-coordinate cost of Proposition 1. (2) Since
+$\sum_jw_j(D_{ij}-D_{kj})=\langle w,w^\star\rangle$, the variance formula of Theorem 3 is
+$\|w\|^2/\langle w,w^\star\rangle^2$; decompose $w=cw^\star+w_\perp$. For the expansion,
+$\delta w_j=\varepsilon_{ij}/D_{ij}-\varepsilon_{kj}/D_{kj}$ to first order, whose squared norm has mean
+$\bar\varepsilon^2\sum_j(D_{kj}/D_{ij}+D_{ij}/D_{kj})=\bar\varepsilon^2(F_{ik}+2n)$; its component along
+$w^\star$ contributes $\bar\varepsilon^2R_{ik}$. (3) Sign symmetry of the Gaussian KRD law; adaptivity of
+estimating equations under block-diagonal information (Newey and McFadden, 1994, §6). ∎
+
+**Proposition 5.5 (empirical-Bayes variances; the risk identity L5, the noise estimate L3).** Write
+$\log V^F=A+\hat R$, where $A_{ij}=r_i+c_j-\bar\ell$ is the additive (row plus column) fit and $\hat R$
+the residual, and model $\hat R=R+E$: $R$ is the true interaction ($R=0$ iff $D$ is separable,
+$D=\lambda\mu^\top$) and $E$ is sampling noise, independent of $R$, with energy $\nu$. Among the
+estimates $A+c\hat R$, the risk $E\|c\hat R-R\|^2=(c-1)^2S+c^2\nu$ ($S=\|R\|^2$) is minimized exactly at
+$c^\star=S/(S+\nu)$, with value $S\nu/(S+\nu)<\min(S,\nu)$ (Lean: `shrinkage_risk_ge`,
+`shrinkage_risk_eq_iff`). Gimbal uses the positive-part plug-in
+$$D=\kappa\,\exp\!\big(A+c\hat R\big),\qquad c=\Big(1-\frac{\hat\nu}{\|\hat R\|^2}\Big)_+,$$
+with $\kappa$ restoring the mean of $V^F$. The noise is measured by an interleaved split: $V^F$ is the
+sum of an average over odd steps and one over even steps; the two halves are nearly independent
+and each has about twice the noise of the full average, so
+$\hat\nu=\tfrac14\,mn\,(1-\tfrac1m)(1-\tfrac1n)\,\mathrm{Var}_{ij}\big(\log V^{\mathrm{odd}}_{ij}/W_{\mathrm{odd}}-\log V^{\mathrm{even}}_{ij}/W_{\mathrm{even}}\big)$
+(the last two factors account for the degrees of freedom used by the additive fit). The split needs no
+distributional assumption (heavy tails raise $\hat\nu$ by themselves) and cancels slow drift of $D$,
+which affects both halves alike. Consequences:
+
+* *Separable* $D$ ($S=0$): $c\to0$, and $D$ is the separable fit $\hat\lambda\hat\mu^\top$. Its weights are
+  $\propto1/\hat\mu_j$, KL-Shampoo's efficient weights (Theorem 3.3), with $\hat\mu$ averaged over $m$ rows.
+* *Strongly non-separable* $D$ ($S\gg\nu$): $c\to1$ and $D\to V^F$, the free maximum-likelihood
+  variances.
+* *Bias.* Whatever $D$, the weights depend on squared entries only, so the expected generator
+  vanishes at the true frame (Theorem 4.1): shrinkage changes the frame estimate's variance, never
+  its mean. In both limits $D$ is consistent, so by Lemma 5.4.3 the flow stays asymptotically
+  efficient; at finite memory it shrinks the plug-in term of Lemma 5.4.2.
+* *Invariances.* A common scale of $V^F$ cancels in $c$ and $\kappa$ (Theorem 8.2 holds); the fit acts on
+  rotated coordinates and row/column means commute with permutations (Theorem 6 holds).
+
+The cost is $O(mn)$ elementwise work (two logarithms, one exponential, row and column means) and one
+extra $m\times n$ buffer for the odd-step average.
+
+**Remark 5.6 (pooled warm start as a one-step estimator; the weighting L5, the rest L3).** With
+`init="pooled"`, Gimbal accumulates the pooled factors $\sum_{s\le T_w}G_sG_s^\top$ and
+$\sum_{s\le T_w}G_s^\top G_s$ for $T_w=50$ steps (two temporary $m^2+n^2$ buffers), then replaces the frame by
+their eigenvectors, transports $V$ and $V^F$ to the new frame (Theorem 7), frees the factors, and
+skips the flow move of step $T_w$ (that gradient is already in the pooled estimate).
+(i) This is Le Cam's one-step construction: a consistent preliminary estimator (pooled factors are
+consistent wherever row and column sums are distinct, Theorem 2) followed by Fisher-scoring steps,
+which is asymptotically efficient (van der Vaart, 1998, §5.7). (ii) Because the bias-corrected
+schedule continues at $t=T_w$, the restart value carries exactly the weight $1-\beta^{T_w}$ that the first
+$T_w$ per-sample estimates would have had in the linearized dynamics, and every later gradient enters
+through the efficient score (Lean: `restart_closed_form`). (iii) The reason is finite-sample:
+Theorem 4.2 is local, and a flow started from the frame of one gradient is far outside its linear
+regime and slowed by the trust-region caps. Where pooled factors are not consistent (tied sums),
+the warm start gains nothing for the tied pair, and the flow's contraction removes the initial error
+at the rate of Theorem 4.2; E2.2 tests this case.
 
 **Conjecture 4.1 (L2).** For $S$ in the KRD family with all profiles pairwise distinct, the minimizers of
 $J$ on $\mathcal G$ are $U^\star$ up to signed permutations, every other critical point is a strict
@@ -243,17 +355,22 @@ re-ordering of $V$ is the special case where $P$ is a signed permutation. (Lean:
 (Lean: `frobenius_adjoint`, `descent`, `descent_strict`, `generator_scale_invariant`,
 `fisher_scale_invariant`.)
 
-**Proposition 9 (cost; L4).** Per step for an $m\times n$ layer, counting multiply–adds:
+**Proposition 9 (cost; L4).** Per step for an $m\times n$ layer, counting multiply–adds (generated
+totals for the 125M model are in `experiments/phase2/results/e28_cost_model.json`; with fused QKV
+and a 0.5M-token batch: SOAP 0.71% of forward+backward MACs plus QR, real-time SOAP 1.57% plus a QR
+every step, KL-SOAP 1.94% plus QR, Gimbal $k=1$ 1.61%, $k=4$ 0.76%, $k=10$ 0.60%, all without
+QR/eigh):
 
 | | SOAP (f, QR) | SOAP real-time | KL-SOAP (F=1) | Gimbal |
 |---|---|---|---|---|
 | rotate G, M; rotate back | $3(m^2n+mn^2)$ | same | same | same |
 | factor update | $m^2n+mn^2$ | same | $2(m^2n+mn^2)$ | — |
-| frame update | $(m^3+n^3)$ matmul $+$ QR every $f$ | QR every step | QR every step | $S,F$: $2(m^2n+mn^2)$; retraction $2(m^3+n^3)$ |
-| non-matmul linear algebra | QR every $f$ steps | QR every step | QR every step | **none** after step 1 |
-| optimizer state | $2m^2+2n^2+2mn$ | same | $2m^2+2n^2+2mn$ | $m^2+n^2+2mn$ |
+| frame update | $(m^3+n^3)$ matmul $+$ QR every $f$ | QR every step | QR every step | $S$: $m^2n+mn^2$ per step; every $k$ steps $F$: $m^2n+mn^2$, retraction + polish $4(m^3+n^3)$ |
+| non-matmul linear algebra | QR every $f$ steps | QR every step | QR every step | **none** after the warm start (two eigendecompositions in total) |
+| elementwise per step | $O(mn)$ | $O(mn)$ | $O(mn)$ | $O(mn)$ (variance averages, shrinkage: two logs, one exp) |
+| optimizer state | $2m^2+2n^2+2mn$ | same | $2m^2+2n^2+2mn$ | $m^2+n^2+4mn$ ($k=1$; never more than SOAP since $2mn\le m^2+n^2$); $+m^2+n^2$ score accumulators for $k>1$; $+m^2+n^2$ during the 50-step warm start |
 
-The $m^3$ retraction can be amortized by accumulating $\Omega$ for $k$ steps (Phase 4 option).
+The amortized flow divides the $m^3$ terms and the Fisher matrix by $k$.
 
 **Proposition 10 (mechanism transfer; L4).** $E^L=Z\,g(Z)^\top-g(Z)Z^\top$ with $g(z)=z/D$ is the skew
 (rotation) part of the EASI relative-gradient serial update of Cardoso & Laheld (1996) with the
@@ -280,7 +397,7 @@ cost** $\sum_{ij}[\log(\hat D_{ij}/(d_U)_{ij}) + (d_U)_{ij}/\hat D_{ij}-1]/2$.
 | SPlus | pooled, very stale | sign (instantaneous) | stale | no variance adaptation |
 | Muon | singular frame of the momentum, instantaneous | all singular values $\to1$ | frame from one (momentum-averaged) sample; no averaging | ignores noise level per direction |
 | ARO | Procrustes of $M f(R^\top M)^\top$, one-sided | base optimizer | criterion is loss-decrease, not a covariance fit | base optimizer |
-| **Gimbal** | likelihood flow, fresh | Adam (free) | efficient (Thm 3), identifiable (Thm 2) | sampling noise; transport optional |
+| **Gimbal** | likelihood flow, fresh; flow variances shrunk toward the separable fit by the measured non-separability (Prop. 5.5) | Adam (free) | efficient (Thm 3), identifiable (Thm 2); plug-in noise reduced (Lemma 5.4, Prop. 5.5) | sampling noise; transport optional |
 
 Phase 2 measures both costs by Monte Carlo for every method on the same gradient streams.
 
@@ -288,7 +405,9 @@ Phase 2 measures both costs by Monte Carlo for every method on the same gradient
 
 * Global convergence (Conjecture 4.1).
 * Heavy-tailed gradients: the Gaussian score can be replaced by a Student-$t$ score
-  $g(z)=z/(D+z^2/\nu)$ (hypothesis H6); its Fisher weights change accordingly.
+  $g(z)=z/(D+z^2/\nu)$ (hypothesis H6); its Fisher weights change accordingly. The split-sample
+  noise estimate of Proposition 5.5 already adapts the variance estimate to heavy tails.
+* Richer shrinkage targets for $\log D$ (low rank instead of additive; per-row factors $c_i$).
 * Interaction with momentum: the frame flow uses the instantaneous gradient while the step uses the
   momentum; Theorem 8.1 covers $\beta_1=0$ only.
 
@@ -305,6 +424,9 @@ Phase 2 measures both costs by Monte Carlo for every method on the same gradient
 | Thm 6 | all orthogonal $(P,R)$, same hyper-parameters | none | repeated eigenvalues at init (gauge) | L5 (one step) + test |
 | Thm 7 | orthogonal $P$ | none | signed permutations | L5 |
 | Thm 8 | $c\ne0$, relative floor | $D\ne0$ | $\beta_1=0$ only for item 1 | L5 |
+| Lemma 5.4 | fixed frame (1); one pair, independent relative errors (2); Gaussian KRD (3) | $W>0$, weighted mean $>0$; $\langle w,w^\star\rangle\ne0$ | $F_{ik}\to0$ (expansion invalid: angle bounded), $\beta\to1$ | L5 (1, 2 identity), L3 (2 expansion, 3) |
+| Prop. 5.5 | residual = signal + independent noise | $S+\nu>0$; $\|\hat R\|^2>0$ (else $c=0$) | separable ($S=0$), pure noise, $m=1$ or $n=1$ (no shrinkage possible) | L5 (risk), L3 (noise estimate) |
+| Remark 5.6 | linearized dynamics, $\beta\in[0,1)$ | $1-\beta^{T+k}>0$ | $T_w=1$, ties | L5 (weighting), L3 |
 
 Failures found while auditing (all in the checking code, none in a theorem) are recorded in
 `research/ledger/failures.md` (F-001 to F-004).
@@ -317,3 +439,16 @@ Failures found while auditing (all in the checking code, none in a theorem) are 
   algorithm §5 gains the spectral trust region ($\|\Omega\|_2\le1$) and the adaptive Newton–Schulz
   polish after a unit test exposed a 1% orthogonality defect at large rotation rates (change-id
   C-001, `research/ledger/decisions.md`).
+* 2026-10-06 — v0.3 (Phase 02, change C-002): bias-corrected rotation-rate schedule with
+  Theorem 4.4 (machine-checked), defaults $\alpha=0.02$, $\delta=0.003$, amortized flow
+  (`frame_every`), cost table updated from the generated cost model. Reason: the constant-rate flow
+  with damping 0.1 escaped poor initial frames slowly (E2.1 pilot, F-009).
+* 2026-10-06 — v0.4 (Phase 02, changes C-003 and C-004): the flow's variances are a separate average
+  with the frame's memory (Lemma 5.4: profile likelihood with one forgetting factor; exact cost of
+  noisy plug-in weights; orthogonality makes it a second-order effect), shrunk toward the separable
+  fit by the empirical-Bayes factor of Proposition 5.5 with a split-sample noise estimate; pooled
+  warm start as a one-step estimator (Remark 5.6), skipping the flow move at the restart step
+  (F-012). Seven new Lean theorems (`formal/Formal/Variance.lean`, 45 in total). Reasons: the
+  separable-cell failure of the exploratory E2.1 run (F-010) and the pilot that followed C-003
+  (flat separable spectra still behind SOAP, diagnosed as plug-in noise for pairs with small
+  Fisher information).

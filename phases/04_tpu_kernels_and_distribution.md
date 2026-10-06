@@ -44,9 +44,15 @@ Phase 03 (`src/gimbal/jax/`, tests, golden sequences).
    the tests. Muon/NorMuon: NS5 with fp32 or bf16 as in the reference; consider Polar Express
    coefficients only if they are part of a published variant being compared. SPlus: eigh every 100
    steps as published.
-5. **Gimbal options** (keep the defaults from Phase 02 unless the gate fails): amortized retraction
-   (accumulate $\Omega$ over $k$ steps for large sides), NS polish period, Fisher matrix refresh
-   period. Any option that changes the mathematics is a protocol §5 change.
+5. **Gimbal options** (keep the defaults from Phase 02 unless the gate fails): amortized frame move
+   (`frame_every`; the score is accumulated, so no gradient is dropped), NS polish period, Fisher
+   matrix refresh period. With `frame_every = k > 1` the momentum may be kept in rotated
+   coordinates and transported only when the frame moves (saves one $m^2n+mn^2$ unit per step;
+   prove equality with the reference to rounding first). The shrinkage step (Prop. 5.5) is
+   elementwise plus row/column means and one global variance: fuse it into one kernel with the
+   variance-average updates. The warm start needs one `eigh` per matrix at step 50 and a
+   temporary $m^2+n^2$ buffer; run it outside the jitted steady-state step if that keeps the
+   steady state free of `eigh`. Any option that changes the mathematics is a protocol §5 change.
 6. **Pallas kernels** only where the profile shows an elementwise/reduction bottleneck (candidates:
    fused EMA + generator weights, fused $\Omega$ construction with damping and clipping). Each kernel
    has a test against the XLA version.

@@ -2,7 +2,11 @@
 
 Kronecker factors are accumulated with the KL (maximum-likelihood, Kronecker *product*) rule
 
-    L <- (1 - b_k) L + (b_k / n) G R^{-1} G^T,   R <- (1 - b_k) R + (b_k / m) G^T L^{-1} G,
+    L <- b_k L + ((1 - b_k) / n) G R^{-1} G^T,   R <- b_k R + ((1 - b_k) / m) G^T L^{-1} G,
+
+with ``b_k = beta_kron`` the usual EMA coefficient (weight on the old value). The algorithm box of
+arXiv:2607.20548 writes the EMA as ``(1 - b) old + b new`` but lists conventional values
+(``b_kron = 0.95``, ``b1 = 0.9``), i.e. the values are meant in the usual sense.
 
 with the inverses taken in the current frame using approximate eigenvalues
 ``diag(Q^T L Q)``. The frame is refreshed by one power-iteration step + QR every ``frequency``
@@ -29,7 +33,7 @@ class KLSOAP(Optimizer):
         betas: tuple[float, float] = (0.9, 0.95),
         beta_kron: float = 0.95,
         eps: float = 1e-8,
-        kl_damping: float = 1e-6,
+        kl_damping: float = 1e-4,
         weight_decay: float = 0.0,
         frequency: int = 1,
         max_precond_dim: int = 10000,
@@ -97,10 +101,10 @@ class KLSOAP(Optimizer):
             l_inv = self._inv_in_frame(ql, lam_l, damp) if ql is not None else None
             if state["L"] is not None:
                 gr = g @ r_inv if r_inv is not None else g
-                state["L"].mul_(1 - bk).add_(gr @ g.T, alpha=bk / n)
+                state["L"].mul_(bk).add_(gr @ g.T, alpha=(1 - bk) / n)
             if state["R"] is not None:
                 lg = l_inv @ g if l_inv is not None else g
-                state["R"].mul_(1 - bk).add_(g.T @ lg, alpha=bk / m)
+                state["R"].mul_(bk).add_(g.T @ lg, alpha=(1 - bk) / m)
             if t % group["frequency"] == 0:
                 m_orig = unrotate(state["m"], ql, qr)
                 v_buf = state["v"]

@@ -55,10 +55,13 @@ Shampoo-with-grafting when time allows (record if omitted).
   $\gamma\ge1$ (paired bootstrap 95% CI of the difference to each peer excludes 0) and is not
   significantly worse than the best peer anywhere.
 * **G2.5 (premise).** E2.6 finds $\kappa$ clearly above 0 on real LM gradients, at a level where E2.1
-  predicts a material advantage.
+  predicts a material advantage (operationalized by C-005: median noise-corrected $\kappa\ge0.05$
+  over snapshot matrices and checkpoints).
 * **G2.6 (small LM).** In E2.7 Gimbal's mean final validation loss is lower than every peer's at equal
   steps (paired over seeds; Holm-corrected one-sided paired test $p<0.05$, or lower on every seed when
-  only 3 seeds are affordable), and its optimizer step costs no more than SOAP's in E2.8.
+  only 3 seeds are affordable), and its optimizer step costs no more than SOAP's in E2.8 (C-005:
+  analytic cost with QR/eigh at 10× matmul cost, for the same configuration as the loss
+  comparison; CPU microbenchmarks reported alongside).
 
 ## Iteration rule
 

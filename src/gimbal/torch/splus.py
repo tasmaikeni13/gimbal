@@ -80,7 +80,8 @@ class SPlus(Optimizer):
                 if group["weight_decay"] != 0:
                     p.mul_(1 - group["lr"] * group["weight_decay"])
                 p.add_(upd.to(p.dtype), alpha=-group["lr"])
-                state["ema"].mul_(group["ema_rate"]).add_(p.to(g.dtype), alpha=1 - group["ema_rate"])
+                rate = group["ema_rate"]
+                state["ema"].mul_(rate).add_(p.to(g.dtype), alpha=1 - rate)
         return loss
 
     @torch.no_grad()

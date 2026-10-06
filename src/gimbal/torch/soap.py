@@ -58,7 +58,7 @@ class SOAP(Optimizer):
             for p in group["params"]:
                 if p.grad is not None:
                     if p.ndim != 2:
-                        raise ValueError("SOAP here handles 2-D parameters; route the rest to AdamW")
+                        raise ValueError("SOAP here handles 2-D parameters; route others to AdamW")
                     self._update(p, group)
         return loss
 

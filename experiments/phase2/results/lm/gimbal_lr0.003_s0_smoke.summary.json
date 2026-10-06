@@ -1,0 +1,1 @@
+{"run_id": "gimbal_lr0.003_s0_smoke", "method": "gimbal", "lr": 0.003, "seed": 0, "steps": 20, "final_val_loss": 2.986528694629669, "wall_seconds": 13.173785300999953, "optimizer_seconds": 3.3225195829991208, "diverged": false}

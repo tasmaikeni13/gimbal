@@ -39,3 +39,11 @@ import Formal
 #print axioms Gimbal.eigenvalue_cost_nonneg
 #print axioms Gimbal.eigenvalue_cost_eq_iff
 #print axioms Gimbal.factor_estimators_strictly_inefficient
+#print axioms Gimbal.bias_corrected_schedule
+#print axioms Gimbal.weighted_profile_variance
+#print axioms Gimbal.weighted_profile_variance_eq_iff
+#print axioms Gimbal.excess_variance_identity
+#print axioms Gimbal.excess_component_orthogonal
+#print axioms Gimbal.shrinkage_risk_ge
+#print axioms Gimbal.shrinkage_risk_eq_iff
+#print axioms Gimbal.restart_closed_form

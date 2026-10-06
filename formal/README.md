@@ -44,7 +44,12 @@ Every theorem below depends only on `propext`, `Classical.choice` and `Quot.soun
 | Thm 2 | `score_variance_term` | `Flow.lean` | score variance summand equals Fisher summand |
 | Thm 4.1 | `stationary_generator` | `Flow.lean` | zero cross moments ⇒ zero expected generator |
 | Thm 4.3 | `variance_recursion_closed_form`, `variance_recursion_tendsto` | `Flow.lean` | angle-error variance → $\alpha\sigma^2/(2-\alpha)$ geometrically |
+| Thm 4.4 | `bias_corrected_schedule` | `Flow.lean` | the schedule $\alpha_t=\alpha/(1-(1-\alpha)^t)$ yields exactly the bias-corrected EMA |
 | Prop. 1 | `eigenvalue_cost_nonneg`, `eigenvalue_cost_eq_iff` | `Flow.lean` | $d/D+\log D\ge1+\log d$, equality iff $D=d$ |
+| Lemma 5.4.1 | `weighted_profile_variance`, `weighted_profile_variance_eq_iff` | `Variance.lean` | with forgetting weights, the weighted likelihood of a variance is maximized exactly at the weighted average (the tied flow variance is the profile-likelihood variance) |
+| Lemma 5.4.2 | `excess_variance_identity`, `excess_component_orthogonal` | `Variance.lean` | $\|w\|^2/\langle w,v\rangle^2 = 1/F + \|u\|^2/\langle w,v\rangle^2$, $u\perp v$: the exact cost of non-efficient (e.g. noisy plug-in) weights |
+| Prop. 5.5 | `shrinkage_risk_ge`, `shrinkage_risk_eq_iff` | `Variance.lean` | $(c-1)^2S+c^2\nu\ge S\nu/(S+\nu)$, equality iff $c=S/(S+\nu)$ (optimal shrinkage factor) |
+| Remark 5.6 | `restart_closed_form` | `Variance.lean` | after a restart at $T$, the bias-corrected schedule gives the restart value exactly the weight $1-\beta^T$ of the inputs it replaces |
 
 ## What is *not* formalized (and why)
 

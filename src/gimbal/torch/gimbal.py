@@ -7,14 +7,16 @@ diagonalization problem. Gimbal follows it with one natural-gradient step on ``O
 iteration, using only matrix products (theory/gimbal_theory.md, Section 5):
 
     Z   = Q_L^T G Q_R                      rotated gradient
-    A   = 1 / D,  D = V_hat + floor        current variance estimates
+    A   = 1 / D                            D: variance estimates (Lemma 5.4, Proposition 5.5)
     S_L = Z (Z * A)^T,   E_L = S_L - S_L^T     score of the left rotation   (Lemma A)
     F_L = D A^T + A D^T - 2n               Fisher information per pair     (Theorem 2)
     Ω_L = -rot_rate * E_L / (F_L + damping * n)
     Q_L <- Q_L (I + Ω_L + Ω_L^2 / 2)       retraction, defect Ω^4/4         (Theorem 5)
 
-and symmetrically on the right. There are no Kronecker factor buffers and, after the optional
-eigendecomposition used to initialize the frame, no QR or eigendecomposition.
+and symmetrically on the right. ``D`` is an exponential average of ``Z^2`` with the frame's own
+memory, shrunk toward its separable (Kronecker) fit by an empirical-Bayes factor estimated from
+a split-sample noise estimate. After a short warm start (two eigendecompositions in total) there
+are no Kronecker factor buffers and no QR or eigendecomposition.
 """
 
 from __future__ import annotations
@@ -48,6 +50,13 @@ class Gimbal(Optimizer):
     rot_rate:
         Fraction of the per-pair natural-gradient step taken per iteration (``alpha``). The frame
         estimate behaves like an average over about ``(2 - alpha) / alpha`` gradients (Theorem 4).
+    rot_schedule:
+        ``"constant"`` uses ``rot_rate`` at every step. ``"bias_corrected"`` uses
+        ``alpha_t = alpha / (1 - (1 - alpha)^t)`` (capped at ``rot_rate_max``): the frame estimate
+        then behaves like a bias-corrected exponential average of per-step estimates, i.e. like a
+        batch estimate early in training and like a tracker with memory ``~2/alpha`` later.
+    rot_rate_max:
+        Cap on the scheduled rotation rate.
     damping:
         Levenberg–Marquardt damping ``delta`` of the Fisher normalizer, in units of the mean
         per-group Fisher information. Bounds the rotation of nearly degenerate pairs.
@@ -58,15 +67,35 @@ class Gimbal(Optimizer):
     max_rotation:
         Cap on the spectral norm of each step's generator (radians).
     polish_every:
-        Period of the Newton–Schulz re-orthonormalization of the frames. One polish per step
+        Period, in frame moves, of the Newton–Schulz re-orthonormalization. One polish per move
         keeps the frames orthogonal to working precision (Theorem 5.3).
+    frame_every:
+        Move the frame once every ``frame_every`` steps using the mean score of those steps
+        (amortizes the retraction, polish and Fisher costs; see ``_flow``).
+    flow_beta:
+        Variance estimate used by the frame flow. ``None`` reuses Adam's second moment (memory set
+        by ``betas[1]``). A float keeps a separate EMA with that coefficient; ``"tied"`` uses
+        ``1 - rot_rate``, so the frame and the variances it is fitted to share one estimation window
+        (joint maximum likelihood with a common forgetting factor, Lemma 5.4).
+    flow_shrink:
+        Shrink the log of the flow's variance estimate toward its additive (separable) fit with
+        the positive-part James–Stein factor ``c = (1 - noise / residual)_+`` (Proposition 5.5).
+        The noise level is measured by splitting the average into interleaved odd and even steps.
+        Needs ``flow_beta``; together they cost two m x n buffers.
     transport:
         If True, transport the second moment to the new frame with the doubly-stochastic map
         ``V <- (P_L o P_L)^T V (P_R o P_R)`` (Theorem 7), with columns renormalized to sum to one
         so that the retraction's small orthogonality defect cannot change the total.
     init:
         ``"eigh"`` initializes the frame from the eigenvectors of the first gradient's
-        ``G G^T`` and ``G^T G``; ``"identity"`` starts from the identity frame.
+        ``G G^T`` and ``G^T G``; ``"identity"`` starts from the identity frame. ``"pooled"`` starts
+        like ``"eigh"`` and, after ``warm_start_steps`` steps, restarts the flow from the
+        eigenvectors of the pooled factors of those steps (a consistent estimator; the flow then
+        acts as Fisher scoring from a consistent start, Le Cam's one-step construction). The
+        second moments are transported to the new frame (Theorem 7) and the factor buffers are
+        freed.
+    warm_start_steps:
+        Length of the pooled warm start (only for ``init="pooled"``).
     max_precond_dim:
         Sides larger than this keep an identity frame (one-sided mode).
     """
@@ -78,17 +107,23 @@ class Gimbal(Optimizer):
         betas: tuple[float, float] = (0.9, 0.95),
         eps: float = 1e-8,
         weight_decay: float = 0.0,
-        rot_rate: float = 0.1,
-        damping: float = 0.1,
+        rot_rate: float = 0.02,
+        rot_schedule: str = "bias_corrected",
+        rot_rate_max: float = 0.5,
+        damping: float = 0.003,
         floor: float = 1e-8,
         max_angle: float = 0.25,
         max_rotation: float = 1.0,
         polish_every: int = 1,
+        frame_every: int = 1,
+        flow_beta: float | str | None = "tied",
+        flow_shrink: bool = True,
         transport: bool = False,
-        init: str = "eigh",
+        init: str = "pooled",
+        warm_start_steps: int = 50,
         max_precond_dim: int = 8192,
     ) -> None:
-        if init not in ("eigh", "identity"):
+        if init not in ("pooled", "eigh", "identity"):
             raise ValueError(f"unknown init {init!r}")
         defaults = dict(
             lr=lr,
@@ -96,13 +131,19 @@ class Gimbal(Optimizer):
             eps=eps,
             weight_decay=weight_decay,
             rot_rate=rot_rate,
+            rot_schedule=rot_schedule,
+            rot_rate_max=rot_rate_max,
             damping=damping,
             floor=floor,
             max_angle=max_angle,
             max_rotation=max_rotation,
             polish_every=polish_every,
+            frame_every=frame_every,
+            flow_beta=flow_beta,
+            flow_shrink=flow_shrink,
             transport=transport,
             init=init,
+            warm_start_steps=warm_start_steps,
             max_precond_dim=max_precond_dim,
         )
         super().__init__(params, defaults)
@@ -128,7 +169,10 @@ class Gimbal(Optimizer):
         state["M"] = torch.zeros_like(g)
         state["V"] = torch.zeros_like(g)
         max_dim = group["max_precond_dim"]
-        if group["init"] == "eigh":
+        if group["init"] == "pooled" and group["warm_start_steps"] > 1:
+            state["L_acc"] = g @ g.T if m <= max_dim else None
+            state["R_acc"] = g.T @ g if n <= max_dim else None
+        if group["init"] in ("eigh", "pooled"):
             state["QL"] = eigh_desc(g @ g.T)[0] if m <= max_dim else None
             state["QR"] = eigh_desc(g.T @ g)[0] if n <= max_dim else None
         else:
@@ -158,14 +202,102 @@ class Gimbal(Optimizer):
             p.mul_(1 - group["lr"] * group["weight_decay"])
         p.add_(update.to(p.dtype), alpha=-group["lr"])
 
-        # Frame flow: one natural-gradient step of the joint-diagonalization likelihood.
-        self._flow(state, z, v_hat, group)
+        # Pooled warm start: accumulate factors, then restart the frame from their eigenvectors.
+        restarted = False
+        if "L_acc" in state:
+            if t > 1:
+                if state["L_acc"] is not None:
+                    state["L_acc"].add_(g @ g.T)
+                if state["R_acc"] is not None:
+                    state["R_acc"].add_(g.T @ g)
+            if t >= group["warm_start_steps"]:
+                self._warm_start(state)
+                # This gradient is already part of the pooled estimate: express it in the new
+                # frame for the variance estimate and skip this step's frame move (Remark 5.6).
+                z = rotate(g, state["QL"], state["QR"])
+                restarted = True
+
+        # Variances seen by the flow, then one natural-gradient step of the likelihood.
+        flow_beta = group["flow_beta"]
+        if flow_beta is None:
+            d = v_hat + (group["floor"] * v_hat.mean() + 1e-30)
+        else:
+            beta_d = 1.0 - group["rot_rate"] if flow_beta == "tied" else float(flow_beta)
+            vf = state.setdefault("VF", torch.zeros_like(g))
+            vf.mul_(beta_d).addcmul_(z, z, value=1 - beta_d)
+            w_full = 1 - beta_d**t
+            if group["flow_shrink"]:
+                # Interleaved split: VF_odd averages the odd steps, VF - VF_odd the even ones.
+                vf_odd = state.setdefault("VF_odd", torch.zeros_like(g))
+                vf_odd.mul_(beta_d)
+                w_odd = state.get("w_odd", 0.0) * beta_d
+                if t % 2 == 1:
+                    vf_odd.addcmul_(z, z, value=1 - beta_d)
+                    w_odd += 1 - beta_d
+                state["w_odd"] = w_odd
+                d = self._shrunk_variances(vf, vf_odd, w_full, w_odd, group["floor"])
+            else:
+                v_flow = vf / w_full
+                d = v_flow + (group["floor"] * v_flow.mean() + 1e-30)
+        if not restarted:
+            self._flow(state, z, d, group)
 
     @staticmethod
-    def _generator(
-        z: torch.Tensor, d: torch.Tensor, a: torch.Tensor, group: dict, side: str
-    ) -> torch.Tensor:
-        """Damped natural-gradient generator for one side (skew-symmetric)."""
+    def _shrunk_variances(vf: torch.Tensor, vf_odd: torch.Tensor, w_full: float, w_odd: float,
+                          floor: float) -> torch.Tensor:
+        """Empirical-Bayes variance estimate for the flow (Proposition 5.5).
+
+        ``log D`` is split into its additive fit ``r_i + c_j`` (the separable, Kronecker-product
+        model) and a residual. The residual is multiplied by ``(1 - noise / mean(residual^2))_+``,
+        where ``noise`` is the variance of ``log V`` that sampling alone produces after the
+        additive fit; it is measured from the log-ratio of the odd-step and even-step averages,
+        whose variance is about four times that of the full average. Separable arrays are thus
+        estimated from row and column means, non-separable ones keep their interaction.
+        """
+        m, n = vf.shape
+        v_hat = vf / w_full
+        fl = floor * v_hat.mean() + 1e-30
+        log_v = (v_hat + fl).log()
+        row = log_v.mean(dim=1, keepdim=True)
+        col = log_v.mean(dim=0, keepdim=True)
+        additive = row + col - log_v.mean()
+        resid = log_v - additive
+        w_even = w_full - w_odd
+        if w_odd > 0.0 and w_even > 1e-12 * w_full:
+            ratio = (vf_odd / w_odd + fl).log() - ((vf - vf_odd).clamp_min(0.0) / w_even + fl).log()
+            noise = ratio.var(unbiased=False) * (0.25 * (1 - 1 / m) * (1 - 1 / n))
+            shrink = (1 - noise / resid.square().mean().clamp_min(1e-30)).clamp(0.0, 1.0)
+        else:
+            shrink = torch.zeros((), dtype=vf.dtype, device=vf.device)
+        d = (additive + shrink * resid).exp()
+        return d.mul_((v_hat + fl).mean() / d.mean())
+
+    @staticmethod
+    def _warm_start(state: dict) -> None:
+        """Replace the frame by the pooled-factor eigenvectors and transport the moments."""
+        moves = {}
+        for key, acc_key in (("QL", "L_acc"), ("QR", "R_acc")):
+            if state[acc_key] is not None and state[key] is not None:
+                new = eigh_desc(state[acc_key])[0]
+                moves[key] = state[key].T @ new  # old -> new change of frame
+                state[key] = new
+        for buf_key in ("V", "VF", "VF_odd"):
+            buf = state.get(buf_key)
+            if buf is None:
+                continue
+            if "QL" in moves:
+                buf.copy_((moves["QL"] * moves["QL"]).T @ buf)
+            if "QR" in moves:
+                buf.copy_(buf @ (moves["QR"] * moves["QR"]))
+        state.pop("L_acc")
+        state.pop("R_acc")
+        state.pop("flow_acc", None)
+
+    @staticmethod
+    def _score_and_fisher(
+        z: torch.Tensor, d: torch.Tensor, a: torch.Tensor, side: str
+    ) -> tuple[torch.Tensor, torch.Tensor, int]:
+        """Skew score E (Lemma A) and Fisher information F (Theorem 2) for one side."""
         if side == "left":
             groups = z.shape[1]
             s = z @ (z * a).T
@@ -174,9 +306,14 @@ class Gimbal(Optimizer):
             groups = z.shape[0]
             s = z.T @ (z * a)
             fisher = d.T @ a
-        score = s - s.T
         fisher = (fisher + fisher.T - 2.0 * groups).clamp_min(0.0)
-        omega = score.mul_(-group["rot_rate"]).div_(fisher + group["damping"] * groups)
+        return s - s.T, fisher, groups
+
+    @staticmethod
+    def _generator(score: torch.Tensor, fisher: torch.Tensor, groups: int, rate: float,
+                   group: dict) -> torch.Tensor:
+        """Damped natural-gradient generator (skew-symmetric) with the trust-region caps."""
+        omega = score.mul(-rate).div_(fisher + group["damping"] * groups)
         omega.fill_diagonal_(0.0)
         omega.clamp_(-group["max_angle"], group["max_angle"])
         # Spectral trust region: with ||Ω||_2 <= 1 the retraction's singular values stay in
@@ -186,27 +323,53 @@ class Gimbal(Optimizer):
             omega.mul_(group["max_rotation"] / norm)
         return omega
 
-    def _flow(self, state: dict, z: torch.Tensor, v_hat: torch.Tensor, group: dict) -> None:
-        d = v_hat + (group["floor"] * v_hat.mean() + 1e-30)
+    def _flow(self, state: dict, z: torch.Tensor, d: torch.Tensor, group: dict) -> None:
+        """Accumulate the likelihood score; every ``frame_every`` steps move the frame.
+
+        With ``frame_every = k`` the frame takes one natural-gradient step per k gradients using
+        the mean score of all k (no sample is wasted) and the effective rate
+        ``1 - prod_s (1 - alpha_s)``, which equals the per-step rate for k = 1. Retraction,
+        polish and the Fisher matrix are then paid once per k steps.
+        """
+        alpha = group["rot_rate"]
+        if group["rot_schedule"] == "bias_corrected":
+            alpha = min(group["rot_rate_max"], alpha / (1 - (1 - alpha) ** state["step"]))
         a = d.reciprocal()
-        p_left = p_right = None
-        if state["QL"] is not None:
-            p_left = expm2(self._generator(z, d, a, group, "left"))
-            state["QL"] = state["QL"] @ p_left
-        if state["QR"] is not None:
-            p_right = expm2(self._generator(z, d, a, group, "right"))
-            state["QR"] = state["QR"] @ p_right
+        sides = [(k, s) for k, s in (("QL", "left"), ("QR", "right")) if state[k] is not None]
+        acc = state.setdefault("flow_acc", {"keep": 1.0, "count": 0})
+        acc["keep"] *= 1.0 - alpha
+        acc["count"] += 1
+        fishers = {}
+        for key, side in sides:
+            score, fisher, groups = self._score_and_fisher(z, d, a, side)
+            acc[key] = score if acc["count"] == 1 else acc[key] + score
+            fishers[key] = (fisher, groups)
+        if acc["count"] < group["frame_every"]:
+            return
+        rate = 1.0 - acc["keep"]
+        moves = {}
+        for key, _ in sides:
+            fisher, groups = fishers[key]
+            omega = self._generator(acc[key] / acc["count"], fisher, groups, rate, group)
+            moves[key] = expm2(omega)
+            state[key] = state[key] @ moves[key]
+        state["flow_acc"] = {"keep": 1.0, "count": 0}
         if group["transport"]:
-            v_buf = state["V"]
             # Rows of P o P sum to one for an orthogonal P; renormalizing them makes the transport
             # preserve the total second moment exactly despite the retraction's tiny defect.
-            if p_left is not None:
-                t_left = p_left * p_left
-                v_buf.copy_((t_left / t_left.sum(dim=1, keepdim=True)).T @ v_buf)
-            if p_right is not None:
-                t_right = p_right * p_right
-                v_buf.copy_(v_buf @ (t_right / t_right.sum(dim=1, keepdim=True)))
-        if state["step"] % group["polish_every"] == 0:
-            for key in ("QL", "QR"):
-                if state[key] is not None:
-                    state[key] = polish_until_orthogonal(state[key])
+            maps = {}
+            for key in moves:
+                sq = moves[key] * moves[key]
+                maps[key] = sq / sq.sum(dim=1, keepdim=True)
+            for buf_key in ("V", "VF", "VF_odd"):
+                buf = state.get(buf_key)
+                if buf is None:
+                    continue
+                if "QL" in maps:
+                    buf.copy_(maps["QL"].T @ buf)
+                if "QR" in maps:
+                    buf.copy_(buf @ maps["QR"])
+        state["frame_moves"] = state.get("frame_moves", 0) + 1
+        if state["frame_moves"] % group["polish_every"] == 0:
+            for key, _ in sides:
+                state[key] = polish_until_orthogonal(state[key])

@@ -92,4 +92,54 @@ theorem eigenvalue_cost_eq_iff {d D : ℝ} (hd : 0 < d) (hD : 0 < D) :
   · rintro rfl
     rw [div_self hD.ne']
 
+/-- Bias-corrected exponential moving average `(∑_{s<t} β^{t-1-s} (1-β) x_s) / (1 - β^t)`. -/
+noncomputable def bcEma (β : ℝ) (x : ℕ → ℝ) (t : ℕ) : ℝ :=
+  (∑ s ∈ Finset.range t, β ^ (t - 1 - s) * (1 - β) * x s) / (1 - β ^ t)
+
+/-- **Theorem 4.4 (bias-corrected rotation schedule).** The recursion
+`θ_{t+1} = θ_t + a_{t+1} (x_t - θ_t)` with `a_t = (1-β)/(1-β^t)` (Gimbal's schedule with
+`β = 1 - α`) produces exactly the bias-corrected exponential average of the inputs. In the
+linearized frame dynamics the inputs are the per-sample natural-gradient estimates, so the frame
+error is the bias-corrected EMA of i.i.d. estimates (a batch average early, a tracker later). -/
+theorem bias_corrected_schedule (β : ℝ) (hβ0 : 0 ≤ β) (hβ1 : β < 1) (x : ℕ → ℝ) (t : ℕ) :
+    bcEma β x (t + 1) = bcEma β x t + (1 - β) / (1 - β ^ (t + 1)) * (x t - bcEma β x t) := by
+  have hc : ∀ k : ℕ, 0 < 1 - β ^ k ∨ k = 0 := by
+    intro k
+    rcases Nat.eq_zero_or_pos k with h | h
+    · exact Or.inr h
+    · left
+      have : β ^ k < 1 := pow_lt_one₀ hβ0 hβ1 (Nat.pos_iff_ne_zero.mp h)
+      linarith
+  have hct1 : 0 < 1 - β ^ (t + 1) := by
+    rcases hc (t + 1) with h | h
+    · exact h
+    · exact absurd h (Nat.succ_ne_zero t)
+  -- numerator recursion: N_{t+1} = β N_t + (1-β) x_t
+  have hnum : (∑ s ∈ Finset.range (t + 1), β ^ (t + 1 - 1 - s) * (1 - β) * x s) =
+      β * (∑ s ∈ Finset.range t, β ^ (t - 1 - s) * (1 - β) * x s) + (1 - β) * x t := by
+    rw [Finset.sum_range_succ, Finset.mul_sum]
+    congr 1
+    · refine Finset.sum_congr rfl fun s hs => ?_
+      have hs' : s < t := Finset.mem_range.mp hs
+      have : t + 1 - 1 - s = (t - 1 - s) + 1 := by omega
+      rw [this, pow_succ]
+      ring
+    · simp
+  unfold bcEma
+  rw [hnum]
+  rcases Nat.eq_zero_or_pos t with h0 | hpos
+  · subst h0
+    have hb : (1 - β) ≠ 0 := by linarith
+    simp
+    field_simp
+  · have hct : 0 < 1 - β ^ t := by
+      have : β ^ t < 1 := pow_lt_one₀ hβ0 hβ1 (Nat.pos_iff_ne_zero.mp hpos)
+      linarith
+    have h1 := hct1.ne'
+    have h2 := hct.ne'
+    set N := ∑ s ∈ Finset.range t, β ^ (t - 1 - s) * (1 - β) * x s
+    rw [div_eq_iff h1]
+    field_simp
+    ring
+
 end Gimbal

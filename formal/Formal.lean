@@ -4,3 +4,4 @@ import Formal.Retraction
 import Formal.Transport
 import Formal.Equivariance
 import Formal.Flow
+import Formal.Variance

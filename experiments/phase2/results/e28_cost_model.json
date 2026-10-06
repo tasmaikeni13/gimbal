@@ -1,0 +1,84 @@
+{
+ "analytic": {
+  "model_GMAC_per_step": 195035.136,
+  "optimizers": {
+   "adamw": {
+    "matmul_GMAC": 0.0,
+    "nonmatmul_GMAC": 0.0,
+    "pct_of_model_c1": 0.0,
+    "pct_of_model_c10": 0.0,
+    "state_Mfloats": 169.869312
+   },
+   "soap": {
+    "matmul_GMAC": 1324.3464548352001,
+    "nonmatmul_GMAC": 65.14928517119998,
+    "pct_of_model_c1": 0.7124335483870968,
+    "pct_of_model_c10": 1.0130683870967743,
+    "state_Mfloats": 684.19584
+   },
+   "soap_rt": {
+    "matmul_GMAC": 2408.067366912,
+    "nonmatmul_GMAC": 651.492851712,
+    "pct_of_model_c1": 1.5687225806451612,
+    "pct_of_model_c10": 4.575070967741936,
+    "state_Mfloats": 684.19584
+   },
+   "klsoap": {
+    "matmul_GMAC": 3132.239118336,
+    "nonmatmul_GMAC": 651.492851712,
+    "pct_of_model_c1": 1.940025806451613,
+    "pct_of_model_c10": 4.946374193548387,
+    "state_Mfloats": 684.352512
+   },
+   "muon": {
+    "matmul_GMAC": 788.19360768,
+    "nonmatmul_GMAC": 0.0,
+    "pct_of_model_c1": 0.4041290322580645,
+    "pct_of_model_c10": 0.4041290322580645,
+    "state_Mfloats": 84.934656
+   },
+   "normuon": {
+    "matmul_GMAC": 788.19360768,
+    "nonmatmul_GMAC": 0.0,
+    "pct_of_model_c1": 0.4041290322580645,
+    "pct_of_model_c10": 0.4041290322580645,
+    "state_Mfloats": 85.029888
+   },
+   "splus": {
+    "matmul_GMAC": 706.65633792,
+    "nonmatmul_GMAC": 43.975767490559996,
+    "pct_of_model_c1": 0.3848701935483871,
+    "pct_of_model_c10": 0.5877987096774194,
+    "state_Mfloats": 684.19584
+   },
+   "aro": {
+    "matmul_GMAC": 584.652423168,
+    "nonmatmul_GMAC": 485.062868992,
+    "pct_of_model_c1": 0.5484731182795699,
+    "pct_of_model_c10": 2.786821505376344,
+    "state_Mfloats": 263.45472
+   },
+   "gimbal_k1": {
+    "matmul_GMAC": 3132.239118336,
+    "nonmatmul_GMAC": 0.0,
+    "pct_of_model_c1": 1.6059870967741936,
+    "pct_of_model_c10": 1.6059870967741936,
+    "state_Mfloats": 596.901888
+   },
+   "gimbal_k4": {
+    "matmul_GMAC": 1489.716117504,
+    "nonmatmul_GMAC": 0.0,
+    "pct_of_model_c1": 0.7638193548387097,
+    "pct_of_model_c10": 0.7638193548387097,
+    "state_Mfloats": 854.065152
+   },
+   "gimbal_k10": {
+    "matmul_GMAC": 1161.2115173376,
+    "nonmatmul_GMAC": 0.0,
+    "pct_of_model_c1": 0.595385806451613,
+    "pct_of_model_c10": 0.595385806451613,
+    "state_Mfloats": 854.065152
+   }
+  }
+ }
+}

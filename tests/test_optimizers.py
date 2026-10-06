@@ -12,7 +12,7 @@ import torch
 from gimbal.torch import KLSOAP, SOAP, AROSinkhorn, Gimbal, Muon, NorMuon, SPlus
 from gimbal.torch._linalg import expm2, ns_polish, zeropower_ns5
 
-from .third_party.soap_official import SOAP as OfficialSOAP
+from .third_party.soap_official import SOAP as OfficialSOAP  # noqa: N811
 
 torch.set_default_dtype(torch.float64)
 
