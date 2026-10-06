@@ -1,0 +1,7 @@
+{
+ "forward_only": 0.0406722609186545,
+ "fwd_bwd_local": 0.15419557702261955,
+ "fwd_bwd_reduce_scatter": 0.16970225551631302,
+ "fwd_bwd_local_bf16_logits": 0.15185439283959568,
+ "fwd_bwd_local_no_head": 0.13410548900719732
+}

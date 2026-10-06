@@ -105,22 +105,29 @@ def soap(learning_rate: LearningRate,
 def gimbal(learning_rate: LearningRate,
            cfg: _gimbal.GimbalConfig | None = None) -> optax.GradientTransformation:
     cfg = cfg or _gimbal.GimbalConfig()
-    # Only kinds that occur are compiled (some bit combinations would not even trace).
+    # The move pattern is tabulated until it is periodic (fixed period frame_every once the
+    # adaptive k_t has reached it and the warm start is over) and continued periodically after.
     horizon = max(cfg.warm_start_steps, 1) + 2 * cfg.frame_every + 2
-    kinds = sorted({_gimbal.schedule(t, cfg) for t in range(1, horizon + 1)})
+    while _gimbal.frames_per_move(horizon, cfg) < cfg.frame_every:
+        horizon *= 2
+    horizon += 2 * cfg.frame_every
+    table = [_gimbal.schedule(t, cfg) for t in range(1, horizon + 1)]
+    last_move = max(t for t, kind in enumerate(table, start=1) if kind.move)
+    moves = jnp.asarray([kind.move for kind in table])
+    # Only kinds that occur are compiled (some bit combinations would not even trace).
+    kinds = sorted(set(table))
     code = jnp.zeros(16, jnp.int32)
     for i, kind in enumerate(kinds):
         code = code.at[sum(int(b) << (3 - j) for j, b in enumerate(kind))].set(i)
 
     def kind_index(t):
-        tw, k = cfg.warm_start_steps, cfg.frame_every
+        tw = cfg.warm_start_steps
         warm = tw > 1
         first = t == 1
         factors = jnp.logical_and(warm, jnp.logical_and(t > 1, t <= tw))
         restart = jnp.logical_and(warm, t == tw)
-        after = jnp.logical_and(warm, t > tw)
-        count = jnp.where(after, (t - tw - 1) % k, (t - 1) % k) + 1
-        move = jnp.logical_and(jnp.logical_not(restart), count == k)
+        periodic = (t - last_move) % cfg.frame_every == 0
+        move = jnp.where(t <= horizon, moves[jnp.minimum(t, horizon) - 1], periodic)
         bits = (first, factors, restart, move)
         return code[sum(b.astype(jnp.int32) << (3 - i) for i, b in enumerate(bits))]
 

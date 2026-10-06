@@ -56,6 +56,7 @@ class GimbalConfig:
     max_angle: float = 0.25
     max_rotation: float = 1.0
     frame_every: int = 4
+    frame_schedule: str = "fixed"  # or "adaptive": k_t = clamp(round(K·α/α_t), 1, K) (F-027)
     warm_start_steps: int = 50
     polish_max_iters: int = 4
 
@@ -69,21 +70,53 @@ class Kind(NamedTuple):
     move: bool  # the flow takes its (amortized) frame step
 
 
+def scheduled_rate(t: int, cfg: GimbalConfig) -> float:
+    """Bias-corrected rotation rate ``α_t`` (Theorem 4.4), as the reference computes it."""
+    a = cfg.rot_rate
+    return min(cfg.rot_rate_max, a / (1 - (1 - a) ** t)) if a > 0 else 0.0
+
+
+def frames_per_move(t: int, cfg: GimbalConfig) -> int:
+    """Scores accumulated per frame move at step ``t``: ``frame_every``, or with the adaptive
+    schedule ``clamp(round(K·α/α_t), 1, K)``, which keeps ``k·α_t`` near its steady-state value
+    (the amortized step matches the per-step flow to first order in ``k·α``)."""
+    k = cfg.frame_every
+    if cfg.frame_schedule == "adaptive" and k > 1 and cfg.rot_rate > 0:
+        k = int(min(k, max(1, round(k * cfg.rot_rate / scheduled_rate(t, cfg)))))
+    return k
+
+
+_MOVES: dict = {}
+
+
 def schedule(t: int, cfg: GimbalConfig) -> Kind:
     """Kind of step ``t`` (1-based), reproducing the reference's counters.
 
-    The score accumulator moves the frame when it holds ``frame_every`` scores; it is emptied by
-    each move and by the warm start, whose step does not enter the flow.
+    The score accumulator moves the frame when it holds ``frames_per_move(t)`` scores; it is
+    emptied by each move and by the warm start, whose step does not enter the flow.
     """
     tw = cfg.warm_start_steps
     warm = tw > 1
     restart = warm and t == tw
-    if warm and t > tw:
-        count = (t - tw - 1) % cfg.frame_every + 1
-    else:
-        count = (t - 1) % cfg.frame_every + 1
+    moves = _MOVES.setdefault(cfg, [])  # moves[s - 1]: does step s move the frame?
+    count = 0
+    if moves:
+        # resume the counter from the last cached step
+        count = _MOVES[(cfg, "count")]
+    while len(moves) < t:
+        s = len(moves) + 1
+        if warm and s == tw:
+            count = 0
+            moves.append(False)
+            continue
+        count += 1
+        move = count >= frames_per_move(s, cfg)
+        if move:
+            count = 0
+        moves.append(move)
+    _MOVES[(cfg, "count")] = count
     return Kind(first=t == 1, factors=warm and 1 < t <= tw, restart=restart,
-                move=(not restart) and count == cfg.frame_every)
+                move=moves[t - 1])
 
 
 def init_state(shape: tuple[int, int], cfg: GimbalConfig, dtype=jnp.float32) -> dict:
@@ -95,7 +128,7 @@ def init_state(shape: tuple[int, int], cfg: GimbalConfig, dtype=jnp.float32) -> 
         "w_odd": jnp.zeros((), dtype),
         "QL": jnp.eye(m, dtype=dtype), "QR": jnp.eye(n, dtype=dtype),
         "acc_L": jnp.zeros((m, m), dtype), "acc_R": jnp.zeros((n, n), dtype),
-        "keep": jnp.ones((), dtype),
+        "keep": jnp.ones((), dtype), "count": jnp.zeros((), dtype),
     }
     if cfg.warm_start_steps > 1:
         state["L_acc"] = jnp.zeros((m, m), dtype)
@@ -240,6 +273,7 @@ def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
         state["acc_L"] = jnp.zeros_like(state["acc_L"])
         state["acc_R"] = jnp.zeros_like(state["acc_R"])
         state["keep"] = jnp.ones_like(state["keep"])
+        state["count"] = jnp.zeros_like(state["count"])
 
     # Variances seen by the flow: tied memory, split into odd and even steps (Prop. 5.5).
     beta_d = 1.0 - cfg.rot_rate
@@ -260,13 +294,14 @@ def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
     a = 1.0 / d
     za = z_flow * a
     state["keep"] = state["keep"] * (1.0 - alpha)
+    state["count"] = state["count"] + 1.0
     acc_l = state["acc_L"] + _skew_score(z_flow, za, "left")
     acc_r = state["acc_R"] + _skew_score(z_flow, za, "right")
     if not kind.move:
         state["acc_L"], state["acc_R"] = acc_l, acc_r
         return state, delta
     rate = 1.0 - state["keep"]
-    k = cfg.frame_every
+    k = state["count"]  # scores in this block (frame_every, or k_t when adaptive)
     new_q = {}
     for key, side, acc in (("QL", "left", acc_l), ("QR", "right", acc_r)):
         fisher, groups = _fisher(d, a, side)
@@ -278,4 +313,5 @@ def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
     state["QL"], state["QR"] = new_q["QL"], new_q["QR"]
     state["acc_L"], state["acc_R"] = jnp.zeros_like(acc_l), jnp.zeros_like(acc_r)
     state["keep"] = jnp.ones_like(state["keep"])
+    state["count"] = jnp.zeros_like(state["count"])
     return state, delta

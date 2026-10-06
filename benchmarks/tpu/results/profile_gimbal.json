@@ -1,0 +1,212 @@
+{
+ "optimizer": "gimbal",
+ "device_ms_per_step": 172.72186481655,
+ "modules_ms_per_step": {
+  "jit_local(12609462484234020857)": 146.68942092315,
+  "jit_local(1774179056686941487)": 14.122518370399998,
+  "jit_local(11822387756413856154)": 9.655387580349998,
+  "jit_convert_element_type(14690936213597047317)": 0.0021142811
+ },
+ "top": [
+  {
+   "op": "all-reduce.12",
+   "ms_per_step": 7.915985129549999,
+   "share": 0.04583082250737429
+  },
+  {
+   "op": "convert_add_fusion.1",
+   "ms_per_step": 7.007263477549998,
+   "share": 0.040569637694639865
+  },
+  {
+   "op": "all-gather.5",
+   "ms_per_step": 6.66286930805,
+   "share": 0.03857571428566218
+  },
+  {
+   "op": "fusion.215",
+   "ms_per_step": 5.0738893618,
+   "share": 0.029376068670802273
+  },
+  {
+   "op": "fusion.962",
+   "ms_per_step": 4.685808942,
+   "share": 0.027129216946429193
+  },
+  {
+   "op": "all-reduce.11",
+   "ms_per_step": 4.074204085050001,
+   "share": 0.02358823585755783
+  },
+  {
+   "op": "all-gather.4",
+   "ms_per_step": 3.4197381338999997,
+   "share": 0.019799103822391823
+  },
+  {
+   "op": "fusion.4",
+   "ms_per_step": 3.2635767856999998,
+   "share": 0.018894983499432944
+  },
+  {
+   "op": "all-reduce.10",
+   "ms_per_step": 2.9453752142500003,
+   "share": 0.01705270619546818
+  },
+  {
+   "op": "while.15",
+   "ms_per_step": 2.7518315713999995,
+   "share": 0.015932155285161804
+  },
+  {
+   "op": "all-gather.3",
+   "ms_per_step": 2.5278660089,
+   "share": 0.014635471957096323
+  },
+  {
+   "op": "abs_reduce_fusion.3",
+   "ms_per_step": 1.4364812366,
+   "share": 0.008316730705320394
+  },
+  {
+   "op": "fusion.47",
+   "ms_per_step": 1.2659413572500002,
+   "share": 0.007329363648282583
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.29",
+   "ms_per_step": 1.1718579285,
+   "share": 0.006784653059093846
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.31",
+   "ms_per_step": 1.17169120965,
+   "share": 0.006783687814478309
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.30",
+   "ms_per_step": 1.1716242141999997,
+   "share": 0.006783299933939435
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.33",
+   "ms_per_step": 1.17131513395,
+   "share": 0.006781510465939377
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.34",
+   "ms_per_step": 1.17118815625,
+   "share": 0.006780775308869743
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.24",
+   "ms_per_step": 1.1711259911499996,
+   "share": 0.006780415394390667
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.25",
+   "ms_per_step": 1.1710049329,
+   "share": 0.006779714508894045
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.26",
+   "ms_per_step": 1.1707819954499998,
+   "share": 0.006778423777982605
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.35",
+   "ms_per_step": 1.17063269195,
+   "share": 0.006777559362234441
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.27",
+   "ms_per_step": 1.1706180490999998,
+   "share": 0.006777474585185422
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.28",
+   "ms_per_step": 1.1706050713000002,
+   "share": 0.006777399448201384
+  },
+  {
+   "op": "flash_mha_bwd_dkv_block_q_major_512_block_q_512_block_k_major_512_block_k_512.32",
+   "ms_per_step": 1.17039941525,
+   "share": 0.006776208770633037
+  },
+  {
+   "op": "fusion.2",
+   "ms_per_step": 1.0475193527,
+   "share": 0.006064775607955502
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.35",
+   "ms_per_step": 0.9469070178999999,
+   "share": 0.005482264905521494
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.24",
+   "ms_per_step": 0.9400549150999998,
+   "share": 0.005442593594612029
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.34",
+   "ms_per_step": 0.9398700982499998,
+   "share": 0.005441523568821163
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.29",
+   "ms_per_step": 0.93980600885,
+   "share": 0.005441152513309066
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.27",
+   "ms_per_step": 0.9397553571500001,
+   "share": 0.005440859257443322
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.31",
+   "ms_per_step": 0.93965135265,
+   "share": 0.005440257107274838
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.28",
+   "ms_per_step": 0.9395769151499997,
+   "share": 0.005439826139834327
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.26",
+   "ms_per_step": 0.9392756964499999,
+   "share": 0.005438082187496157
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.30",
+   "ms_per_step": 0.9389779464499999,
+   "share": 0.00543635831773412
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.25",
+   "ms_per_step": 0.9389767055000002,
+   "share": 0.005436351133061808
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.33",
+   "ms_per_step": 0.9388012230499999,
+   "share": 0.005435335150226129
+  },
+  {
+   "op": "flash_mha_bwd_dq_block_q_major_512_block_k_major_512_block_k_512.32",
+   "ms_per_step": 0.9386534866,
+   "share": 0.005434479807156756
+  },
+  {
+   "op": "jvp_jit_flash_attention__.24",
+   "ms_per_step": 0.7810881429000001,
+   "share": 0.004522230834698335
+  },
+  {
+   "op": "jvp_jit_flash_attention__.28",
+   "ms_per_step": 0.75920579455,
+   "share": 0.004395539588206518
+  }
+ ]
+}

@@ -1,0 +1,50 @@
+{
+ "psum_float32": {
+  "seconds": 0.008273724000900984,
+  "hlo": [
+   "all-reduce"
+  ]
+ },
+ "psum_scatter_tiled_float32": {
+  "seconds": 0.008261968963779509,
+  "hlo": [
+   "all-reduce"
+  ]
+ },
+ "psum_scatter_untiled_float32": {
+  "seconds": 0.008274603867903352,
+  "hlo": [
+   "all-reduce"
+  ]
+ },
+ "all_gather_float32": {
+  "seconds": 0.007682154420763254,
+  "hlo": [
+   "all-gather"
+  ]
+ },
+ "psum_bfloat16": {
+  "seconds": 0.004293294972740114,
+  "hlo": [
+   "all-reduce"
+  ]
+ },
+ "psum_scatter_tiled_bfloat16": {
+  "seconds": 0.004297094536013901,
+  "hlo": [
+   "all-reduce"
+  ]
+ },
+ "psum_scatter_untiled_bfloat16": {
+  "seconds": 0.004301713895983994,
+  "hlo": [
+   "all-reduce"
+  ]
+ },
+ "all_gather_bfloat16": {
+  "seconds": 0.003984914510510862,
+  "hlo": [
+   "all-gather"
+  ]
+ }
+}

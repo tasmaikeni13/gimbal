@@ -4,7 +4,8 @@
 # Worker 0 runs locally; workers 1-3 over ssh (aliases w1-w3 in ~/.ssh/config). Each host writes
 # <log-dir>/host<k>.log. The command runs from the repository root with the project venv.
 set -euo pipefail
-ROOT=/home/tasma/gimbal
+# GIMBAL_CODE=<snapshot dir> runs frozen code from scripts/tpu/snapshot.sh (default: the repo).
+ROOT=${GIMBAL_CODE:-/home/tasma/gimbal}
 LOGDIR=$1; shift
 CMD="$*"
 mkdir -p "$LOGDIR"

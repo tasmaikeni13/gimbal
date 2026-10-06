@@ -33,6 +33,14 @@ from gimbal.torch import SOAP, Gimbal
 from .golden.streams import initial_params, stream
 
 LR = 1e-2
+ON_TPU = jax.default_backend() == "tpu"
+# Phase 04, G4.1 (TPU tolerances): TPUs have no native float64, so float64 comparisons run on the
+# CPU only; TPU float32 division and rsqrt differ from the CPU's by a few ulps (AdamW: 1.2e-5 over
+# 50 steps), and the TPU eigensolver is ~10x less accurate than LAPACK (orthogonality 6e-6 at
+# n = 2048), which the rounding sensitivity of Gimbal's first step (F-025) amplifies over 50 steps.
+# The single-step checks from the reference's state carry the TPU evidence for every step kind.
+cpu_only = pytest.mark.skipif(ON_TPU, reason="float64 or multi-step float32 accuracy: CPU only")
+TOL = 2.0 if ON_TPU else 1.0
 
 
 def _rel(a, b) -> float:
@@ -96,20 +104,52 @@ def test_adamw_matches_torch():
                                jnp.int32(t), cfg)
         p = p + d
         incs.append(d)
-    assert _max_rel(incs, ref) < 1e-5
+    assert _max_rel(incs, ref) < 1e-5 * TOL
 
 
+ADAPTIVE = dict(frame_schedule="adaptive", rot_rate=0.05)
+
+
+@cpu_only
 @pytest.mark.parametrize("shape", [(8, 8), (16, 16)])
 @pytest.mark.parametrize("kind", ["identified", "random"])
-def test_gimbal_golden_float64(shape, kind):
-    grads = stream(shape, 50, seed=11, kind=kind)
+@pytest.mark.parametrize("variant", [{}, ADAPTIVE])
+def test_gimbal_golden_float64(shape, kind, variant):
+    grads = stream(shape, 70, seed=11, kind=kind)
     p0 = initial_params(shape, 11)
-    ref, _, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1), p0, grads)
+    ref, _, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads)
     with enable_x64():
-        incs, _ = _jax_gimbal_run(jgimbal.GimbalConfig(weight_decay=0.1), p0, grads, jnp.float64)
-    assert _max_rel(incs, ref) < 1e-8
+        incs, _ = _jax_gimbal_run(jgimbal.GimbalConfig(weight_decay=0.1, **variant), p0, grads,
+                                  jnp.float64)
+    # The adaptive schedule moves the frame at every early step, at bias-corrected rates up to
+    # 0.5; those large moves amplify rounding differences over the sequence (to ~3e-6 here),
+    # although every single step agrees to ~1e-14 (test_gimbal_float64_single_steps).
+    assert _max_rel(incs, ref) < (1e-5 if variant else 1e-8)
 
 
+@cpu_only
+@pytest.mark.parametrize("variant", [{}, ADAPTIVE])
+def test_gimbal_float64_single_steps(variant):
+    """Every step, started from the reference's own state, agrees to rounding (float64)."""
+    shape = (10, 6)
+    grads = stream(shape, 70, seed=14)
+    p0 = initial_params(shape, 14)
+    ref, states, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads,
+                                keep_states=True)
+    cfg = jgimbal.GimbalConfig(weight_decay=0.1, **variant)
+    with enable_x64():
+        for t in range(2, len(grads)):
+            ts, p_before = states[t - 1]
+            st, d = jgimbal.step(_to_jax_gimbal_state(ts, jnp.float64), jnp.asarray(grads[t - 1]),
+                                 jnp.asarray(p_before), jnp.float64(LR), jnp.int32(t), cfg,
+                                 jgimbal.schedule(t, cfg))
+            assert _rel(d, ref[t - 1]) < 1e-12, t
+            for key in ("QL", "QR"):
+                q = _sign_aligned(np.asarray(st[key]), states[t][0][key].numpy())
+                assert np.abs(q - states[t][0][key].numpy()).max() < 1e-10, (t, key)
+
+
+@cpu_only
 @pytest.mark.parametrize("shape", [(6, 6), (16, 16)])
 def test_soap_golden(shape):
     grads = stream(shape, 50, seed=12)
@@ -124,6 +164,7 @@ def test_soap_golden(shape):
     assert _max_rel(incs32, ref64, start=1) <= 3 * _max_rel(ref32, ref64, start=1) + 1e-5
 
 
+@cpu_only
 @pytest.mark.parametrize("shape", [(8, 8), (16, 16)])
 def test_gimbal_golden_float32_as_accurate_as_reference(shape):
     """Over three sequences, the JAX float32 run is as accurate as the float32 reference."""
@@ -151,7 +192,7 @@ def _to_jax_gimbal_state(ts: dict, dtype=jnp.float32) -> dict:
           "QL": ql, "QR": qr,
           "acc_L": acc["QL"].numpy() if "QL" in acc else np.zeros((ql.shape[0],) * 2),
           "acc_R": acc["QR"].numpy() if "QR" in acc else np.zeros((qr.shape[0],) * 2),
-          "keep": acc.get("keep", 1.0)}
+          "keep": acc.get("keep", 1.0), "count": acc.get("count", 0)}
     if "L_acc" in ts:
         st["L_acc"], st["R_acc"] = ts["L_acc"].numpy(), ts["R_acc"].numpy()
     return {k: jnp.asarray(v, dtype) for k, v in st.items()}
@@ -162,12 +203,13 @@ def _sign_aligned(q, ref):
 
 
 @pytest.mark.parametrize("shape", [(8, 8), (6, 10), (10, 6)])
-def test_gimbal_every_step_kind_from_reference_state(shape):
+@pytest.mark.parametrize("variant", [{}, ADAPTIVE])
+def test_gimbal_every_step_kind_from_reference_state(shape, variant):
     grads = [g.astype(np.float32) for g in stream(shape, 62, seed=14)]
     p0 = initial_params(shape, 14).astype(np.float32)
-    ref, states, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1), p0, grads,
+    ref, states, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads,
                                 keep_states=True)
-    cfg = jgimbal.GimbalConfig(weight_decay=0.1)
+    cfg = jgimbal.GimbalConfig(weight_decay=0.1, **variant)
     seen = set()
     for t in range(2, len(grads) + 1):
         kind = jgimbal.schedule(t, cfg)
@@ -182,7 +224,9 @@ def test_gimbal_every_step_kind_from_reference_state(shape):
                 assert _rel(new_state[key], after[key].numpy()) < 2e-5, (t, key)
             for key in ("QL", "QR"):  # frames agree up to eigenvector signs
                 q = _sign_aligned(np.asarray(new_state[key]), after[key].numpy())
-                assert np.abs(q - after[key].numpy()).max() < 1e-4, (t, key)
+                # early adaptive moves are large (rate up to 0.5): float32 rounding inside them
+                assert np.abs(q - after[key].numpy()).max() < (5e-4 if variant else 1e-4), \
+                    (t, key)
         seen.add(kind)
     assert {k.move for k in seen} == {False, True} and any(k.restart for k in seen)
 
@@ -205,11 +249,12 @@ def test_soap_rectangular_from_reference_frames(shape):
     assert _max_rel(incs, ref[1:]) < 2e-5
 
 
-def test_gimbal_schedule_matches_reference_counters():
-    cfg = jgimbal.GimbalConfig()
-    grads = stream((6, 6), 70, seed=16)
+@pytest.mark.parametrize("variant", [{}, ADAPTIVE, dict(frame_schedule="adaptive")])
+def test_gimbal_schedule_matches_reference_counters(variant):
+    cfg = jgimbal.GimbalConfig(**variant)
+    grads = stream((6, 6), 160, seed=16)
     p = torch.nn.Parameter(torch.zeros(6, 6, dtype=torch.float64))
-    opt = Gimbal([p], lr=LR)
+    opt = Gimbal([p], lr=LR, **variant)
     moves = 0
     for t, g in enumerate(grads, start=1):
         p.grad = torch.tensor(g)
@@ -247,7 +292,8 @@ def test_gimbal_frames_stay_orthogonal():
 
     state, _ = jax.lax.fori_loop(2, 10_002, body, (state, key))
     for q in (state["QL"], state["QR"]):
-        assert float(jnp.abs(q.T @ q - jnp.eye(q.shape[0])).max()) < 1e-5
+        gram = jnp.matmul(q.T, q, precision=jax.lax.Precision.HIGHEST)
+        assert float(jnp.abs(gram - jnp.eye(q.shape[0])).max()) < 1e-5
 
 
 def _warm_state(shape, cfg, steps, seed):
@@ -261,6 +307,7 @@ def _warm_state(shape, cfg, steps, seed):
     return state, p
 
 
+@cpu_only
 @pytest.mark.parametrize("move", [False, True])
 def test_gimbal_step_is_equivariant(move):
     """(G, Q_L, Q_R, P_param) -> (P G Rᵀ, P Q_L, R Q_R, P P_param Rᵀ) maps Δ to P Δ Rᵀ (Thm 6)."""
@@ -283,6 +330,7 @@ def test_gimbal_step_is_equivariant(move):
             assert _rel(s2[key], s1[key]) < 1e-10
 
 
+@cpu_only
 def test_gimbal_ignores_eigenvector_signs(monkeypatch):
     """Flipping the signs of the initial eigenvectors leaves every increment unchanged (Thm 6
     note). Regression test for F-024: the spectral-norm estimate depended on them."""
@@ -299,6 +347,7 @@ def test_gimbal_ignores_eigenvector_signs(monkeypatch):
     assert _max_rel(flipped, base) < 1e-9
 
 
+@cpu_only
 def test_gimbal_frame_flow_is_scale_invariant():
     """Gradients c·G give the same frames as G (Theorem 8.2), from step 1 on (square: no gauge)."""
     shape = (8, 8)
@@ -331,14 +380,16 @@ def test_gimbal_descent_with_no_momentum():
 # Optax wrappers, toy problems, edge cases
 # ----------------------------------------------------------------------------------------------
 
+@cpu_only
 def test_optax_wrappers_match_the_step_functions():
     """The ``lax.switch`` wrappers take the same step kinds as the Python schedule (float64, so
     that the comparison is not dominated by the rounding of Gimbal's first step, F-025)."""
     shape = (6, 10)
     with enable_x64():
-        grads = [jnp.asarray(g, jnp.float64) for g in stream(shape, 60, seed=21)]
+        grads = [jnp.asarray(g, jnp.float64) for g in stream(shape, 90, seed=21)]
         p0 = jnp.asarray(initial_params(shape, 21), jnp.float64)
-        cfg_g, cfg_s = jgimbal.GimbalConfig(weight_decay=0.1), jsoap.SOAPConfig(weight_decay=0.1)
+        cfg_g = jgimbal.GimbalConfig(weight_decay=0.1, **ADAPTIVE)
+        cfg_s = jsoap.SOAPConfig(weight_decay=0.1)
         ref_g, _ = _jax_gimbal_run(cfg_g, np.asarray(p0), grads, jnp.float64)
         ref_s, _ = _jax_soap_run(cfg_s, np.asarray(p0), grads, jnp.float64)
         for tx, ref in ((optax_api.gimbal(LR, cfg_g), ref_g), (optax_api.soap(LR, cfg_s), ref_s)):
@@ -419,8 +470,9 @@ def test_bf16_gradients_with_float32_state():
     params = {"w": jnp.zeros(shape, jnp.bfloat16)}
     tx = optax_api.gimbal(1e-2)
     state = tx.init(jax.tree.map(lambda x: x.astype(jnp.float32), params))
+    update = jax.jit(tx.update)
     for g in stream(shape, 60, seed=24):
-        upd, state = tx.update({"w": jnp.asarray(g, jnp.bfloat16)}, state, params)
+        upd, state = update({"w": jnp.asarray(g, jnp.bfloat16)}, state, params)
         params = optax.apply_updates(params, upd)
     assert params["w"].dtype == jnp.bfloat16
     assert all(x.dtype in (jnp.float32, jnp.int32) for x in jax.tree.leaves(state))

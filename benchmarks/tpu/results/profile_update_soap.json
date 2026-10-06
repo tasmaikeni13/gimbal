@@ -1,0 +1,62 @@
+{
+ "Kind(init=False, refresh=False)": {
+  "ms_per_call": 17.1486592679,
+  "ops_ms": {
+   "all-gather.5": 6.658,
+   "all-gather.4": 3.417,
+   "all-gather.3": 2.516,
+   "add.58": 0.688,
+   "fusion.1": 0.602,
+   "add.56": 0.482,
+   "fusion.3": 0.47,
+   "slice.2": 0.458,
+   "fusion.2": 0.458,
+   "add.53": 0.23,
+   "fusion.9": 0.209,
+   "fusion.5": 0.201,
+   "fusion.27": 0.178,
+   "fusion.32": 0.09,
+   "fusion.39": 0.086,
+   "fusion.35": 0.081,
+   "fusion.34": 0.076,
+   "fusion.19": 0.076,
+   "fusion.20": 0.075,
+   "divide_subtract_fusion": 0.062,
+   "copy-done.3": 0.014,
+   "copy-done.4": 0.014,
+   "subtract_add_fusion.1": 0.001,
+   "subtract_add_fusion": 0.001,
+   "subtract_add_fusion.2": 0.001
+  }
+ },
+ "Kind(init=False, refresh=True)": {
+  "ms_per_call": 41.03682014979999,
+  "ops_ms": {
+   "all-gather.5": 6.656,
+   "all-gather.4": 3.418,
+   "all-gather.3": 2.525,
+   "fusion.1546": 1.203,
+   "fusion.8": 1.162,
+   "add.1798": 0.689,
+   "fusion.10": 0.602,
+   "custom-call.508": 0.553,
+   "custom-call.510": 0.537,
+   "custom-call.512": 0.521,
+   "custom-call.518": 0.512,
+   "custom-call.514": 0.505,
+   "custom-call.520": 0.494,
+   "custom-call.516": 0.493,
+   "fusion.46": 0.483,
+   "add.1796": 0.482,
+   "custom-call.522": 0.479,
+   "custom-call.524": 0.462,
+   "slice.1032": 0.458,
+   "fusion.45": 0.455,
+   "fusion.1563": 0.451,
+   "fusion.1565": 0.447,
+   "custom-call.526": 0.442,
+   "custom-call.471": 0.424,
+   "custom-call.489": 0.424
+  }
+ }
+}

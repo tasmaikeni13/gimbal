@@ -1,0 +1,9 @@
+.ssssssss.......ssss.s.......                                            [100%]
+=========================== short test summary info ============================
+SKIPPED [4] tests/test_jax_optimizers.py:110: float64 or multi-step float32 accuracy: CPU only
+SKIPPED [2] tests/test_jax_optimizers.py:122: float64 or multi-step float32 accuracy: CPU only
+SKIPPED [2] tests/test_jax_optimizers.py:137: float64 or multi-step float32 accuracy: CPU only
+SKIPPED [2] tests/test_jax_optimizers.py:276: float64 or multi-step float32 accuracy: CPU only
+SKIPPED [1] tests/test_jax_optimizers.py:299: float64 or multi-step float32 accuracy: CPU only
+SKIPPED [1] tests/test_jax_optimizers.py:316: float64 or multi-step float32 accuracy: CPU only
+SKIPPED [1] tests/test_jax_optimizers.py:349: float64 or multi-step float32 accuracy: CPU only

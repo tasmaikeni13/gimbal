@@ -1,0 +1,12 @@
+{
+ "devices": 16,
+ "batch": 240,
+ "grad_step_xla_s": 0.20760285982396454,
+ "grad_step_flash_s": 0.25793021509889513,
+ "grad_step_splash_s": "failed: NotImplementedError: head_dim_v=64 should be a multiple of 128",
+ "update_adamw_None_s": 0.017811383120715618,
+ "update_soap_Kind(init=False, refresh=False)_s": 0.020154862897470593,
+ "update_soap_Kind(init=False, refresh=True)_s": 0.044152100454084575,
+ "update_gimbal_Kind(first=False, factors=False, restart=False, move=False)_s": 0.02208446804434061,
+ "update_gimbal_Kind(first=False, factors=False, restart=False, move=True)_s": 0.04076916154008359
+}

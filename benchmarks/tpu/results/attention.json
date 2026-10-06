@@ -1,0 +1,10 @@
+{
+ "xla_q0_k0_b1": 0.2083187629468739,
+ "flash_q0_k0_b1": 0.2588173489784822,
+ "flash_q256_k256_b1": 0.1904746035579592,
+ "flash_q512_k512_b1": 0.17007885104976594,
+ "flash_q1024_k512_b1": 0.17225773609243333,
+ "flash_q1024_k1024_b1": 0.16992077103350312,
+ "flash_q512_k512_b3": 0.1699447309365496,
+ "flash_q1024_k1024_b3": "failed: XlaRuntimeError: RESOURCE_EXHAUSTED: XLA:TPU compile permanent error. Ran out of memory in memory space vmem. Used 16.74M of 16.00M vmem. Exceeded vmem capacity by 756.0K.\n\nProgram vmem requirement 16.74M:\n    scoped           16.74M\n\n  Largest program allocations in vmem:\n\n  1. Size: 4.74M\n"
+}

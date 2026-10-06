@@ -1,0 +1,45 @@
+# Single source of truth for the TPU runs (Phase 05; batch and steps from D-003).
+# Optimizer hyper-parameters are each reference implementation's defaults; tuning (Phase 06)
+# overrides lr and one secondary knob per optimizer, and frozen values live in configs/frozen/.
+model:
+  vocab: 50304
+  d_model: 768
+  n_layers: 12
+  n_heads: 12
+  d_ff: 2048
+  seq_len: 1024
+  rope_theta: 10000.0
+  norm_eps: 1.0e-6
+  init_std: 0.02
+  attention: flash
+  flash_block_q: 512     # Pallas flash-attention tiles: fastest of the Phase 04 benchmark
+  flash_block_k: 512
+  flash_block_b: 1
+data:
+  train: data/tokens/train.bin
+  val: data/tokens/val.bin
+train:
+  batch: 240              # sequences of 1024 tokens: 245,760 tokens per step
+  steps: 10172            # 2.49987B tokens (confirmatory); tuning runs use 2500
+  warmup_frac: 0.05       # linear warm-up, then cosine to final_lr_frac of the peak
+  final_lr_frac: 0.1
+  clip: 1.0               # global gradient-norm clipping, every optimizer
+  weight_decay: 0.1       # decoupled, hidden matrices only, every optimizer
+eval:
+  every: 250              # fixed 5,120-sequence (5.24M-token) validation subset
+  subset_seqs: 5120
+  batch: 512
+log:
+  diag_every: 100
+  ckpt_every: 0           # 0: no intermediate checkpoints
+optimizers:
+  adamw:  {lr: 1.0e-3, b1: 0.9, b2: 0.95, eps: 1.0e-8}
+  soap:   {lr: 3.0e-3, b1: 0.95, b2: 0.95, shampoo_beta: -1.0, eps: 1.0e-8,
+           precondition_frequency: 10}
+  gimbal: {lr: 3.0e-3, b1: 0.9, b2: 0.95, eps: 1.0e-8, rot_rate: 0.02, rot_rate_max: 0.5,
+           damping: 0.003, floor: 1.0e-8, max_angle: 0.25, max_rotation: 1.0, frame_every: 4,
+           warm_start_steps: 50}
+other:                    # embeddings and norms, identical for every optimizer (no weight decay)
+  b1: 0.9
+  b2: 0.95
+  eps: 1.0e-8

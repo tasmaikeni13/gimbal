@@ -1,0 +1,62 @@
+{
+ "Kind(first=False, factors=False, restart=False, move=False)": {
+  "ms_per_call": 17.7946950004,
+  "ops_ms": {
+   "all-gather.5": 6.663,
+   "all-gather.4": 3.422,
+   "all-gather.3": 2.525,
+   "add.111": 0.689,
+   "fusion.1": 0.652,
+   "add.109": 0.482,
+   "fusion.66": 0.474,
+   "slice.2": 0.458,
+   "fusion.7": 0.455,
+   "fusion.15": 0.263,
+   "add.106": 0.235,
+   "fusion.8": 0.209,
+   "fusion.3": 0.192,
+   "fusion": 0.118,
+   "fusion.21": 0.101,
+   "divide_subtract_fusion": 0.098,
+   "fusion.42": 0.086,
+   "fusion.35": 0.082,
+   "fusion.23": 0.078,
+   "fusion.65": 0.077,
+   "fusion.34": 0.076,
+   "add_reduce_fusion": 0.05,
+   "multiply_reduce_fusion.2": 0.031,
+   "copy.242": 0.03,
+   "fusion.32": 0.024
+  }
+ },
+ "Kind(first=False, factors=False, restart=False, move=True)": {
+  "ms_per_call": 49.053416029500006,
+  "ops_ms": {
+   "while.15": 11.007,
+   "all-gather.5": 6.668,
+   "abs_reduce_fusion.3": 5.746,
+   "fusion.47": 5.042,
+   "all-gather.4": 3.42,
+   "all-gather.3": 2.507,
+   "fusion.64": 1.245,
+   "fusion.247": 1.198,
+   "while.19": 0.765,
+   "add.211": 0.695,
+   "fusion.88": 0.664,
+   "fusion.65": 0.652,
+   "fusion.326": 0.581,
+   "fusion.71": 0.477,
+   "add.209": 0.47,
+   "slice.22": 0.458,
+   "fusion.73": 0.457,
+   "fusion.245": 0.45,
+   "fusion.248": 0.443,
+   "add.206": 0.251,
+   "fusion.81": 0.233,
+   "fusion.246": 0.224,
+   "fusion.74": 0.213,
+   "multiply_reduce_fusion.8": 0.203,
+   "fusion.89": 0.193
+  }
+ }
+}
