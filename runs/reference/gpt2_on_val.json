@@ -1,0 +1,12 @@
+{
+ "model": "gpt2 (OpenAI, 124M)",
+ "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+ "sequences": 5120,
+ "tokens": 5242880,
+ "val_loss": 3.2621116638183594,
+ "published_reference": {
+  "value": 3.2924,
+  "source": "karpathy/build-nanogpt play.ipynb (commit 6104ab1), FineWeb-Edu val shard"
+ },
+ "seconds": 1271.2427279949188
+}

@@ -1,0 +1,35 @@
+{
+ "1_overfit_1M_tokens": {
+  "first_loss": 10.977437973022461,
+  "last10_mean": 0.010866362787783145,
+  "pass": true
+ },
+ "2_zero_lr": {
+  "val_start": 10.977987289428711,
+  "val_end": 10.977987289428711,
+  "pass": true
+ },
+ "3_adamw_200_steps": {
+  "first10": 10.446199798583985,
+  "last10": 5.563221263885498,
+  "finite": true,
+  "pass": true
+ },
+ "4_determinism_50_steps": {
+  "max_abs_diff": 0.0,
+  "pass": true
+ },
+ "5_resume_adamw_next_20_steps": {
+  "resumed_from": 20,
+  "compared": 20,
+  "max_abs_diff": 0.0,
+  "pass": true
+ },
+ "5_resume_gimbal_next_20_steps": {
+  "resumed_from": 60,
+  "compared": 20,
+  "max_abs_diff": 0.0,
+  "pass": true
+ },
+ "all_pass": true
+}

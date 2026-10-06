@@ -136,3 +136,49 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
 * Result: all pass after F-024 (C-015), F-025 (C-016) and F-026; float64 agreement ≈1e-12 over
   60 steps for Gimbal.
 * Raw: pytest output (51 tests, CPU).
+
+## E3.2 — Small language model on FineWeb-Edu bytes (Phase 03, CPU)
+* Question: does Gimbal beat the peers on a real (small) language model at equal steps (G3.5)?
+* Design: byte-level Llama-style LM (d = 128, 4 layers, seq 128, batch 32, 800 steps); every
+  optimizer gets a 4-point factor-2 learning-rate grid on seed 0 (edge extensions), then seeds 1–2
+  at the selected rate. `experiments/phase3/run_e27_sweep.py`, `analyze_e27.py`.
+* Result: the default of the time (`frame_every` = 4, α = 0.02) lost to SOAP on every seed
+  (1.5057 vs 1.4970); `frame_every` = 1 beat SOAP on every seed (1.4934); KL-SOAP was best
+  (1.4828); G3.5 failed (F-027). Report `results/e27_report.md`, `results/e27_gate.json`.
+
+## F-027 selection runs (Phase 03, CPU, seeds 10–12, learning rate 4e-3)
+* Arms: fixed/adaptive amortization, k ∈ {1, 2, 4}, α ∈ {0.02, 0.04, 0.05, 0.08}, warm start 20;
+  SOAP with `shampoo_beta` ∈ {0.9, 0.95, 0.99} (same memory knob, for an equal selection budget).
+* Result (mean final loss): fixed k = 4, α = 0.02: 1.5108; adaptive, α = 0.05: 1.4946; k = 2,
+  α = 0.05: 1.4912; k = 1, α = 0.05: 1.4869; SOAP 1.4981 (default), 1.4940 (best memory).
+  Raw `results/lm/*_f027.*`. Decision: C-018 by rule D-004.
+
+## G3.5 re-run after C-018 (Phase 03, CPU, fresh seeds 20–22)
+* Gimbal's rate re-selected on seed 20 (4e-3, not on an edge); SOAP and AdamW at their E3.2 rates.
+* Result: Gimbal 1.4929, SOAP 1.4952, AdamW 1.6671 (means); Gimbal lower on every seed than both
+  (vs SOAP: −0.0038, −0.0029, −0.0001; Holm one-sided p = 0.087): G3.5 passes on its
+  every-seed clause; the advantage over SOAP is small. `results/g35_c018.{md,json}`.
+
+## E2.5 with the JAX optimizers (G3.3, CPU, float64)
+* Same problems, seeds 300–311 and selected rates as the PyTorch run after C-018; AdamW, SOAP,
+  Gimbal. Result: every mean paired difference within 0.1 seed SD (largest 0.065 SD); AdamW
+  identical to 1e-17. `experiments/phase3/e25_jax.py`, `results/e25_jax_gate.json`.
+
+## Phase 04 TPU measurements
+* Tests on the TPU (G4.1): 16 float32 tests pass, 13 float64/CPU-only skipped
+  (`benchmarks/tpu/results/tests_tpu.txt`).
+* Attention, step ablations, collectives, per-op profiles, optimized HLO:
+  `benchmarks/tpu/*.py`, `benchmarks/tpu/results/*.json`; summary `docs/performance.md`.
+* Steady-state step times (C-017), 400-step runs at the confirmatory configuration: AdamW 162.0 ms,
+  SOAP 167.0 ms, Gimbal adaptive α = 0.05 170.2 ms (+1.9%), k = 2 175.3 ms, k = 1 185.3 ms
+  (`runs/timing/`, `benchmarks/tpu/results/step_times.json`). G4.2 fails for Gimbal by 1.9%.
+
+## Phase 05 smoke tests and reference
+* Smoke tests (`scripts/tpu/smoke_tests.sh`, `check_smoke.py`, `runs/smoke/smoke.json`): overfit
+  1M tokens (loss 0.011 over the last 10 steps of the 1,500-step run; F-029), zero learning rate
+  (validation loss unchanged bit for bit), 200 AdamW steps (10.45 → 5.56), determinism over 50
+  steps (identical), resume after a checkpoint for AdamW and for Gimbal across its warm start
+  (identical). The first attempt was invalid (mixed code versions, F-028).
+* GPT-2 (OpenAI 124M checkpoint) on the first 5,120 validation sequences: 3.262 (published
+  3.2924 on build-nanogpt's FineWeb-Edu validation shard). `scripts/eval/gpt2_reference.py`,
+  `runs/reference/gpt2_on_val.json`.

@@ -22,3 +22,14 @@ data/tokens/
 .DS_Store
 .idea/
 .vscode/
+
+# E3.1 gradient snapshots (~100 MB each; regenerable: e27_small_lm.py --snapshots)
+experiments/phase3/results/lm/snap_*.npz
+
+# TPU runs: compilation cache, checkpoints, traces, optimized HLO, raw host logs, scratch runs
+.jax_cache/
+runs/**/ckpt/
+runs/profiles/
+runs/hlo/
+runs/logs/
+runs/dev/

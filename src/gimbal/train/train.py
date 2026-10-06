@@ -329,7 +329,9 @@ def main() -> None:
             len(v) * trainer.model_cfg.seq_len)), "tokens": start * tokens_per_step})
     pending = None  # (step, loss, gnorm, lr): read one step late so the device never idles
     # Divergence (Phase 07): loss above twice its minimum over the previous 100 steps for 50
-    # consecutive steps, or a non-finite loss.
+    # consecutive steps, or a non-finite loss. The rule was written for language-model losses
+    # (~3 nats, where doubling means several nats); an absolute margin of 1 nat keeps it from
+    # firing on the relative fluctuations of a nearly zero loss (F-029, overfitting smoke test).
     recent: list[float] = []
     above = 0
     t_last = time.perf_counter()
@@ -352,7 +354,8 @@ def main() -> None:
             if not math.isfinite(ploss):
                 diverged = True
                 break
-            above = above + 1 if len(recent) == 100 and ploss > 2 * min(recent) else 0
+            low = min(recent) if len(recent) == 100 else math.inf
+            above = above + 1 if ploss > 2 * low and ploss > low + 1.0 else 0
             recent = (recent + [ploss])[-100:]
             if above >= 50:
                 diverged = True

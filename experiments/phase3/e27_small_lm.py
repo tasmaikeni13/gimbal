@@ -52,6 +52,9 @@ MATRIX_KW = {
     "gimbal_adapt_a05": dict(betas=(0.9, 0.95), frame_schedule="adaptive", rot_rate=0.05),
     "gimbal_adapt_a08": dict(betas=(0.9, 0.95), frame_schedule="adaptive", rot_rate=0.08),
     "gimbal_k1_a05": dict(betas=(0.9, 0.95), frame_every=1, rot_rate=0.05),
+    "gimbal_k2_a05": dict(betas=(0.9, 0.95), frame_every=2, rot_rate=0.05),
+    "gimbal_adapt2_a05": dict(betas=(0.9, 0.95), frame_every=2, frame_schedule="adaptive",
+                              rot_rate=0.05),
     # the same memory knob for SOAP (Phase 06 Stage C grid), for an equal selection budget
     "soap_sb090": dict(betas=(0.9, 0.95), weight_decay=0.0, shampoo_beta=0.9),
     "soap_sb099": dict(betas=(0.9, 0.95), weight_decay=0.0, shampoo_beta=0.99),

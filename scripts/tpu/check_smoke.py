@@ -16,7 +16,9 @@ def rows(name: str, file: str = "log.jsonl") -> list[dict]:
 
 def main() -> None:
     out = {}
-    ov = rows("overfit")
+    # The first attempt (400 steps) reached 1.28 with the loss still falling as the cosine
+    # schedule ended; the test is decided by the 1,500-step run when it exists.
+    ov = rows("overfit_1500") or rows("overfit")
     if ov:
         tail = [r["loss"] for r in ov[-10:]]
         out["1_overfit_1M_tokens"] = {"first_loss": ov[0]["loss"], "last10_mean": sum(tail) / 10,
