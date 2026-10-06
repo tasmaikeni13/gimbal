@@ -6,7 +6,7 @@ changes the mechanism.
 
 | H-ID | Causal delta vs SOAP | Load-bearing assumption | Unique prediction | Status | Next test |
 |---|---|---|---|---|---|
-| H1 Gimbal | basis = online MLE of the free-diagonal rotated model (joint diagonalization) by natural-gradient flow on O(m)×O(n); no L, R; no QR after init | real gradient second moments are not Kronecker-separable in their eigenvalues, and pooled estimators waste samples | advantage over SOAP and KL-SOAP grows with non-separability; disappears vs KL-Shampoo for separable D | screening (Phase 2) | MC basis efficiency; NQM; small LM |
+| H1 Gimbal | basis = online MLE of the free-diagonal rotated model (joint diagonalization) by natural-gradient flow on O(m)×O(n); no L, R; no QR after init | real gradient second moments are not Kronecker-separable in their eigenvalues, and pooled estimators waste samples | advantage over SOAP and KL-SOAP grows with non-separability; disappears vs KL-Shampoo for separable D | **kill criterion met at small scale** (2026-10-06): κ = 0.005 on real small-LM gradients (F-030) and no reliable gain over SOAP real-time on fresh seeds 20–22 (mean −0.0019, two of three seeds worse); KL-SOAP better on every seed. Confirmatory test at 125M vs AdamW and SOAP continues (D-006) | 125M TPU comparison (Phases 06–08); κ at 125M from `diag.jsonl` |
 | H2 Transport | rotate V with the doubly-stochastic map (P∘P) when the basis moves | basis motion per step is large enough for V mismatch to matter | gains concentrated early in training and at high rotation rates | proposed (ablation of H1) | ablation in Phase 2 |
 | H3 Wiener–secant | eigenvalue rule from regression curvature Cov(g̃,w̃)/Var(w̃) with SNR shrinkage | curvature is approximately diagonal in the tracked basis and identifiable from the trajectory | larger gains at large batch (low noise) | reserve | only if H1's ceiling (oracle basis) is reached |
 | H4 Shared residual basis | one basis per residual-stream side shared by all layers | residual-side statistics are shared across depth | amortized cost; loss neutral or better at small batch | reserve | measure cross-layer basis overlap in Phase 2 |
@@ -64,3 +64,13 @@ with the full E3.2 protocol after a choice is made.
 Outcome so far (mean final validation loss over seeds 10–12; SOAP 1.4981): k = 4, α = 0.02:
 1.5108; R3: 1.5117 (killed); R1: 1.5018; R2: 1.4949; R4 at k = 4: α = 0.04 1.5029, α = 0.08 1.5001;
 R1 + R4 (α = 0.04): 1.4968; R2 + R4 (α = 0.04): 1.4900.
+
+## H1 kill check after C-018 (fresh seeds 20–22, E3.2 setting)
+
+Mean final validation loss: KL-SOAP 1.4829, Gimbal 1.4929, SOAP real-time 1.4948, SOAP 1.4952,
+AdamW 1.6671 (`experiments/phase3/results/lm/*_c018.summary.json`). Gimbal − SOAP real-time:
++0.0009, +0.0007, −0.0072; Gimbal − KL-SOAP: +0.0133, +0.0095, +0.0073. With κ ≈ 0 (F-030), the
+theory predicts exactly this ordering: under separability KL-factor weights are efficient
+(Theorem 3.3) and the likelihood flow's extra generality buys nothing, while SOAP's pooled factors
+lose n/n_eff. The pre-registered kill criterion ("κ ≈ 0 and SOAP real-time ≥ Gimbal on loss") is
+met at this scale.

@@ -1,37 +1,31 @@
-# Research state — Gimbal — updated 2026-10-06 (end of Phase 02)
+# Research state — Gimbal — updated 2026-10-06 (Phases 03–06)
 
 ## Contract
-Target claim: Gimbal reaches lower validation loss/perplexity than SOAP and its peers at 125M
-parameters / 2.5B FineWeb-Edu tokens, with step time no worse than SOAP's, on TPU v4-32.
-Metrics and trade-offs: final validation loss (primary), wall-clock to target, step time, memory.
-Regime: dense decoder LM, ≈1× Chinchilla, batch ≈ 0.5M tokens.
-Success / kill thresholds: Phase 08 decision rule; Phase 02 gates G2.1–G2.6 (formal, numerical,
-statistical and Monte Carlo evidence, no model training — C-006).
-Locked final test: FineWeb-Edu test split (Phase 05), read once in Phase 08.
-
-## Baseline
-Not yet reproduced at scale (Phase 05). Phase 02 compares against reference implementations of
-every peer on synthetic problems with known ground truth.
+Target claim: Gimbal reaches lower validation loss than SOAP (and AdamW) at 125M parameters /
+2.5B FineWeb-Edu tokens, with step time no worse than SOAP's, on TPU v4-32 (D-003: the TPU study
+compares AdamW, SOAP f = 10 and Gimbal). Decision rule: Phase 08 (D-005 definitions).
 
 ## Current evidence
-- Phase 01 passed: theory, Lean formalization, counterexample battery (E1.1).
-- Phase 02 passed (2026-10-06): algorithm C-004 + C-008 + C-012 (`frame_every = 4`) + C-013
-  (frame statistics on the empirical-Bayes innovation); theory v0.7; 53 Lean theorems on standard
-  axioms. All gates G2.1–G2.6 pass (`experiments/phase2/report.md`); claims C4–C7 in
-  `research/ledger/claims.md`. Failures F-009 … F-023 recorded with mechanisms.
-- Known limits: KL-SOAP's frame is slightly better on the flattest separable spectra (within the
-  non-inferiority margin; theory §7); the default's optimizer state exceeds SOAP's by 2mn per
-  layer (F-023); no language-model evidence yet.
+- Phases 01–02 passed; re-verified after C-015 and C-018 (`experiments/phase2/report.md`).
+- Phase 03: JAX implementations verified (float64 agreement ~1e-12 per step); C-015 fixed a gauge
+  dependence of the trust region (F-024); the default lost the small-LM gate G3.5 (F-027) and was
+  repaired by C-018 (α = 1 − β₂ = 0.05, adaptive amortization), after which Gimbal is lower than
+  SOAP and AdamW on every fresh seed (small margin over SOAP). **Premise failure** (G3.4, F-030):
+  κ ≈ 0.005 on real small-LM gradients; the likelihood frame still beats SOAP's pooled frame on
+  held-out gradients (efficiency under separable spectra), but KL-SOAP beats Gimbal and SOAP
+  real-time ties it: H1's kill criterion is met at small scale (D-006).
+- Phase 04: Gimbal's training step is 1.9% slower than SOAP's on the v4-32 (G4.2 fails).
+- Phase 05 passed (pipeline validated against GPT-2's published validation loss).
+- Phase 06 sweep running.
 
 ## Live hypotheses
-- H1 Gimbal (main). Reserves: H2 transport (ablation in E2.9), H5 Lie-algebra momentum, H6 robust
-  (Student-t) score.
+- H1 at 125M vs AdamW and SOAP (the confirmatory test). Reserves: H2 transport, H5 Lie momentum,
+  H6 robust score.
 
 ## Killed hypotheses
-- none
+- H1's non-separability mechanism at small scale (kill criterion met; see portfolio).
 
-## Next actions (user-run phases)
-1. Phase 03: JAX/Optax implementations with golden tests against the PyTorch reference; then the
-   small-LM validation moved there by C-006: E3.1 real-gradient premise check (G3.4) and E3.2
-   small-LM benchmark (G3.5). Scripts ready in `experiments/phase3/`.
-2. Phases 04–10 as specified in `phases/`.
+## Next actions
+1. Finish Phase 06; freeze configs; tag `tuning-frozen`.
+2. Phase 07 runs (seeds 2, 3); Phase 08 analysis by D-005, decision, test split once.
+3. Phase 09 paper (claims bounded by F-030 and the decision), Phase 10 release.
