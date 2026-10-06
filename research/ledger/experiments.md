@@ -42,9 +42,10 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
   identify the frame?
 * Design: E2.2 tie cell, seeds 10–14, horizons 800 / 4,000 / 16,000 steps, memory matched to the
   horizon; criterion fixed before the run (C-010).
-* Result and raw: `results/e22b_report.md`, `results/e22b_tie_consistency.jsonl`. Gimbal's frame KL
-  falls about as 1/T; pooled-factor frames fall less than 2×, passing that clause narrowly.
-* Decision: G2.2 passes.
+* Result and raw: `results/e22b_report.md`, `results/e22b_tie_consistency.jsonl.gz`. Gimbal's frame
+  KL falls about as 1/T; pooled-factor frames fall less than 2×, passing that clause narrowly.
+  Re-run with the C-013 default (`results/e22b_report_c013.md`): the same picture, criterion met.
+* Decision: G2.2 passes (before and after C-013).
 
 ## E2.5 — Optimization on noisy quadratics (Phase 02, gate G2.4)
 * Question: does Gimbal reach a lower loss than every peer when each optimizer is tuned the same
