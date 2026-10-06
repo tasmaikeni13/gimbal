@@ -64,6 +64,20 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
   `results/e25_report_full_c013.md`.
 * Decision: G2.4 passes on run 2; F-020 closed by C-013.
 
+## E2.9 — Ablations (Phase 02, reported)
+* Question: does every component of the default earn its place, and what do the hyper-parameters
+  do?
+* Design: one setting changed at a time on seven representative E2.1–E2.3 cells, seeds 40–47, best
+  of three rotation rates per variant; paired Wilcoxon against the default.
+* Run 1 (baseline `frame_every = 1`, before C-013): `results/e29_report.md`.
+* Run 2 (baseline the default: `frame_every = 4`, C-013; adds `k1`, `no_center`, `center_always`):
+  `results/e29_report_c013.md`. Adaptive centering matches no centering on these zero-mean
+  streams while always-on centering costs a few percent in most cells; shrinkage, the tied flow
+  variance, the pooled warm start and the bias-corrected schedule each have large measured
+  benefits; `frame_every = 1` is slightly better and 10 worse than the default; a smaller damping
+  helps the separable cells (open item, theory §7).
+* Decision: defaults kept; no component removed.
+
 ## E2.10 — Theory–simulation agreement (Phase 02)
 * Question: do the theory's quantitative predictions match simulation?
 * Parts: (a) Theorem 3 + small-angle expansion vs measured E2.1 frame KL; (b) Lemma 5.4.2 vs exact
