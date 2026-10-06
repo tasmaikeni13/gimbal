@@ -29,6 +29,16 @@ Phase 07 runs, Phase 02 predictions, theory document.
    Gimbal's frames evaluated on held-out gradient snapshots; rotation magnitudes; whether layers with
    larger $\kappa$ show larger per-layer gains (Phase 01/02 prediction).
 
+## Operational definitions (fixed before the Phase 07 runs; D-005)
+
+Final loss on the full validation split; bootstrap SE over blocks of 512 sequences (10,000
+resamples), pooled as the root mean square over runs, paired-difference SE reported alongside;
+step time by C-017 on each run's log; time and tokens to a target by the first crossing of the
+target on the 5.24M-token evaluation curve, linearly interpolated; token multiplier = full budget /
+tokens to the competitor's final loss; spike = training loss more than 0.5 nats above the median
+of the preceding 100 steps (after step 500); maximum gradient norm after step 500; mechanism
+diagnostics from `diag.jsonl` and from held-out gradients of the final checkpoints.
+
 ## Statistics (two seeds per optimizer)
 
 * Unit = training run; pairing = seed.

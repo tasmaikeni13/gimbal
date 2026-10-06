@@ -401,7 +401,9 @@ def main() -> None:
         if writer:
             np.save(run_dir / "val_seq_losses.npy", v.astype(np.float32))
         if int(cfg["log"].get("ckpt_every", 0)):
-            checkpoint.save(ckpt_dir, stop, params, state, params_only=True)
+            # Full state: the final frames feed the Phase 08 frame diagnostics, the parameters
+            # the one-time test evaluation.
+            checkpoint.save(ckpt_dir, stop, params, state)
     if writer:
         (run_dir / "final.json").write_text(json.dumps(final, indent=1))
         print(json.dumps(final), flush=True)
