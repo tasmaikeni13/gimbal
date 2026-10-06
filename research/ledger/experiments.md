@@ -115,3 +115,24 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
 * Raw: `results/e212_numerics.json`, report `results/e212_report.md`; after C-013
   `results/e212_numerics_c013.json`, `results/e212_report_c013.md`.
 
+## Phase 02 re-runs after C-015 (sign-equivariant spectral-norm estimate)
+* Question: does C-015 change any Phase 02 result? (The change only affects frame moves whose
+  trust-region cap is active, mostly the first few.)
+* Design: every experiment that executes Gimbal's update re-run with the seeds of the C-013 runs
+  (paired before/after): E2.1–E2.4 Gimbal rows (`gimbal`, `gimbal_k4`), E2.2b, E2.5 (evaluation
+  seeds 300–311, full tuning protocol), E2.9, E2.12; E2.10 re-run because part (a) reads E2.1.
+  Command: `experiments/phase2/run_c015.sh` (60 workers), then `analyze_e21.py`,
+  `analyze_e25.py --tag full_c015`, `e210_theory_vs_simulation.py`, `make_report.py`.
+* Result: all gates G2.1–G2.6 pass (`experiments/phase2/report.md`); paired effect on the frame KL
+  at best memory within seed noise in nearly every cell (E2.1 report, "effect of C-015").
+* Raw: `experiments/phase2/results/*_c015*`.
+
+## E3.0 — JAX implementations against the PyTorch references (Phase 03)
+* Question: do the JAX AdamW, SOAP and Gimbal implement the reference rules?
+* Design: `tests/test_jax_optimizers.py` (criteria C-016): float64 50-step golden sequences,
+  float32 single steps from the reference's state for every step kind, float32 accuracy relative
+  to the float32 reference, invariants (orthogonality over 10⁴ steps, equivariance, eigenvector
+  sign gauge, scale invariance, descent), toy problems, edge cases.
+* Result: all pass after F-024 (C-015), F-025 (C-016) and F-026; float64 agreement ≈1e-12 over
+  60 steps for Gimbal.
+* Raw: pytest output (51 tests, CPU).
