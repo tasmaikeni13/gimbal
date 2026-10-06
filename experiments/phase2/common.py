@@ -124,14 +124,18 @@ FRAME_METHODS = {
                                 precondition_frequency=10),
     "soap_rt": lambda p, mem: SOAP([p], lr=0.0, weight_decay=0.0, shampoo_beta=mem, realtime=True),
     "klsoap": lambda p, mem: KLSOAP([p], lr=0.0, beta_kron=mem),
-    # Gimbal with the current defaults (C-004): bias-corrected rate, damping 0.003, flow variance
-    # tied to the frame memory with empirical-Bayes shrinkage, pooled warm start.
-    "gimbal": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem),
-    # Ablations: amortized flow (frame move every 4 steps); C-003 without shrinkage; v0.3
-    # (C-002 only: Adam's V as flow variance, eigh initialization).
+    # Gimbal with the current defaults (C-004, C-013): bias-corrected rate, damping 0.003, flow
+    # variance tied to the frame memory with empirical-Bayes shrinkage, pooled warm start, frame
+    # statistics on the empirical-Bayes innovation. "gimbal_k4" is the default (C-012);
+    # "gimbal" pins frame_every = 1.
+    "gimbal": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, frame_every=1),
     "gimbal_k4": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, frame_every=4),
-    "gimbal_noshrink": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, flow_shrink=False),
-    "gimbal_v03": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, flow_beta=None, init="eigh"),
+    # Historical ablations, run before C-013 and pinned to its uncentered statistics: C-003
+    # without shrinkage; v0.3 (C-002 only: Adam's V as flow variance, eigh initialization).
+    "gimbal_noshrink": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, flow_shrink=False,
+                                             frame_every=1, flow_center=False),
+    "gimbal_v03": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, flow_beta=None, init="eigh",
+                                        frame_every=1, flow_center=False),
 }
 
 # Memory grids. For EMA methods the value is the EMA coefficient (memory ~ 2/(1-beta) samples);
@@ -166,7 +170,7 @@ def full_grid(extension: str | None) -> dict[str, list[float]]:
 # Equal effective sample size: EMA beta=0.99 averages ~2/(1-beta)=200 samples; the flow with rate
 # alpha behaves like ~(2-alpha)/alpha samples (Theorem 4), so alpha=0.01 is the matched setting.
 MATCHED_MEMORY = {"soap": 0.99, "soap_rt": 0.99, "klsoap": 0.99, "pooled_eigh": 0.99,
-                  "kl_eigh": 0.99, "gimbal": 0.01}
+                  "kl_eigh": 0.99, "gimbal": 0.01, "gimbal_k4": 0.01}
 
 
 def eigh_desc_np(s: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -182,20 +186,21 @@ def exact_factor_frames(kind: str, beta: float, grads: list[np.ndarray]) -> Iter
     lf, rf = np.zeros((m, m)), np.zeros((n, n))
     ql, lam_l = np.eye(m), np.ones(m)
     qr, lam_r = np.eye(n), np.ones(n)
-    for t, g in enumerate(grads):
+    if kind == "kl_eigh":  # identity factors at the first gradient's scale, as in KLSOAP (F-018)
+        sigma = float(np.sqrt(np.mean(grads[0] ** 2)))
+        lf, rf = sigma * np.eye(m), sigma * np.eye(n)
+        lam_l, lam_r = sigma * np.ones(m), sigma * np.ones(n)
+    for g in grads:
         if kind == "pooled_eigh":
             lf = beta * lf + (1 - beta) * g @ g.T
             rf = beta * rf + (1 - beta) * g.T @ g
         else:
-            if t == 0:
-                lf, rf = g @ g.T / n, g.T @ g / m
-            else:
-                fl = lam_l.clip(min=0) + 1e-6 * lam_l.clip(min=0).mean() + 1e-300
-                fr = lam_r.clip(min=0) + 1e-6 * lam_r.clip(min=0).mean() + 1e-300
-                r_inv = (qr / fr) @ qr.T
-                l_inv = (ql / fl) @ ql.T
-                lf = beta * lf + (1 - beta) * (g @ r_inv @ g.T) / n
-                rf = beta * rf + (1 - beta) * (g.T @ l_inv @ g) / m
+            fl = lam_l.clip(min=0) + 1e-6 * lam_l.clip(min=0).mean() + 1e-300
+            fr = lam_r.clip(min=0) + 1e-6 * lam_r.clip(min=0).mean() + 1e-300
+            r_inv = (qr / fr) @ qr.T
+            l_inv = (ql / fl) @ ql.T
+            lf = beta * lf + (1 - beta) * (g @ r_inv @ g.T) / n
+            rf = beta * rf + (1 - beta) * (g.T @ l_inv @ g) / m
         ql, lam_l = eigh_desc_np(lf)
         qr, lam_r = eigh_desc_np(rf)
         yield ql, qr

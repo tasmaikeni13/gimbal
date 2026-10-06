@@ -25,7 +25,7 @@ RESULTS = HERE / "results" / "lm"
 
 GRIDS = {  # ordered: ours, the core peers, then the extended set (ARO) last
     "gimbal": [1e-3, 2e-3, 4e-3, 8e-3],
-    "gimbal_k4": [1e-3, 2e-3, 4e-3, 8e-3],
+    "gimbal_k1": [1e-3, 2e-3, 4e-3, 8e-3],
     "soap": [1e-3, 2e-3, 4e-3, 8e-3],
     "soap_rt": [1e-3, 2e-3, 4e-3, 8e-3],
     "klsoap": [1e-3, 2e-3, 4e-3, 8e-3],

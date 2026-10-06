@@ -22,7 +22,7 @@ from collections.abc import Iterable
 import torch
 from torch.optim import Optimizer
 
-from ._linalg import compute_dtype, eigh_desc, qr_orth, rotate, unrotate
+from ._linalg import compute_dtype, eye_like, qr_orth, rotate, unrotate
 
 
 class KLSOAP(Optimizer):
@@ -67,7 +67,7 @@ class KLSOAP(Optimizer):
     @staticmethod
     def _inv_in_frame(q: torch.Tensor, lam: torch.Tensor, damping: float) -> torch.Tensor:
         lam = lam.clamp_min(0.0)
-        lam = lam + damping * lam.mean() + 1e-30
+        lam = lam + damping * lam.mean() + torch.finfo(lam.dtype).tiny
         return (q / lam) @ q.T
 
     def _init(self, g: torch.Tensor, state: dict, group: dict) -> None:
@@ -76,10 +76,16 @@ class KLSOAP(Optimizer):
         state["step"] = 0
         state["m"] = torch.zeros_like(g)
         state["v"] = torch.zeros_like(g)
-        state["L"] = g @ g.T / n if m <= max_dim else None
-        state["R"] = g.T @ g / m if n <= max_dim else None
-        state["QL"] = eigh_desc(state["L"])[0] if state["L"] is not None else None
-        state["QR"] = eigh_desc(state["R"])[0] if state["R"] is not None else None
+        # Identity factors at the first gradient's scale; the reference algorithm leaves the
+        # initialization open. Factors built from one gradient are rank-deficient whenever m != n,
+        # and their damped inverses then amplify later gradients by up to 1/damping, which made
+        # this peer diverge sporadically (F-018). With L = R = sigma I the KL updates start at the
+        # fixed-point scale: G R^-1 G^T / n ~ sigma I.
+        sigma = g.square().mean().sqrt().clamp_min(torch.finfo(g.dtype).tiny)
+        state["L"] = sigma * eye_like(m, g) if m <= max_dim else None
+        state["R"] = sigma * eye_like(n, g) if n <= max_dim else None
+        state["QL"] = eye_like(m, g) if m <= max_dim else None
+        state["QR"] = eye_like(n, g) if n <= max_dim else None
 
     def _update(self, p: torch.Tensor, group: dict) -> None:
         g = compute_dtype(p.grad)

@@ -27,7 +27,7 @@ Phase 02 (frozen Gimbal algorithm and defaults; peer list). If Phase 02 changed 
 | AdamW | Loshchilov & Hutter 2019 | decoupled weight decay |
 | SOAP (f=10) | arXiv:2409.11321 + official repo `nikhilvyas/SOAP` | first step only initializes; V re-ordered by estimated eigenvalues at refresh |
 | SOAP real-time | arXiv:2607.20548 §5.4.2 | factors include current gradient; frame refreshed every step before projection |
-| KL-SOAP | arXiv:2607.20548 Alg. 2; arXiv:2509.03378 | KL factor accumulation with eigenvalue EMA |
+| KL-SOAP | arXiv:2607.20548 Alg. 2; arXiv:2509.03378 | KL factor accumulation with eigenvalue EMA; factors initialized as σ·I with σ the first gradient's RMS (the source leaves this open; first-gradient factors are rank-deficient and made the peer diverge, F-018/C-011) |
 | KL-Shampoo (extended) | arXiv:2509.03378 Fig. 3/12 | separable eigenvalues, no Adam |
 | Muon | Jordan 2024; arXiv:2502.16982 | Newton–Schulz (5 steps, coefficients 3.4445, −4.7750, 2.0315), Nesterov, RMS-matched scale |
 | NorMuon | arXiv:2510.05491 | neuron-wise second moment after orthogonalization |
@@ -78,7 +78,7 @@ with the PyTorch reference optimizers (and again with JAX once it exists). The s
 | ID | Question | Design | Primary metric |
 |---|---|---|---|
 | E3.1 (formerly E2.6) | Premise check on real gradients | Train the small byte-level LM; at steps 100, 400, 800 collect 96 independent minibatch gradients of selected matrices at fixed weights; on a fit half, estimate the pooled (SOAP), KL and Gimbal (batch likelihood with empirical-Bayes variances) frames; score them on the held-out half | $\kappa$; held-out log-likelihood gain in nats |
-| E3.2 (formerly E2.7) | Small-LM benchmark | Byte-level Llama-style LM (d=128, 4 layers) on the FineWeb-Edu sample; every optimizer gets the same 4-point LR grid (factor 2), extended outward while its best LR is on an edge; 3 seeds at the selected LR; Gimbal at the Phase 02 default and with `frame_every=4` | validation loss at equal steps; loss vs wall-clock |
+| E3.2 (formerly E2.7) | Small-LM benchmark | Byte-level Llama-style LM (d=128, 4 layers) on the FineWeb-Edu sample; every optimizer gets the same 4-point LR grid (factor 2), extended outward while its best LR is on an edge; 3 seeds at the selected LR; Gimbal at the Phase 02 default (`frame_every=4`) and with `frame_every=1` | validation loss at equal steps; loss vs wall-clock |
 
 ```bash
 python scripts/data/fetch_fineweb_edu_sample.py                      # data (once)

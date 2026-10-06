@@ -48,7 +48,7 @@ instance and the same noise stream. The experimental unit is the seed.
 | ID | Question | Design | Primary metric |
 |---|---|---|---|
 | E2.1 | Frame-estimation efficiency | Gradient streams from KRD$(U^\star,D)$ with $\log D_{ij}=a_i+b_j+\gamma c_{ij}$, spectra slope $s$; grid $\gamma\in\{0,0.5,1,2\}$, $s\in\{0.5,1,1.5\}$, shapes $(32,48),(64,64)$; every method at a grid of memories, extended equally for all methods while any best memory is on a grid edge; 10 confirmatory seeds (10–19) | time-averaged frame KL $J(\hat U)$ (Prop. 1) over the second half |
-| E2.2 | Identifiability stress | Crossing profiles with tied row sums (Example 1 family) | $J$; $J$ against memory length |
+| E2.2 | Identifiability stress | Crossing profiles with tied row sums (Example 1 family); E2.2b: horizons 800, 4,000, 16,000 steps with memory matched to the horizon (seeds 10–14) | $J$; $J$ against the horizon |
 | E2.3 | Tracking under drift | $U^\star(t)$ rotates at angular velocity $\omega$; best memory per method | time-averaged $J$ |
 | E2.4 | Heavy tails | Student-$t$ noise ($\nu\in\{3,5,\infty\}$) | $J$ |
 | E2.5 | Noisy quadratic optimization | Loss $\tfrac12\sum H_{ij}(Q_L^{\star\top}(W-W^\star)Q_R^\star)_{ij}^2$, gradient noise with KRD covariance $\propto H$, noise levels × $\gamma$ grid; LR tuned per method on an equal 7-point grid (seeds 0–2), evaluated on fresh seeds 100–111 | final loss |
@@ -69,9 +69,11 @@ eigenvectors at every step as controls in E2.1–E2.4.
   $\gamma=0$ Gimbal is within 25% of the best peer (theory predicts parity with KL-Shampoo there);
   C-006 adds that the paired bootstrap 95% upper bound of the geometric-mean ratio to the best peer
   is also below 1.25.
-* **G2.2 (identifiability).** In E2.2 Gimbal identifies the tied plane (its frame KL keeps falling as
-  memory lengthens) while pooled-factor frames do not, and Gimbal is below every peer in every tie
-  cell.
+* **G2.2 (identifiability).** In E2.2 Gimbal identifies the tied plane while pooled-factor frames do
+  not, and Gimbal is below every peer in every tie cell. "Identifies" means consistency: in E2.2b,
+  with memory matched to the horizon, Gimbal's frame KL falls monotonically and at least 4× from
+  800 to 16,000 steps while the exact pooled-factor frame falls less than 2× (C-010; the C-006
+  wording "keeps falling as memory lengthens" at a fixed 800-step horizon failed, F-016).
 * **G2.3 (tracking).** In E2.3 Gimbal's best-memory tracking error ≤ every peer's best-memory error.
 * **G2.4 (optimization).** In E2.5 Gimbal has the lowest mean final loss in every configuration with
   $\gamma\ge1$ (paired bootstrap 95% CI of the difference to each peer excludes 0) and is not

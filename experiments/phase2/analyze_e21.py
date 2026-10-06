@@ -9,6 +9,10 @@ over the second half of the run. Two comparisons:
 Gimbal is compared with each peer by a one-sided paired Wilcoxon test over seeds (Holm-corrected
 across peers within a cell) and a paired bootstrap interval of the log-ratio.
 
+Rows of ``gimbal`` and ``gimbal_k4`` re-run after change C-013 (files ``*_c013``) replace the
+earlier ones; those stay in the analysis as the ablation ``*_c012`` (the same configuration with
+frame statistics on the raw gradient), compared with the default on the same streams.
+
 Usage: python experiments/phase2/analyze_e21.py
 """
 
@@ -25,7 +29,8 @@ from common import MATCHED_MEMORY, holm, paired_bootstrap_ci, wilcoxon_less
 RESULTS = pathlib.Path(__file__).parent / "results"
 PEERS = ["soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh"]
 METHODS = ["gimbal", "soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh", "gimbal_k4",
-           "gimbal_noshrink", "gimbal_v03"]
+           "gimbal_k4_c012", "gimbal_noshrink", "gimbal_v03"]
+RERUN = ("gimbal", "gimbal_k4")  # re-run after C-013
 
 
 def read_jsonl(path: pathlib.Path) -> list[dict]:
@@ -40,9 +45,43 @@ def read_jsonl(path: pathlib.Path) -> list[dict]:
 
 
 def load(suite: str) -> list[dict]:
-    # base grid + equal-treatment extension (run_e21_ext.sh)
-    return (read_jsonl(RESULTS / f"e21_{suite}.jsonl")
-            + read_jsonl(RESULTS / f"e21_{suite}_ext.jsonl"))
+    """Base grid + equal-treatment extension; rows re-run after a peer fix (``*_peerfix``, C-011)
+    replace the rows of the same cell, seed, method and memory. After C-013 the re-run rows of
+    ``RERUN`` replace the earlier ones, which are kept under ``<method>_c012``."""
+    rows = {}
+    for name in (f"e21_{suite}.jsonl", f"e21_{suite}_ext.jsonl",
+                 f"e21_{suite}_peerfix.jsonl", f"e21_{suite}_ext_peerfix.jsonl"):
+        for r in read_jsonl(RESULTS / name):
+            rows[(cell_key(r), r["seed"], r["method"], r["memory"])] = r
+    rerun = (read_jsonl(RESULTS / f"e21_{suite}_c013.jsonl")
+             + read_jsonl(RESULTS / f"e21_{suite}_ext_c013.jsonl"))
+    if rerun:
+        for key in [k for k in rows if k[2] in RERUN]:
+            old = rows.pop(key)
+            old = {**old, "method": f"{old['method']}_c012"}
+            rows[(key[0], key[1], old["method"], key[3])] = old
+        for r in rerun:
+            rows[(cell_key(r), r["seed"], r["method"], r["memory"])] = r
+    return list(rows.values())
+
+
+def centering_effect(rows: list[dict], summary: list[dict]) -> list[str]:
+    """Paired effect of C-013 on frame KL: default / ``*_c012`` at each one's best memory."""
+    lines = ["| cell | k = 4: default / before C-013 | k = 1: default / before C-013 |",
+             "|---|---|---|"]
+    for cell in summary:
+        cells = []
+        for ours in RERUN[::-1]:
+            if f"{ours}_c012" not in cell["best"]["mean_kl"]:
+                cells.append("—")
+                continue
+            a = per_seed_best(rows, cell, ours)
+            b = per_seed_best(rows, cell, f"{ours}_c012")
+            diff = np.array([np.log(a[s]) - np.log(b[s]) for s in sorted(a)])
+            mean, lo, hi = (float(np.exp(x)) for x in paired_bootstrap_ci(diff))
+            cells.append(f"{mean:.3f} [{lo:.3f}, {hi:.3f}]")
+        lines.append(f"| {fmt_cell(cell)} | " + " | ".join(cells) + " |")
+    return lines
 
 
 def cell_key(r: dict) -> tuple:
@@ -116,23 +155,25 @@ def per_seed_best(rows: list[dict], cell: dict, method: str) -> dict:
     return by_mem[best]
 
 
-def separable_upper_ratio(rows: list[dict], cell: dict) -> float:
-    """Bootstrap 95% upper bound of the geometric-mean ratio Gimbal / best peer (paired)."""
+def separable_upper_ratio(rows: list[dict], cell: dict, ours: str = "gimbal") -> float:
+    """Bootstrap 95% upper bound of the geometric-mean ratio ours / best peer (paired)."""
     best_peer = min(PEERS, key=lambda p: cell["best"]["mean_kl"][p])
-    g = per_seed_best(rows, cell, "gimbal")
+    g = per_seed_best(rows, cell, ours)
     q = per_seed_best(rows, cell, best_peer)
     diff = np.array([np.log(g[s]) - np.log(q[s]) for s in sorted(g)])
     return float(np.exp(paired_bootstrap_ci(diff)[2]))
 
 
-def random_effects(summary: list[dict]) -> dict:
-    """DerSimonian–Laird pooling over cells of the mean paired log-ratio peer / Gimbal."""
+def random_effects(summary: list[dict], suffix: str = "_k4") -> dict:
+    """DerSimonian–Laird pooling over cells of the mean paired log-ratio peer / Gimbal
+    (``suffix`` "_k4": the default configuration, "": frame_every = 1)."""
     out = {}
+    key = f"kl_factor_vs_gimbal{suffix}"
     for peer in PEERS:
         means, variances = [], []
         for r in summary:
-            lo, hi = r["best"]["kl_factor_vs_gimbal"][peer][1:]
-            mean = np.log(r["best"]["kl_factor_vs_gimbal"][peer][0])
+            lo, hi = r["best"][key][peer][1:]
+            mean = np.log(r["best"][key][peer][0])
             se = (np.log(hi) - np.log(lo)) / (2 * 1.96)  # from the bootstrap interval
             means.append(mean)
             variances.append(max(se**2, 1e-12))
@@ -201,11 +242,31 @@ def main() -> None:
         for label in ("best", "matched"):
             report += [f"## Suite `{suite}` — {label} memory (mean frame KL, lower is better)", "",
                        markdown(summary, label), ""]
+        if any(r["method"].endswith("_c012") for r in rows):
+            report += [f"### Suite `{suite}`: effect of C-013 (frame statistics on the "
+                       "empirical-Bayes innovation)", "",
+                       "Geometric mean over seeds of the paired frame-KL ratio at each "
+                       "configuration's best memory, percentile-bootstrap 95% interval; < 1 means "
+                       "the default with C-013 is better. These streams have zero-mean gradients, "
+                       "so the change should cost little here.", "",
+                       *centering_effect(rows, summary), ""]
         gates[f"{suite}_k4_all_wins_best"] = all(r["best"].get("gimbal_k4_wins_all", False)
                                                  for r in summary)
         if suite == "main":
             sep = [r for r in summary if r["gamma"] == 0.0]
             nonsep = [r for r in summary if r["gamma"] > 0.0]
+            # the default configuration since C-012 is frame_every = 4 ("gimbal_k4")
+            gates["G2.1_k4_nonseparable_all_wins_best"] = all(
+                r["best"]["gimbal_k4_wins_all"] for r in nonsep)
+            gates["G2.1_k4_nonseparable_all_wins_matched"] = all(
+                r["matched"].get("gimbal_k4_wins_all", False) for r in nonsep)
+            worst_k4 = max(r["best"]["mean_kl"]["gimbal_k4"]
+                           / min(r["best"]["mean_kl"][p] for p in PEERS) for r in sep)
+            upper_k4 = max(separable_upper_ratio(rows, r, "gimbal_k4") for r in sep)
+            gates["G2.1_k4_separable_worst_ratio_vs_best_peer"] = worst_k4
+            gates["G2.1_k4_separable_worst_upper_ratio"] = upper_k4
+            gates["G2.1_k4_pass"] = bool(gates["G2.1_k4_nonseparable_all_wins_best"]
+                                         and worst_k4 <= 1.25 and upper_k4 <= 1.25)
             gates["G2.1_nonseparable_all_wins_best"] = all(r["best"]["gimbal_wins_all"]
                                                            for r in nonsep)
             gates["G2.1_nonseparable_all_wins_matched"] = all(r["matched"]["gimbal_wins_all"]
@@ -221,16 +282,19 @@ def main() -> None:
             uppers = [separable_upper_ratio(rows, r) for r in sep]
             gates["G2.1_separable_worst_upper_ratio"] = max(uppers)
             gates["G2.1_separable_upper_within_25pct"] = bool(max(uppers) <= 1.25)
-            pooled = random_effects(summary)
             report += ["## Random-effects pooling across main-suite cells", "",
                        "Paired log-ratio log(KL_peer / KL_Gimbal) per seed at best memories; "
-                       "DerSimonian–Laird pooling of the per-cell means (cells as studies).", "",
-                       "| peer | pooled factor | 95% CI | I² | cells |", "|---|---|---|---|---|"]
-            for peer, v in pooled.items():
-                report.append(f"| {peer} | {v['factor']:.2f} | [{v['lo']:.2f}, {v['hi']:.2f}] |"
-                              f" {v['i2']:.2f} | {v['k']} |")
-            report.append("")
-            gates["random_effects_factor_vs_gimbal"] = {k: v["factor"] for k, v in pooled.items()}
+                       "DerSimonian–Laird pooling of the per-cell means (cells as studies).", ""]
+            for suffix, title in (("_k4", "default (frame_every = 4)"), ("", "frame_every = 1")):
+                pooled = random_effects(summary, suffix)
+                report += [f"Gimbal {title}:", "", "| peer | pooled factor | 95% CI | I² | cells |",
+                           "|---|---|---|---|---|"]
+                for peer, v in pooled.items():
+                    report.append(f"| {peer} | {v['factor']:.2f} | [{v['lo']:.2f}, "
+                                  f"{v['hi']:.2f}] | {v['i2']:.2f} | {v['k']} |")
+                report.append("")
+                gates[f"random_effects_factor_vs_gimbal{suffix}"] = {
+                    k: v["factor"] for k, v in pooled.items()}
         if suite == "tie":
             gates["G2.2_tie_all_wins"] = all(r["best"]["gimbal_wins_all"] for r in summary)
             report += ["### Tie suite: mean frame KL by memory (longer memory to the right for "

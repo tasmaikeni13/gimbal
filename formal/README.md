@@ -62,7 +62,13 @@ Every theorem below depends only on `propext`, `Classical.choice` and `Quot.soun
   and checked by Monte Carlo in `experiments/phase1/check_identities.py`.
 * Hadamard's determinant inequality (used in Proposition 1's non-negativity): not in Mathlib at
   this version; cited.
-* Conjecture 4.1 (global convergence) is open.
+* Conjecture 4.1 (global convergence) is open; E2.11 gives numerical evidence only.
+* Expansions in a small parameter (Lemma 5.4.2's second-order plug-in term, Proposition 4.5's
+  Hessian as a second derivative) are proved on paper and checked numerically (E2.10 (b), (e)). Lean
+  covers the exact identities they start from: `excess_variance_identity` and
+  `pair_rotation_product`, with the bound `pair_rotation_cost_le_half_fisher_sq`.
+* Statistical properties of the split-sample noise estimate (Proposition 5.5) are checked by Monte
+  Carlo (E2.10 (c)); Lean covers the optimal shrinkage factor (`shrinkage_risk_eq_iff`).
 
 ## Fidelity audit
 

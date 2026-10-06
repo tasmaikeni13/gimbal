@@ -191,9 +191,9 @@ information of Theorem 2 evaluated at the current estimates; dividing by it is A
 gradient, and $\delta$ is a Levenberg–Marquardt damping that bounds the step for near-degenerate
 pairs.
 
-**Amortized flow** (`frame_every` $=k$). The score $S-S^\top$ is accumulated for $k$ steps with the
-frame fixed, and the frame then takes one step with the mean score and the effective rate
-$1-\prod_{s}(1-\alpha_s)$ over those $k$ steps. Every gradient still enters the estimate; the
+**Amortized flow** (`frame_every` $=k$, default $k=4$ since C-012). The score $S-S^\top$ is
+accumulated for $k$ steps with the frame fixed, and the frame then takes one step with the mean
+score and the effective rate $1-\prod_{s}(1-\alpha_s)$ over those $k$ steps. Every gradient still enters the estimate; the
 retraction, the polish and the Fisher matrix are paid once per $k$ steps. In the linear regime the
 amortized and per-step recursions agree to first order in $k\alpha$ (L3); Monte Carlo (E2.1 pilot)
 shows unchanged final frame quality for $k\in\{4,10\}$ and a slower first ~$200$ steps.
@@ -257,9 +257,10 @@ $\langle u,u'\rangle=\sum_jD_{ij}D_{kj}u_ju'_j$.
    $W=\sum g_jc_j^2(D_{ij}^{-2}+D_{kj}^{-2})$, $Z_1=\sum m_jc_j^2(D_{ij}^{-2}+D_{kj}^{-2})^2$ (pair indices
    dropped). It comes from the growth of $\mathrm{Var}(1/(1+\varepsilon))=\bar\varepsilon^2+8\bar\varepsilon^4$, the
    mean shift of the weights along $w^\star$, the fluctuation of the sensitivity $\langle w,w^\star\rangle$, and
-   third- and fourth-moment cross terms; it vanishes for $n=1$, where the exact excess is 0. The
-   leading term alone underestimates the excess by up to ≈20% at $\bar\varepsilon^2=0.02$ when the
-   excess is near 1 (E2.10 (b)).
+   third- and fourth-moment cross terms; it vanishes for $n=1$, where the exact excess is 0. Its
+   dominant part makes the relative correction to the leading term about
+   $\bar\varepsilon^2(6+3R_{ik}/F_{ik})$, which is not negligible at $\bar\varepsilon^2=0.02$ (measured in
+   E2.10 (b)).
 3. *Orthogonality.* At the true frame the frame score is odd under the sign flip $Z_{i\cdot}\to-Z_{i\cdot}$
    while the variance score is even, so the Fisher information is block-diagonal between frame and
    variances. Estimating $D$ therefore costs nothing at first order; item 2 is a finite-memory
@@ -327,12 +328,35 @@ through the efficient score (Lean: `restart_closed_form`). (iii) The reason is f
 Theorem 4.2 is local, and a flow started from the frame of one gradient is far outside its linear
 regime and slowed by the trust-region caps. Where pooled factors are not consistent (tied sums),
 the warm start gains nothing for the tied pair, and the flow's contraction removes the initial error
-at the rate of Theorem 4.2; E2.2 tests this case.
+at the rate of Theorem 4.2. (iv) A consequence of (ii): while the memory exceeds the elapsed time
+($\alpha t\ll1$), the restart weight $(1-\beta^{T_w})\beta^{t-T_w}/(1-\beta^t)$ decays only like $T_w/t$, so an
+inconsistent warm-start estimate leaves a bias of that order; for moderate $\alpha$ it decays
+geometrically. At a fixed horizon the frame error is therefore U-shaped in the memory in tied
+cells (observed in E2.2, F-016), and it still vanishes as the horizon grows with the memory matched
+to it (E2.2b, `experiments/phase2/results/e22b_report.md`).
+
+**Proposition 4.5 (the flow descends $J$; Newton step at the optimum; L4, checked numerically in
+E2.10 (e)).** Let $D=d_U$ (the profile variances at the current frame). Then
+1. the expected score is the gradient of $J$ in left-trivialized skew coordinates: with
+   $Q_L\mapsto Q_L(I+\Omega)$, $dJ=\sum_{i<k}\Omega_{ik}\,E[E^L]_{ik}$ (and the same on the right), so the
+   noise-free flow $\Omega=-\alpha E[E]\oslash(F+\delta n)$ decreases $J$ monotonically;
+2. at $U^\star$ the Hessian of $J$ in these coordinates is diagonal with entries $F^L_{ik}$, $F^R_{jl}$
+   (left–right and pair–pair cross terms vanish), so near the optimum the natural-gradient step is
+   a Newton step on $J$, which is why its contraction does not depend on the eigen-gap.
+
+*Proof.* (1) $d\,(d_U)_{ij}=-2\sum_k\Omega_{ik}E[Z_{ij}Z_{kj}]$, so
+$dJ=-\sum_{ik}\Omega_{ik}\sum_jE[Z_{ij}Z_{kj}]/(d_U)_{ij}=\sum_{i<k}\Omega_{ik}E[E^L]_{ik}$ by skew-symmetry.
+(2) For a rotation by $\theta$ in one pair, $J(\theta)=\tfrac12\sum_j\log\big(1+\sin^2\theta\cos^2\theta\,g_j\big)$ with
+$g_j=(D_{ij}-D_{kj})^2/(D_{ij}D_{kj})$ (Lean: `pair_rotation_product`), whose second derivative at 0 is
+$\sum_jg_j=F_{ik}$; cross terms vanish because the Fisher information is diagonal (Theorem 2). ∎
 
 **Conjecture 4.1 (L2).** For $S$ in the KRD family with all profiles pairwise distinct, the minimizers of
 $J$ on $\mathcal G$ are $U^\star$ up to signed permutations, every other critical point is a strict
 saddle, and the stochastic flow with steps $\alpha_t$, $\sum\alpha_t=\infty$, $\sum\alpha_t^2<\infty$
-converges almost surely to a minimizer. (ODE-method route; not proved here.)
+converges almost surely to a minimizer. (ODE-method route; not proved here.) Numerical evidence
+(L1, E2.11): from Haar-random frames the noise-free flow reached the global minimum in every run on
+separable, non-separable, tied and near-degenerate arrays up to 24×32, and the critical points
+obtained by 45° rotations of one or two pairs are strict saddles that the flow escapes.
 
 **Theorem 5 (retractions; L5).** Let $\Omega$ be real skew-symmetric.
 1. $I-\Omega$ is invertible and the Cayley transform $(I-\Omega)^{-1}(I+\Omega)$ is orthogonal.
@@ -440,6 +464,7 @@ Phase 2 measures both costs by Monte Carlo for every method on the same gradient
 | Thm 2 | per pair, at the true frame | $D>0$ | equal profiles ($F=0$), tied sums | L4/L5 |
 | Thm 3 | asymptotic in $N$ (item 1); exact inequalities (2–4) | gap $\ne0$, $F>0$ assumed explicitly | near-degenerate gaps, ratios $10^{\pm8}$, $n=1$ | L3 (1), L5 (2–4) |
 | Thm 4 | local, $D$ known (item 2) | $\alpha\in(0,2)$ | $\alpha\to0$, $\alpha\to2$ | L3/L5 |
+| Prop. 4.5 | any frame (1); at $U^\star$ (2) | $d_U>0$ | pairs with $F=0$ (zero curvature) | L4 (+ L1: E2.10 (e)) |
 | Thm 5 | all real skew $\Omega$ | $I\pm\Omega$ invertible (proved) | large $\|\Omega\|$ (relative errors) | L5 |
 | Thm 6 | all orthogonal $(P,R)$, same hyper-parameters | none | repeated eigenvalues at init (gauge) | L5 (one step) + test |
 | Thm 7 | orthogonal $P$ | none | signed permutations | L5 |
@@ -473,6 +498,12 @@ Failures found while auditing (all in the checking code, none in a theorem) are 
   (flat separable spectra still behind SOAP, diagnosed as plug-in noise for pairs with small
   Fisher information).
 * 2026-10-06 — v0.5 (Phase 02, F-013): Lemma 5.4.2 gains its next-order coefficient $C_{ik}$. The
-  pre-registered check of the leading-order formula (E2.10 (b), gate G2.5 (ii)) failed: up to 23.5%
-  error at $\bar\varepsilon^2=0.02$ near the edge of the gated range. With the second-order term the
-  error on the same pairs fell to 5.6% (median 0.7%); the gate is re-run on fresh pairs.
+  pre-registered check of the leading-order formula (E2.10 (b), gate G2.5 (ii)) failed near the
+  edge of the gated range; with the second-order term the error fell well inside the tolerance on
+  the same pairs, and the gate is re-run on fresh pairs (`experiments/phase2/results/e210_report.md`,
+  `research/ledger/failures.md`). Remark 5.6 gains the warm-start bias consequence (F-016, E2.2b).
+* 2026-10-06 — v0.6 (Phase 02, C-012): default `frame_every` $=4$. With $k=1$ the cost model puts the
+  optimizer above SOAP even with QR at 10× matmul cost (F-019); $k=4$ was pre-registered in the
+  confirmatory runs and keeps the frame quality within a few percent. Proposition 4.5 (the flow
+  descends $J$; Hessian of $J$ at $U^\star$ = Fisher) and numerical evidence for Conjecture 4.1 added.
+

@@ -59,7 +59,8 @@ def optimizer_costs(m: int, n: int) -> dict[str, dict]:
         "aro": dict(matmul=4 * m * m * n, nonmatmul=(4 / 3) * m**3, state=m * m + m * n),
     }
     for k in (1, 4, 10):
-        # 4 units per step (rotate G, rotate M, unrotate update, score); every k steps the Fisher
+        # 4 units per step (rotate G, rotate M, unrotate update, score; the centering of C-013
+        # reuses the rotated momentum and adds only elementwise work); every k steps the Fisher
         # matrix (1 unit), Ω² and Q·P (2 cubes) and one polish (2 cubes). State: Q_L, Q_R, M, V and
         # the flow's variance averages (full and odd-step, Proposition 5.5); score accumulators for
         # k > 1. The 50-step warm start adds m² + n² temporarily and two eigh in total (ignored).
@@ -98,13 +99,17 @@ BENCH = {
     "normuon": lambda p: NorMuon([p], lr=1e-3),
     "splus": lambda p: SPlus([p], lr=1e-3),
     "aro": lambda p: AROSinkhorn([p], lr=1e-3),
-    "gimbal_k1": lambda p: Gimbal([p], lr=1e-3),
+    "gimbal_k1": lambda p: Gimbal([p], lr=1e-3, frame_every=1),
     "gimbal_k4": lambda p: Gimbal([p], lr=1e-3, frame_every=4),
     "gimbal_k10": lambda p: Gimbal([p], lr=1e-3, frame_every=10),
 }
 
 
-def bench(threads: int = 4, steps: int = 20) -> dict:
+def bench(threads: int = 4, steps: int = 40, skip: int = 60) -> dict:
+    """Steady-state ms per step: ``skip`` untimed steps (past Gimbal's 50-step warm start, whose
+    factor accumulators are temporary), then ``steps`` timed ones (a multiple of every method's
+    period: SOAP's 10, Gimbal's frame_every 4 and 10). The first run timed steps 4-23, inside the
+    warm start, for every method."""
     torch.set_num_threads(threads)
     out = {}
     for m, n in sorted(set(SHAPES)):
@@ -114,11 +119,11 @@ def bench(threads: int = 4, steps: int = 20) -> dict:
             p = torch.nn.Parameter(torch.zeros(m, n))
             opt = ctor(p)
             times = []
-            for t in range(steps + 3):
+            for t in range(steps + skip):
                 p.grad = grads[t % 4]
                 t0 = time.perf_counter()
                 opt.step()
-                if t >= 3:
+                if t >= skip:
                     times.append(time.perf_counter() - t0)
             out.setdefault(f"{m}x{n}", {})[name] = {"mean_ms": 1e3 * sum(times) / len(times)}
         print(f"benchmarked {m}x{n}", flush=True)
@@ -128,12 +133,13 @@ def bench(threads: int = 4, steps: int = 20) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bench", action="store_true")
+    parser.add_argument("--tag", default="", help="suffix of the output file")
     args = parser.parse_args()
     RESULTS.mkdir(parents=True, exist_ok=True)
     result = {"analytic": analytic_table()}
     if args.bench:
         result["cpu_benchmark_ms_per_step"] = bench()
-    (RESULTS / "e28_cost_model.json").write_text(json.dumps(result, indent=1))
+    (RESULTS / f"e28_cost_model{args.tag}.json").write_text(json.dumps(result, indent=1))
     a = result["analytic"]
     print(f"model forward+backward: {a['model_GMAC_per_step']:.0f} GMAC/step")
     print(f"{'optimizer':12s} {'matmul GMAC':>12s} {'QR/eigh GMAC':>13s} {'%model c=1':>11s} "

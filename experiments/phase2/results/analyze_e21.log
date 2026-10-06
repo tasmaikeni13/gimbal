@@ -1,0 +1,32 @@
+
+## Gate items
+
+```
+{
+ "main_k4_all_wins_best": false,
+ "G2.1_k4_nonseparable_all_wins_best": true,
+ "G2.1_k4_nonseparable_all_wins_matched": true,
+ "G2.1_k4_separable_worst_ratio_vs_best_peer": 1.10385193184317,
+ "G2.1_k4_separable_worst_upper_ratio": 1.1190592940490494,
+ "G2.1_k4_pass": true,
+ "G2.1_nonseparable_all_wins_best": true,
+ "G2.1_nonseparable_all_wins_matched": true,
+ "G2.1_separable_worst_ratio_vs_best_peer": 1.092260901576782,
+ "G2.1_separable_within_25pct": true,
+ "G2.1_separable_worst_upper_ratio": 1.108195779618331,
+ "G2.1_separable_upper_within_25pct": true,
+ "random_effects_factor_vs_gimbal": {
+  "soap": 25.97334455664358,
+  "soap_rt": 25.428188991070673,
+  "klsoap": 16.50468387868649,
+  "pooled_eigh": 25.51689526966514,
+  "kl_eigh": 17.229610761899817
+ },
+ "tie_k4_all_wins_best": true,
+ "G2.2_tie_all_wins": true,
+ "drift_k4_all_wins_best": true,
+ "G2.3_drift_all_wins": true,
+ "tails_k4_all_wins_best": true,
+ "G2.4h_tails_all_wins": true
+}
+```

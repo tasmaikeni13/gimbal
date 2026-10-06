@@ -107,6 +107,63 @@ def test_gimbal_descent_identity(grads):
         assert torch.sum(g * update) > 0
 
 
+def test_gimbal_without_frames_is_adam(grads):
+    # Sides above max_precond_dim keep the identity frame; with none left Gimbal is Adam.
+    kw = dict(lr=1e-2, betas=(0.9, 0.95), eps=1e-8)
+    ours, _ = run_steps(Gimbal, grads, max_precond_dim=2, **kw)
+    ref, _ = run_steps(torch.optim.Adam, grads, **kw)
+    assert torch.allclose(ours, ref, rtol=1e-10, atol=1e-12)
+
+
+@pytest.mark.parametrize("center", [True, "adaptive"])
+def test_gimbal_frame_statistic_is_the_innovation(grads, center):
+    # Proposition 5.7: the flow sees rot(G_t - c M_{t-1}), M the bias-corrected momentum. The
+    # optimizer derives rot(M_{t-1}) and rot(M_t) from one product; check against the definition.
+    seen = []
+
+    class Probe(Gimbal):
+        def _flow(self, state, z, d, group):
+            seen.append(z.clone())
+            super()._flow(state, z, d, group)
+
+    w = torch.nn.Parameter(torch.zeros(6, 4))
+    opt = Probe([w], lr=1e-2, init="eigh", flow_center=center)
+    b1, b2 = 0.9, 0.95
+    m, v_total = torch.zeros(6, 4), 0.0
+    for t, g in enumerate(grads, start=1):
+        st = opt.state.get(w)
+        frames = (st["QL"].clone(), st["QR"].clone()) if st else None
+        w.grad = g.clone()
+        opt.step()
+        if t > 1:
+            c = 1.0
+            if center == "adaptive":
+                c = Gimbal._mean_shrinkage(m, torch.full((1,), v_total), b1, b2, t)
+            expected = frames[0].T @ (g - c * m / (1 - b1 ** (t - 1))) @ frames[1]
+            assert torch.allclose(seen[-1], expected, atol=1e-12)
+        m = b1 * m + (1 - b1) * g
+        v_total = b2 * v_total + (1 - b2) * float((g * g).sum())
+
+
+def test_mean_shrinkage_separates_signal_from_noise():
+    gen = torch.Generator().manual_seed(7)
+    b1, b2 = 0.9, 0.95
+    factors = {}
+    for name, mean in (("noise", 0.0), ("signal", 3.0)):
+        m, v, cs = torch.zeros(8, 5), torch.zeros(8, 5), []
+        for t in range(1, 401):
+            if t > 1:
+                cs.append(float(Gimbal._mean_shrinkage(m, v, b1, b2, t)))
+            g = mean + torch.randn(8, 5, generator=gen)
+            m = b1 * m + (1 - b1) * g
+            v = b2 * v + (1 - b2) * g * g
+        factors[name] = sum(cs[50:]) / len(cs[50:])
+    # zero-mean gradients: the momentum is noise and is (mostly) not subtracted
+    assert factors["noise"] < 0.25
+    # a mean 3x the noise: the momentum is nearly all signal (risk-optimal factor ~0.98)
+    assert factors["signal"] > 0.95
+
+
 def test_transport_preserves_total_second_moment():
     gen = torch.Generator().manual_seed(3)
     w = torch.nn.Parameter(torch.zeros(5, 7))

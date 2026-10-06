@@ -6,7 +6,7 @@ entries ``D``, in a Kronecker frame. The maximum-likelihood frame of that model 
 diagonalization problem. Gimbal follows it with one natural-gradient step on ``O(m) x O(n)`` per
 iteration, using only matrix products (theory/gimbal_theory.md, Section 5):
 
-    Z   = Q_L^T G Q_R                      rotated gradient
+    Z   = Q_L^T (G - c M) Q_R              rotated innovation (M: momentum, Proposition 5.7)
     A   = 1 / D                            D: variance estimates (Lemma 5.4, Proposition 5.5)
     S_L = Z (Z * A)^T,   E_L = S_L - S_L^T     score of the left rotation   (Lemma A)
     F_L = D A^T + A D^T - 2n               Fisher information per pair     (Theorem 2)
@@ -15,8 +15,11 @@ iteration, using only matrix products (theory/gimbal_theory.md, Section 5):
 
 and symmetrically on the right. ``D`` is an exponential average of ``Z^2`` with the frame's own
 memory, shrunk toward its separable (Kronecker) fit by an empirical-Bayes factor estimated from
-a split-sample noise estimate. After a short warm start (two eigendecompositions in total) there
-are no Kronecker factor buffers and no QR or eigendecomposition.
+a split-sample noise estimate. The mean subtracted from the gradient is the bias-corrected momentum
+of the previous step times its own empirical-Bayes factor ``c``, so zero-mean gradients are used as
+they are and a gradient with a real mean (a deterministic descent signal) does not tilt the frame.
+After a short warm start (two eigendecompositions in total) there are no Kronecker factor buffers
+and no QR or eigendecomposition.
 """
 
 from __future__ import annotations
@@ -36,6 +39,13 @@ from ._linalg import (
     skew_spectral_norm,
     unrotate,
 )
+
+
+def _rotated_copy(x: torch.Tensor, ql: torch.Tensor | None,
+                  qr: torch.Tensor | None) -> torch.Tensor:
+    """``rotate`` that never aliases its input (with no frame on either side it returns ``x``)."""
+    y = rotate(x, ql, qr)
+    return y.clone() if y is x else y
 
 
 class Gimbal(Optimizer):
@@ -71,7 +81,9 @@ class Gimbal(Optimizer):
         keeps the frames orthogonal to working precision (Theorem 5.3).
     frame_every:
         Move the frame once every ``frame_every`` steps using the mean score of those steps
-        (amortizes the retraction, polish and Fisher costs; see ``_flow``).
+        (amortizes the retraction, polish and Fisher costs; see ``_flow``). The default 4 keeps
+        the optimizer's cost below SOAP's in the cost model (Proposition 9, E2.8) at a frame
+        quality within a few percent of moving every step (E2.1, E2.9); change C-012.
     flow_beta:
         Variance estimate used by the frame flow. ``None`` reuses Adam's second moment (memory set
         by ``betas[1]``). A float keeps a separate EMA with that coefficient; ``"tied"`` uses
@@ -82,6 +94,15 @@ class Gimbal(Optimizer):
         the positive-part James–Stein factor ``c = (1 - noise / residual)_+`` (Proposition 5.5).
         The noise level is measured by splitting the average into interleaved odd and even steps.
         Needs ``flow_beta``; together they cost two m x n buffers.
+    flow_center:
+        Statistic the frame is fitted to. ``False`` uses the gradient, i.e. the zero-mean model of
+        the uncentered second moment. ``True`` uses the innovation ``G_t - M_{t-1}`` (``M`` the
+        bias-corrected momentum), the likelihood of a gradient with a non-zero mean. ``"adaptive"``
+        uses ``G_t - c M_{t-1}`` with the positive-part James–Stein factor
+        ``c = (1 - noise / ||M_{t-1}||^2)_+`` of the momentum as an estimate of the mean: about 0
+        for zero-mean gradients, where subtracting the momentum would only add noise, and about 1
+        when a real mean dominates (Proposition 5.7; change C-013). Centering reuses the
+        momentum's rotation, so it adds no matrix product.
     transport:
         If True, transport the second moment to the new frame with the doubly-stochastic map
         ``V <- (P_L o P_L)^T V (P_R o P_R)`` (Theorem 7), with columns renormalized to sum to one
@@ -115,9 +136,10 @@ class Gimbal(Optimizer):
         max_angle: float = 0.25,
         max_rotation: float = 1.0,
         polish_every: int = 1,
-        frame_every: int = 1,
+        frame_every: int = 4,
         flow_beta: float | str | None = "tied",
         flow_shrink: bool = True,
+        flow_center: bool | str = "adaptive",
         transport: bool = False,
         init: str = "pooled",
         warm_start_steps: int = 50,
@@ -125,6 +147,8 @@ class Gimbal(Optimizer):
     ) -> None:
         if init not in ("pooled", "eigh", "identity"):
             raise ValueError(f"unknown init {init!r}")
+        if flow_center not in (False, True, "adaptive"):
+            raise ValueError(f"unknown flow_center {flow_center!r}")
         defaults = dict(
             lr=lr,
             betas=betas,
@@ -141,6 +165,7 @@ class Gimbal(Optimizer):
             frame_every=frame_every,
             flow_beta=flow_beta,
             flow_shrink=flow_shrink,
+            flow_center=flow_center,
             transport=transport,
             init=init,
             warm_start_steps=warm_start_steps,
@@ -193,10 +218,27 @@ class Gimbal(Optimizer):
         # transport; V lives in rotated coordinates.
         z = rotate(g, ql, qr)
         m_buf, v_buf = state["M"], state["V"]
-        m_buf.mul_(b1).add_(g, alpha=1 - b1)
+        g_flow, z_flow = g, z
+        if group["flow_center"] and t > 1:
+            # Frame statistics on the innovation G_t - c M_{t-1} (Proposition 5.7). M_{t-1} is
+            # predictable, so the plug-in mean adds no cross term to the expected score. Rotating
+            # M_{t-1} instead of M_t gives both from one product, as rot(M_t) is linear in it.
+            c_mu = 1.0
+            if group["flow_center"] == "adaptive":
+                c_mu = self._mean_shrinkage(m_buf, v_buf, b1, b2, t)
+            scale = c_mu / (1 - b1 ** (t - 1))
+            m_rot = _rotated_copy(m_buf, ql, qr)
+            z_flow = z - scale * m_rot
+            if "L_acc" in state:
+                g_flow = g - scale * m_buf
+            m_rot.mul_(b1).add_(z, alpha=1 - b1)
+            m_buf.mul_(b1).add_(g, alpha=1 - b1)
+        else:
+            m_buf.mul_(b1).add_(g, alpha=1 - b1)
+            m_rot = _rotated_copy(m_buf, ql, qr)
         v_buf.mul_(b2).addcmul_(z, z, value=1 - b2)
         v_hat = v_buf / (1 - b2**t)
-        n_rot = rotate(m_buf, ql, qr).div_(1 - b1**t).div_(v_hat.sqrt().add_(group["eps"]))
+        n_rot = m_rot.div_(1 - b1**t).div_(v_hat.sqrt().add_(group["eps"]))
         update = unrotate(n_rot, ql, qr)
         if group["weight_decay"] != 0:
             p.mul_(1 - group["lr"] * group["weight_decay"])
@@ -207,14 +249,14 @@ class Gimbal(Optimizer):
         if "L_acc" in state:
             if t > 1:
                 if state["L_acc"] is not None:
-                    state["L_acc"].add_(g @ g.T)
+                    state["L_acc"].add_(g_flow @ g_flow.T)
                 if state["R_acc"] is not None:
-                    state["R_acc"].add_(g.T @ g)
+                    state["R_acc"].add_(g_flow.T @ g_flow)
             if t >= group["warm_start_steps"]:
                 self._warm_start(state)
                 # This gradient is already part of the pooled estimate: express it in the new
                 # frame for the variance estimate and skip this step's frame move (Remark 5.6).
-                z = rotate(g, state["QL"], state["QR"])
+                z_flow = rotate(g_flow, state["QL"], state["QR"])
                 restarted = True
 
         # Variances seen by the flow, then one natural-gradient step of the likelihood.
@@ -224,7 +266,7 @@ class Gimbal(Optimizer):
         else:
             beta_d = 1.0 - group["rot_rate"] if flow_beta == "tied" else float(flow_beta)
             vf = state.setdefault("VF", torch.zeros_like(g))
-            vf.mul_(beta_d).addcmul_(z, z, value=1 - beta_d)
+            vf.mul_(beta_d).addcmul_(z_flow, z_flow, value=1 - beta_d)
             w_full = 1 - beta_d**t
             if group["flow_shrink"]:
                 # Interleaved split: VF_odd averages the odd steps, VF - VF_odd the even ones.
@@ -232,7 +274,7 @@ class Gimbal(Optimizer):
                 vf_odd.mul_(beta_d)
                 w_odd = state.get("w_odd", 0.0) * beta_d
                 if t % 2 == 1:
-                    vf_odd.addcmul_(z, z, value=1 - beta_d)
+                    vf_odd.addcmul_(z_flow, z_flow, value=1 - beta_d)
                     w_odd += 1 - beta_d
                 state["w_odd"] = w_odd
                 d = self._shrunk_variances(vf, vf_odd, w_full, w_odd, group["floor"])
@@ -240,7 +282,28 @@ class Gimbal(Optimizer):
                 v_flow = vf / w_full
                 d = v_flow + (group["floor"] * v_flow.mean() + torch.finfo(v_flow.dtype).tiny)
         if not restarted:
-            self._flow(state, z, d, group)
+            self._flow(state, z_flow, d, group)
+
+    @staticmethod
+    def _mean_shrinkage(m_buf: torch.Tensor, v_buf: torch.Tensor, b1: float, b2: float,
+                        t: int) -> torch.Tensor:
+        """Empirical-Bayes factor of the previous momentum as an estimate of the mean (Prop. 5.7).
+
+        The bias-corrected momentum over ``t - 1`` gradients carries sampling noise ``kappa`` times
+        the total gradient variance, ``kappa`` being the sum of its squared normalized weights
+        (Lean: ``ema_weight_sq_sum``). With ``S_M = ||M||^2`` and ``S_V = sum V`` (Adam's
+        uncentered second moment, whose sum does not depend on the frame), the total variance is
+        about ``(S_V - S_M) / (1 - kappa)``, and ``c = (1 - noise / S_M)_+`` is the plug-in of the
+        risk-optimal factor ``S / (S + noise)`` (Lean: ``shrinkage_risk_eq_iff``).
+        """
+        kappa = (1 - b1) * (1 + b1 ** (t - 1)) / ((1 + b1) * (1 - b1 ** (t - 1)))
+        if 1 - kappa < 1e-6:
+            # One gradient (t = 2) or no momentum (b1 = 0): mean and noise are not separable.
+            return torch.zeros((), dtype=m_buf.dtype, device=m_buf.device)
+        s_m = m_buf.square().sum() / (1 - b1 ** (t - 1)) ** 2
+        s_v = v_buf.sum() / (1 - b2 ** (t - 1))
+        noise = kappa * (s_v - s_m).clamp_min(0.0) / (1 - kappa)
+        return (1 - noise / s_m.clamp_min(torch.finfo(s_m.dtype).tiny)).clamp(0.0, 1.0)
 
     @staticmethod
     def _shrunk_variances(vf: torch.Tensor, vf_odd: torch.Tensor, w_full: float, w_odd: float,
@@ -334,7 +397,7 @@ class Gimbal(Optimizer):
         polish and the Fisher matrix are then paid once per k steps.
         """
         alpha = group["rot_rate"]
-        if group["rot_schedule"] == "bias_corrected":
+        if group["rot_schedule"] == "bias_corrected" and alpha > 0:
             alpha = min(group["rot_rate_max"], alpha / (1 - (1 - alpha) ** state["step"]))
         a = d.reciprocal()
         sides = [(k, s) for k, s in (("QL", "left"), ("QR", "right")) if state[k] is not None]

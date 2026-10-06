@@ -5,11 +5,13 @@ covariance is proportional to H in the same Kronecker frame (Fisher ~ Hessian). 
 array H has log H = a_i + b_j + gamma c_ij (gamma = 0: separable).
 
 Protocol (phases/02, G2.4): each method gets the same 7-point learning-rate grid (factor 2 around a
-method-specific centre), tuned on seeds 0-2; the selected LR is evaluated on fresh seeds 100-111.
-All methods see identical problems and noise per seed (paired). Schedule: 5% linear warm-up, cosine
-decay to 10%.
+method-specific centre), tuned on seeds 0-2; the selected LR is evaluated on fresh seeds. All
+methods see identical problems and noise per seed (paired). Schedule: 5% linear warm-up, cosine
+decay to 10%. Evaluation seeds: 100-111 for the run that found F-020 (outputs ``*_full``), 300-311
+for the confirmation of C-013 (``--tag _c013``, outputs ``*_full_c013``); seeds 200-203 were
+pilots and are not reported.
 
-Usage: python experiments/phase2/e25_noisy_quadratic.py [--quick]
+Usage: python experiments/phase2/e25_noisy_quadratic.py [--quick] [--eval-offset 300] [--tag _c013]
 """
 
 from __future__ import annotations
@@ -42,11 +44,17 @@ METHODS = {
     "normuon": (lambda p, lr: NorMuon([p], lr=lr), 3e-2),
     "splus": (lambda p, lr: SPlus([p], lr=lr, weight_decay=0.0), 1.0),
     "aro": (lambda p, lr: AROSinkhorn([p], lr=lr), 3e-2),
-    "gimbal": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95)), 3e-2),
-    # Ablations of ours (not peers): amortized frame move, no variance shrinkage.
+    # Ours: the default ("gimbal_k4", frame_every = 4 since C-012) and frame_every = 1.
+    "gimbal": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=1), 3e-2),
     "gimbal_k4": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4), 3e-2),
-    "gimbal_noshrink": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), flow_shrink=False),
-                        3e-2),
+    # Ablations of ours (not peers): no variance shrinkage; frame statistics on the raw gradient
+    # (the default before C-013) and on the fully centered innovation (c = 1).
+    "gimbal_noshrink": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), flow_shrink=False,
+                                             frame_every=1), 3e-2),
+    "gimbal_k4_nocenter": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4,
+                                                flow_center=False), 3e-2),
+    "gimbal_k4_center": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4,
+                                              flow_center=True), 3e-2),
 }
 ORACLE = "oracle"  # Adam in the true frame: the ceiling for "Adam in a Kronecker frame" methods
 
@@ -116,10 +124,13 @@ def main() -> None:
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("--steps", type=int, default=400)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--eval-offset", type=int, default=300,
+                        help="first evaluation seed (100 for the F-020 run, 300 since C-013)")
+    parser.add_argument("--tag", default="", help="suffix of the output files")
     args = parser.parse_args()
     steps = 150 if args.quick else args.steps
     tune_seeds = [0, 1, 2]
-    eval_seeds = list(range(100, 104 if args.quick else 112))
+    eval_seeds = list(range(args.eval_offset, args.eval_offset + (4 if args.quick else 12)))
     methods = list(METHODS) + [ORACLE]
     centres = {**{k: v[1] for k, v in METHODS.items()}, ORACLE: 3e-2}
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -146,7 +157,7 @@ def main() -> None:
             for mth in methods for s in eval_seeds]
     with mp.Pool(args.workers) as pool:
         evals = pool.map(_job, jobs, chunksize=8)
-    tag = "quick" if args.quick else "full"
+    tag = ("quick" if args.quick else "full") + args.tag
     (RESULTS / f"e25_tune_{tag}.jsonl").write_text("\n".join(json.dumps(r) for r in tune))
     (RESULTS / f"e25_eval_{tag}.jsonl").write_text("\n".join(json.dumps(r) for r in evals))
     (RESULTS / f"e25_selected_lr_{tag}.json").write_text(json.dumps(

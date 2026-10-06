@@ -21,4 +21,4 @@ Each theory item and the places that consume it. When an item changes, every row
 | Remark 5.6 (pooled warm start, one-step estimator) + F-012 | `Variance.lean` (`restart_closed_form`) | `init="pooled"`, `warm_start_steps`, `Gimbal._warm_start` | E2.1, E2.2 | 03 (JAX: eigh once at step 50), 04 (one-off eigh) | Method |
 | Prop. 9 (cost) | — | `e28_cost_model.py` | E2.8 | 04, 08 | Method, Experiments |
 | Defaults $(\alpha,\delta,\rho,\theta_{\max})$ | — | `Gimbal.__init__` | E2.9 | 03–07 | Hyper-parameter table |
-| Peer set and their rules | — | `src/gimbal/torch/*` | E2.5–E2.7 | 03–08 | Baselines |
+| Peer set and their rules (incl. C-011, KL-SOAP initialization) | — | `src/gimbal/torch/*` | E2.1–E2.5, E3.1–E3.2 | 03–08 | Baselines |

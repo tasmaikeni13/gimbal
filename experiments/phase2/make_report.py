@@ -37,26 +37,39 @@ def gate_rows() -> list[tuple[str, str, str]]:
     rows = []
     e21 = load_json("e21_gate.json") or {}
     if e21:
-        worst = e21.get("G2.1_separable_worst_ratio_vs_best_peer", float("nan"))
-        upper = e21.get("G2.1_separable_worst_upper_ratio", float("nan"))
-        g21 = (e21.get("G2.1_nonseparable_all_wins_best") and e21.get("G2.1_separable_within_25pct")
-               and e21.get("G2.1_separable_upper_within_25pct", False))
+        worst = e21.get("G2.1_k4_separable_worst_ratio_vs_best_peer", float("nan"))
+        upper = e21.get("G2.1_k4_separable_worst_upper_ratio", float("nan"))
+        g21 = e21.get("G2.1_k4_pass")
+        k1 = (e21.get("G2.1_nonseparable_all_wins_best") and e21.get("G2.1_separable_within_25pct")
+              and e21.get("G2.1_separable_upper_within_25pct", False))
         rows.append(("G2.1 efficiency", verdict(g21),
-                     f"non-separable cells, Gimbal below every peer (best memory): "
-                     f"{e21.get('G2.1_nonseparable_all_wins_best')}; matched memory: "
-                     f"{e21.get('G2.1_nonseparable_all_wins_matched')}; separable cells, worst "
-                     f"ratio to the best peer {worst:.3f} (bootstrap upper bound {upper:.3f})"))
-        rows.append(("G2.2 identifiability", verdict(e21.get("G2.2_tie_all_wins")),
-                     "tie suite: Gimbal below every peer in every cell; frame KL against memory in "
-                     "the E2.2 table"))
-        rows.append(("G2.3 tracking", verdict(e21.get("G2.3_drift_all_wins")),
-                     "drift suite: Gimbal's best-memory error below every peer's"))
-        rows.append(("(E2.4 heavy tails)", verdict(e21.get("G2.4h_tails_all_wins")),
-                     "Student-t suite; reported, not a gate item"))
+                     f"default (frame_every = 4): non-separable cells, below every peer at best "
+                     f"memory: {e21.get('G2.1_k4_nonseparable_all_wins_best')}, at matched memory: "
+                     f"{e21.get('G2.1_k4_nonseparable_all_wins_matched')}; separable cells, worst "
+                     f"ratio to the best peer {worst:.3f} (bootstrap upper bound {upper:.3f}); "
+                     f"frame_every = 1: {verdict(k1)}"))
+        e22b = load_json("e22b_gate.json")
+        cons = e22b["G2.2_consistency"] if e22b else None
+        g22 = None if cons is None else bool(e21.get("tie_k4_all_wins_best") and cons)
+        rows.append(("G2.2 identifiability", verdict(g22),
+                     f"tie suite, default below every peer in every cell: "
+                     f"{e21.get('tie_k4_all_wins_best')} (frame_every = 1: "
+                     f"{e21.get('G2.2_tie_all_wins')}); consistency over the horizon (E2.2b, both "
+                     f"configurations): "
+                     f"{verdict(cons)}; the C-006 wording (monotone in memory at 800 steps) "
+                     f"failed, F-016"))
+        rows.append(("G2.3 tracking", verdict(e21.get("drift_k4_all_wins_best")),
+                     "drift suite, default: best-memory error below every peer's; frame_every = 1:"
+                     f" {verdict(e21.get('G2.3_drift_all_wins'))}"))
+        rows.append(("(E2.4 heavy tails)", verdict(e21.get("tails_k4_all_wins_best")),
+                     "Student-t suite, default; reported, not a gate item; frame_every = 1: "
+                     f"{verdict(e21.get('G2.4h_tails_all_wins'))}"))
     e25 = load_json("e25_gate.json")
     rows.append(("G2.4 optimization", verdict(e25["G2.4"] if e25 else None),
-                 "; ".join(f"{k}: {'pass' if v['pass'] else 'fail'}"
-                           for k, v in e25["configs"].items()) if e25 else "E2.5 pending"))
+                 ("default: " + "; ".join(f"{k}: {'pass' if v['pass'] else 'fail'}"
+                                          for k, v in e25["configs"].items())
+                  + f"; frame_every = 1: {verdict(e25.get('G2.4_k1'))}") if e25
+                 else "E2.5 pending"))
     e210 = load_json("e210_theory_vs_simulation.json")
     if e210:
         parts = ", ".join(f"({k}) {verdict(e210[k]['pass'])}" for k in "abcde")
@@ -72,24 +85,26 @@ def gate_rows() -> list[tuple[str, str, str]]:
     cost_ok, cost_txt = None, "E2.8 pending"
     if e28:
         c = e28["analytic"]["optimizers"]
-        cost_ok = c["gimbal_k1"]["pct_of_model_c10"] <= c["soap"]["pct_of_model_c10"]
-        cost_txt = (f"analytic cost with QR/eigh at 10× matmul: Gimbal (k=1) "
-                    f"{c['gimbal_k1']['pct_of_model_c10']:.2f}%, k=4 "
-                    f"{c['gimbal_k4']['pct_of_model_c10']:.2f}%, SOAP "
-                    f"{c['soap']['pct_of_model_c10']:.2f}% of model compute")
+        cost_ok = c["gimbal_k4"]["pct_of_model_c10"] <= c["soap"]["pct_of_model_c10"]
+        cost_txt = (f"analytic cost with QR/eigh at 10× matmul, % of model compute: default "
+                    f"(k=4) {c['gimbal_k4']['pct_of_model_c10']:.2f}, SOAP "
+                    f"{c['soap']['pct_of_model_c10']:.2f}, k=1 "
+                    f"{c['gimbal_k1']['pct_of_model_c10']:.2f} (fails: F-019, hence C-012); on "
+                    f"CPU Gimbal is slower than SOAP (table below)")
     land = e211["G2.6_i"] if e211 else None
     num = e212["G2.6_iii"] if e212 else None
     all6 = None if None in (land, cost_ok, num) else bool(land and cost_ok and num)
     rows.append(("G2.6 landscape, cost, numerics", verdict(all6),
-                 f"(i) landscape {verdict(land)}; (ii) cost (default k=1) {verdict(cost_ok)}: "
+                 f"(i) landscape {verdict(land)}; (ii) cost {verdict(cost_ok)}: "
                  f"{cost_txt}; (iii) numerics {verdict(num)}"))
     return rows
 
 
 def main() -> None:
     lines = ["# Phase 02 report (generated by make_report.py)", "",
-             "Algorithm: Gimbal with the defaults of change C-004 and the numerical fix C-008 "
-             "(`src/gimbal/torch/gimbal.py`, `theory/gimbal_theory.md` v0.5). Seeds: E2.1–E2.4 "
+             "Algorithm: Gimbal with the defaults of change C-004, the numerical fix C-008 and "
+             "`frame_every = 4` (C-012; rows `gimbal_k4`; rows `gimbal` are `frame_every = 1`) "
+             "(`src/gimbal/torch/gimbal.py`, `theory/gimbal_theory.md` v0.6). Seeds: E2.1–E2.4 "
              "10–19; E2.5 tuning 0–2, evaluation 100–111; E2.9 40–47; E2.10–E2.12 fixed seeds in "
              "the scripts (50+). Seeds 0–9 (E2.1 exploratory) and 21–32 (pilots) are not reported "
              "here. Phase 02 trains no language model (C-006).", "",
@@ -97,6 +112,7 @@ def main() -> None:
     lines += [f"| {a} | **{b}** | {c} |" for a, b, c in gate_rows()]
     lines += [""]
     for title, name in (("E2.1–E2.4 frame estimation", "e21_report.md"),
+                        ("E2.2b consistency in a tied plane", "e22b_report.md"),
                         ("E2.5 noisy quadratics", "e25_report.md"),
                         ("E2.9 ablations", "e29_report.md"),
                         ("E2.10 theory–simulation agreement", "e210_report.md"),

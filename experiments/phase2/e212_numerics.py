@@ -16,6 +16,7 @@ Usage: python experiments/phase2/e212_numerics.py
 
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 
@@ -36,12 +37,12 @@ def stream(m, n, gamma, slope, seed, steps):
     return [g for _, g in zip(range(steps), s, strict=False)], ql, qr, d
 
 
-def run(grads, dtype, rate=0.02, scale=1.0, check_every=1):
+def run(grads, dtype, rate=0.02, scale=1.0, check_every=1, frame_every=1):
     """Run frame estimation; return the frame trace (every ``check_every`` steps) and the max
     orthogonality defect and finiteness over all steps."""
     m, n = grads[0].shape
     p = torch.nn.Parameter(torch.zeros(m, n, dtype=dtype))
-    opt = Gimbal([p], lr=0.0, rot_rate=rate)
+    opt = Gimbal([p], lr=0.0, rot_rate=rate, frame_every=frame_every)
     frames, defect, finite = [], 0.0, True
     for t, g in enumerate(grads):
         p.grad = torch.from_numpy(g * scale).to(dtype)
@@ -63,32 +64,35 @@ def part1() -> dict:
     out, ok = [], True
     for gamma, slope in ((0.0, 0.5), (0.0, 1.5), (1.0, 1.0), (2.0, 0.5)):
         for rate in (0.005, 0.02):
-            ratios = []
-            for seed in (50, 51, 52):
-                grads, ql, qr, d = stream(32, 48, gamma, slope, seed, 800)
-                j = {}
-                for dtype in (torch.float32, torch.float64):
-                    frames, defect, finite = run(grads, dtype, rate)
-                    trace = [frame_kl(a, b, ql, qr, d) for a, b in frames]
-                    j[dtype] = float(np.mean(trace[400:]))
-                    ok &= finite
-                    if dtype == torch.float32:
-                        out.append({"cell": [gamma, slope], "rate": rate, "seed": seed,
-                                    "fp32_defect": defect})
-                ratios.append(j[torch.float32] / j[torch.float64])
-            r = float(np.mean(ratios))
-            ok &= 0.9 <= r <= 1.1
-            out.append({"cell": [gamma, slope], "rate": rate, "J_ratio_fp32_fp64": r})
+            for k in (1, 4):  # k = 4 is the default since C-012
+                ratios = []
+                for seed in (50, 51, 52):
+                    grads, ql, qr, d = stream(32, 48, gamma, slope, seed, 800)
+                    j = {}
+                    for dtype in (torch.float32, torch.float64):
+                        frames, defect, finite = run(grads, dtype, rate, frame_every=k)
+                        trace = [frame_kl(a, b, ql, qr, d) for a, b in frames]
+                        j[dtype] = float(np.mean(trace[400:]))
+                        ok &= finite
+                        if dtype == torch.float32:
+                            out.append({"cell": [gamma, slope], "rate": rate, "k": k,
+                                        "seed": seed, "fp32_defect": defect})
+                    ratios.append(j[torch.float32] / j[torch.float64])
+                r = float(np.mean(ratios))
+                ok &= 0.9 <= r <= 1.1
+                out.append({"cell": [gamma, slope], "rate": rate, "k": k,
+                            "J_ratio_fp32_fp64": r})
     return {"records": out, "pass": bool(ok)}
 
 
 def part2() -> dict:
     grads, _, _, _ = stream(64, 64, 1.0, 1.0, 53, 10_000)
-    res = {}
-    for dtype, name in ((torch.float32, "fp32"), (torch.float64, "fp64")):
-        _, defect, finite = run(grads, dtype, 0.02, check_every=10)
-        res[name] = {"max_defect": defect, "finite": finite}
-    ok = res["fp32"]["max_defect"] <= 1e-5 and res["fp32"]["finite"] and res["fp64"]["finite"]
+    res, ok = {}, True
+    for k in (1, 4):
+        for dtype, name in ((torch.float32, "fp32"), (torch.float64, "fp64")):
+            _, defect, finite = run(grads, dtype, 0.02, check_every=10, frame_every=k)
+            res[f"{name}_k{k}"] = {"max_defect": defect, "finite": finite}
+            ok &= finite and (name != "fp32" or defect <= 1e-5)
     return {**res, "pass": bool(ok)}
 
 
@@ -100,7 +104,7 @@ def mod_signed_permutation(q1: np.ndarray, q2: np.ndarray) -> float:
 def run_init(grads, dtype, scale, init):
     m, n = grads[0].shape
     p = torch.nn.Parameter(torch.zeros(m, n, dtype=dtype))
-    opt = Gimbal([p], lr=0.0, rot_rate=0.02, init=init)
+    opt = Gimbal([p], lr=0.0, rot_rate=0.02, init=init, frame_every=1)
     for g in grads:
         p.grad = torch.from_numpy(g * scale).to(dtype)
         opt.step()
@@ -167,22 +171,26 @@ def part4() -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--tag", default="", help="suffix of the output files (re-runs)")
+    args = parser.parse_args()
     torch.set_num_threads(1)
     res = {"1_precision": part1(), "2_long_run": part2(), "3_scale": part3(),
            "4_degenerate": part4()}
     res["G2.6_iii"] = all(v["pass"] for v in res.values() if isinstance(v, dict))
     RESULTS.mkdir(parents=True, exist_ok=True)
-    (RESULTS / "e212_numerics.json").write_text(json.dumps(res, indent=1))
+    (RESULTS / f"e212_numerics{args.tag}.json").write_text(json.dumps(res, indent=1))
     p1 = [r for r in res["1_precision"]["records"] if "J_ratio_fp32_fp64" in r]
     lines = ["# E2.12 numerical behaviour (generated by e212_numerics.py)", "",
              "## 1. float32 vs float64 (frame KL ratio, mean over seeds 50–52)", "",
-             "| cell (γ, s) | rate | J fp32 / J fp64 |", "|---|---|---|"]
-    lines += [f"| {r['cell']} | {r['rate']} | {r['J_ratio_fp32_fp64']:.4f} |" for r in p1]
+             "| cell (γ, s) | rate | frame_every | J fp32 / J fp64 |", "|---|---|---|---|"]
+    lines += [f"| {r['cell']} | {r['rate']} | {r['k']} | {r['J_ratio_fp32_fp64']:.4f} |"
+              for r in p1]
     d32 = max(r["fp32_defect"] for r in res["1_precision"]["records"] if "fp32_defect" in r)
     lines += ["", f"Largest float32 orthogonality defect in these runs: {d32:.1e}.", "",
               "## 2. 10⁴ steps, 64×64", "",
-              f"float32 max defect {res['2_long_run']['fp32']['max_defect']:.1e}, float64 "
-              f"{res['2_long_run']['fp64']['max_defect']:.1e}.", "",
+              ", ".join(f"{k}: max defect {v['max_defect']:.1e}"
+                        for k, v in res["2_long_run"].items() if isinstance(v, dict)) + ".", "",
               "## 3. Gradient scale (frame deviation from scale 1 after 300 steps)", "",
               "Gated rows start from gauge-free frames (square stream with the default "
               "initialization; identity initialization on 32×48). `rect_default` is the "
@@ -205,7 +213,7 @@ def main() -> None:
     lines += ["", "Pass by part: " + ", ".join(f"{k}: {v['pass']}" for k, v in res.items()
                                                if isinstance(v, dict)),
               "", f"**G2.6 (iii): {res['G2.6_iii']}**"]
-    (RESULTS / "e212_report.md").write_text("\n".join(lines))
+    (RESULTS / f"e212_report{args.tag}.md").write_text("\n".join(lines))
     print("\n".join(lines))
 
 

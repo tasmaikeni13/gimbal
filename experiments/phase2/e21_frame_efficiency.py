@@ -93,12 +93,18 @@ def main() -> None:
                         help="confirmatory runs use seeds 10.. (seeds 0-9 were exploratory)")
     parser.add_argument("--extend", action="store_true",
                         help="run only the grid extension of this suite (same seeds and streams)")
+    parser.add_argument("--methods", default="",
+                        help="comma-separated subset of methods (re-runs after a peer fix)")
+    parser.add_argument("--tag", default="", help="suffix of the output file")
     args = parser.parse_args()
     grid = MEMORY_EXTENSION[EXTENSION[args.suite]] if args.extend else MEMORY_GRID
+    if args.methods:
+        keep = set(args.methods.split(","))
+        grid = {m: v for m, v in grid.items() if m in keep}
     jobs = [(cfg, args.seed_offset + seed, args.steps, grid) for cfg in SUITES[args.suite]
             for seed in range(args.seeds)]
     RESULTS.mkdir(parents=True, exist_ok=True)
-    out = RESULTS / f"e21_{args.suite}{'_ext' if args.extend else ''}.jsonl"
+    out = RESULTS / f"e21_{args.suite}{'_ext' if args.extend else ''}{args.tag}.jsonl"
     t0 = time.time()
     with mp.Pool(args.workers) as pool, out.open("w") as fh:
         for i, rows in enumerate(pool.imap_unordered(run_cell, jobs)):

@@ -41,6 +41,12 @@ sensitive published knob of each optimizer, with every other value at its publis
 Weight decay is fixed at 0.1 (decoupled, matrices only) for every optimizer unless Stage C for all
 optimizers includes it; it is not tuned for one optimizer only.
 
+Note from Phase 02 (E2.9, `experiments/phase2/results/e29_report.md`): on synthetic streams a
+smaller damping ($\delta=3\cdot10^{-4}$) and a shorter warm start (20 steps) were slightly better than
+Gimbal's defaults in several cells, and every other ablated component was neutral or worse. The
+equal-budget rule still allows one knob per optimizer; keep the rotation rate (the analogue of the
+peers' memory knobs) unless the knob of every optimizer is re-chosen by the same rule.
+
 **Selection.** Lowest final validation loss (5M-token subset at Stage A, full 20M at Stages B/C).
 Ties within 0.002 nats → prefer the smaller LR. Record every trial, including diverged ones.
 

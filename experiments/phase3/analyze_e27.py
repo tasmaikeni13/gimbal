@@ -79,7 +79,7 @@ def main() -> None:
         report.append(f"| {m} | {selected[m]:g} | {len(vals)} | {np.mean(vals):.4f} | "
                       + ", ".join(f"{v:.4f}" for v in vals) + f" | {wall:.0f} | {opt_s:.0f} |")
     gate = {}
-    for ours in ("gimbal", "gimbal_k4"):
+    for ours in ("gimbal", "gimbal_k1"):  # gimbal: default frame_every = 4 (C-012)
         if ours not in per_seed:
             continue
         g_seeds = per_seed[ours]

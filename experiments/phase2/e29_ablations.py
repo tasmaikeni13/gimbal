@@ -4,7 +4,12 @@ Each variant changes one setting of the default Gimbal and is run on representat
 cells with dedicated seeds (40-47), at a small grid of rotation rates (best rate per variant and
 cell). The score is the E2.1 metric: time-averaged frame KL over the second half of the run.
 
-Usage: python experiments/phase2/e29_ablations.py [--seeds 8] [--workers 4]
+The first run (outputs without a tag) used the configuration of the time as its baseline:
+``frame_every = 1`` and frame statistics on the raw gradient. Since C-013 the baseline is the
+default itself (``frame_every = 4``, empirical-Bayes innovation; ``--tag _c013``), with ``k1``,
+``no_center`` and ``center_always`` among the variants.
+
+Usage: python experiments/phase2/e29_ablations.py [--seeds 8] [--workers 4] [--tag _c013]
 """
 
 from __future__ import annotations
@@ -41,9 +46,11 @@ VARIANTS = {
     "max_angle_0.05": dict(max_angle=0.05),
     "max_angle_1": dict(max_angle=1.0),
     "constant_rate": dict(rot_schedule="constant"),
-    "k4": dict(frame_every=4),
+    "k1": dict(frame_every=1),
     "k10": dict(frame_every=10),
     "polish_4": dict(polish_every=4),
+    "no_center": dict(flow_center=False),
+    "center_always": dict(flow_center=True),
 }
 
 CELLS = [
@@ -135,6 +142,7 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, default=8)
     parser.add_argument("--steps", type=int, default=800)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--tag", default="", help="suffix of the output files")
     args = parser.parse_args()
     jobs = [(c, 40 + s, args.steps) for c in CELLS for s in range(args.seeds)]
     t0 = time.time()
@@ -145,9 +153,9 @@ def main() -> None:
             if i % 8 == 0:
                 print(f"{i + 1}/{len(jobs)} cells, {time.time() - t0:.0f}s", flush=True)
     RESULTS.mkdir(parents=True, exist_ok=True)
-    (RESULTS / "e29_ablations.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
+    (RESULTS / f"e29_ablations{args.tag}.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
     report = analyze(rows)
-    (RESULTS / "e29_report.md").write_text(report)
+    (RESULTS / f"e29_report{args.tag}.md").write_text(report)
     print(report)
 
 

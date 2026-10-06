@@ -38,10 +38,10 @@ MATRIX_KW = {
     "splus": dict(weight_decay=0.0),
     "aro": dict(),
     "gimbal": dict(betas=(0.9, 0.95)),
-    "gimbal_k4": dict(betas=(0.9, 0.95), frame_every=4),
+    "gimbal_k1": dict(betas=(0.9, 0.95), frame_every=1),
 }
 # Variants that are a registered optimizer with different settings.
-ALIASES = {"gimbal_k4": "gimbal"}
+ALIASES = {"gimbal_k1": "gimbal"}
 OTHER_KW = dict(lr=3e-3, betas=(0.9, 0.95), weight_decay=0.0)
 
 

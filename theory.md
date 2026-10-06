@@ -110,8 +110,10 @@ Everything is matrix multiplication. There are no factor buffers, and no QR or e
 after the warm start (section 8).
 
 **What the flow does near the answer.** At the true frame the expected score is zero (Theorem 4.1,
-for any weights). Near it, the expected score is Fisher × displacement, so the mean step contracts
-every pair by the same factor $1-\alpha$, **independent of the eigen-gap** (Theorem 4.2). Power
+for any weights). The expected score is also the gradient of $J$, and the Hessian of $J$ at the true
+frame is exactly the Fisher information, so near the answer the natural-gradient step is a Newton
+step on $J$. Hence the mean step contracts every pair by the same factor $1-\alpha$, **independent
+of the eigen-gap** (Theorem 4.2; both facts are confirmed numerically in E2.10). Power
 iteration (SOAP's refresh) contracts pair $(i,k)$ by the eigenvalue ratio, which is slow precisely
 for close eigenvalues. The stochastic recursion has stationary angle variance
 $\frac{\alpha}{2-\alpha}\cdot\frac1{F_{ik}}$: the Cramér–Rao variance at an effective sample size of
@@ -142,9 +144,12 @@ relative noise $\bar\varepsilon^2$, the variance is inflated by about
 
 $$1+\bar\varepsilon^2\Big(1+\frac{2n}{F_{ik}}\Big).$$
 
-Pairs with similar profiles (small $F_{ik}$) suffer most. At first order the plug-in is free: the
-frame score is odd in the entries and the variance score even, so the Fisher information is
-block-diagonal. At finite memory it is not free. For Gaussian entries an EMA has
+Pairs with similar profiles (small $F_{ik}$) suffer most. This is the leading term. The paper gives
+the next one; for Gaussian errors it changes the excess by a relative amount of about
+$\bar\varepsilon^2(6+3R_{ik}/F_{ik})$, and Monte Carlo confirms the corrected formula (E2.10 (b)).
+At first order the plug-in is free: the frame score is odd in the entries and the variance score
+even, so the Fisher information is block-diagonal. At finite memory it is not free. For Gaussian
+entries an EMA has
 $\bar\varepsilon^2 = 2(1-\beta)/(1+\beta)$: 0.051 for Adam's $\beta_2=0.95$, 0.020 for $\beta_D=0.98$.
 
 **Empirical-Bayes shrinkage toward the separable fit (Proposition 5.5).** Split
@@ -178,7 +183,10 @@ applied to the diagonal core of the KRD model, on the log scale.
 * **Equivariance** (Theorem 6). Rotating every gradient by $(P,R)$ and the initial frame accordingly
   rotates every update by the same $(P,R)$. SOAP and Shampoo share this property; AdamW does not.
 * **Scale invariance** (Theorem 8.2). Multiplying all gradients by $c$ leaves the frame dynamics
-  unchanged; the shrinkage factor is scale-free as well.
+  unchanged; the shrinkage factor is scale-free as well. In floating point this holds to rounding at
+  every scale once no absolute constant enters a scale-free formula; the eigenvectors of a
+  rank-deficient first-gradient factor are an arbitrary basis of its null space, so the starting
+  frame itself is only defined up to that choice (as for SOAP).
 * **Descent** (Theorem 8.1). For $\beta_1=0$, $\langle G, U\rangle = \sum Z_{ij}^2/(\sqrt{\hat V_{ij}}+\epsilon)\ge 0$.
 * **Second-moment transport** (Theorem 7). When the frame turns by $P$, a diagonal second moment is
   carried by the doubly stochastic matrix $P\odot P$. Its Kronecker form needs two matmuls, and it
@@ -193,7 +201,10 @@ preliminary estimator followed by Fisher-scoring steps, which is efficient. With
 schedule the restart value enters the frame's average with exactly the weight $1-\beta^{T_w}$ of the
 gradients it replaces (Remark 5.6, machine-checked). The reason for the warm start is finite-sample:
 the local theory needs a start inside the linear regime, and the frame of a single gradient is far
-from it.
+from it. One consequence: where pooled factors are wrong (tied sums), the restart value's weight
+decays only like $T_w/t$ while the memory exceeds the elapsed time, so at a fixed horizon very long
+memories pay a small bias; with the memory matched to the horizon the error still vanishes
+(E2.2b).
 
 ## 9. Cost
 
@@ -201,7 +212,8 @@ Per step, for an $m\times n$ matrix, Gimbal needs:
 
 * four matmul "units" of $m^2n+mn^2$: rotate the gradient and the momentum, rotate the update back,
   and compute the score;
-* every $k$ steps (`frame_every`), the Fisher matrix plus $O(m^3+n^3)$ for the retraction and polish;
+* every $k$ steps (`frame_every`, default 4), the Fisher matrix plus $O(m^3+n^3)$ for the retraction
+  and polish;
 * $O(mn)$ elementwise work.
 
 There is no QR or eigendecomposition after step 50. Its state is $m^2+n^2+4mn$ floats (two frames,
@@ -216,7 +228,10 @@ compute:
 | plus QR/eigh | yes, every 10 steps | every step | every step | none | none | none |
 
 QR and eigendecomposition run far below matmul throughput on TPUs, which is where the
-matmul-only design pays.
+matmul-only design pays. Gimbal's default is $k=4$: with $k=1$ the frame moves pay the $m^3$ terms of
+tall layers every step and the optimizer costs more than SOAP. On a CPU, where QR is cheap, Gimbal
+is slower than SOAP at every tested $k$ (`experiments/phase2/report.md`); the accelerator timing is
+measured in Phase 04.
 
 ## 10. Where the peers sit
 
@@ -247,11 +262,18 @@ core shrinkage (Hoff, McCormack and Zhang, 2023) from matrix-variate statistics.
   efficiency under separability, SOAP's loss factor, the strict separation example, Fisher
   positivity and the tie example, the retraction and polish identities, transport, equivariance
   and descent algebra, scale invariance, the bias-corrected schedule, the profile likelihood, the
-  excess-variance identity, the optimal shrinkage factor, and the warm-start weighting.
+  excess-variance identity, the optimal shrinkage factor, the warm-start weighting, the frame KL of
+  a single-pair rotation ($\le\tfrac12F\theta^2$), and the memory bound against SOAP.
 * **Proved on paper**: asymptotic normality of factor estimators (delta method), the local
-  contraction (Fisher identity), orthogonality of frame and variance scores.
-* **Measured** (Phase 02, `experiments/phase2/`): frame efficiency against every peer on synthetic
-  KRD streams (separable and non-separable, ties, drift, heavy tails), optimization on noisy
-  quadratics, gradients of a real language model, a small-LM benchmark, and cost.
-* **Open**: global convergence of the flow (Conjecture 4.1); a Student-$t$ score for heavy tails;
-  richer shrinkage targets; the interaction of the frame flow with momentum.
+  contraction (Fisher identity), orthogonality of frame and variance scores, the second-order
+  plug-in correction.
+* **Measured** (Phase 02, `experiments/phase2/report.md`; no model is trained in Phase 02): frame
+  efficiency against every peer on synthetic KRD streams (separable and non-separable, ties,
+  drift, heavy tails) and consistency in tied planes; optimization on noisy quadratics; agreement
+  between the asymptotic formulas and simulation; the landscape of $J$ under the noise-free flow;
+  floating-point behaviour; cost. Real language-model gradients and a small-LM benchmark come in
+  Phase 03.
+* **Open**: a proof of global convergence (Conjecture 4.1, which has numerical support: every
+  random start reached the global minimum and constructed critical points are strict saddles); a
+  Student-$t$ score for heavy tails; richer shrinkage targets; the interaction of the frame flow
+  with momentum.

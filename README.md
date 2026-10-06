@@ -65,7 +65,7 @@ opt = build("gimbal", hidden, other, matrix_kwargs={"lr": 3e-3}, other_kwargs={"
 ```
 
 Gimbal's knobs beyond AdamW's: `rot_rate` (frame memory, default 0.02), `damping` (default 0.003)
-and `frame_every` (amortization of the frame update, default 1). The variance shrinkage
+and `frame_every` (the frame moves every k steps with the mean score of those steps, default 4). The variance shrinkage
 (`flow_shrink`) and the warm start (`init="pooled"`, `warm_start_steps=50`) have no tuning knobs.
 
 ## Repository
