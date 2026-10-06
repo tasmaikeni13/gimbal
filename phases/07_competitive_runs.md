@@ -15,7 +15,9 @@ checkpoints in GCS, `runs/main/manifest.csv` (one row per planned run with statu
 
 ## Run matrix
 
-* **Core (required):** AdamW, SOAP (f=10), SOAP real-time, KL-SOAP, Muon, NorMuon, SPlus, Gimbal.
+* **After D-003 (user, 2026-10-06):** AdamW, SOAP (f=10) and Gimbal, seeds 2 and 3, 10,172 steps of
+  240 × 1024 tokens (2.49987B tokens) on all 16 chips. The lists below are the original plan.
+* **Core (original):** AdamW, SOAP (f=10), SOAP real-time, KL-SOAP, Muon, NorMuon, SPlus, Gimbal.
 * **Extended (if budget allows, decided before starting):** KL-Shampoo, ARO, Shampoo + grafting,
   COSMOS, PSGD-Kron.
 * **Seeds:** 2 per optimizer, the same two seeds for every optimizer (paired initialization and data

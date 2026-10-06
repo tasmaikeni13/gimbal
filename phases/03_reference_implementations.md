@@ -19,7 +19,14 @@ Phase 02 (frozen Gimbal algorithm and defaults; peer list). If Phase 02 changed 
 * `tests/` — unit, invariant and cross-framework tests; `tests/golden/` fixed gradient sequences
 * `docs/optimizers.md` — exact update rules and defaults for every optimizer, with sources
 
-## Optimizers (core set must be complete; extended set as time allows, record omissions)
+## Optimizers
+
+**Scope after D-003 (user, 2026-10-06):** the TPU study compares AdamW, SOAP (f=10) and Gimbal, so
+the JAX set is exactly these three. The other rows of the table below exist in PyTorch (Phase 02)
+and may appear in the CPU small-LM benchmark E3.2 as descriptive, ungated evidence.
+
+(Original table, kept for the record; core set must be complete; extended set as time allows,
+record omissions)
 
 | Optimizer | Source of truth for the rule | Notes |
 |---|---|---|
@@ -48,9 +55,13 @@ same settings for all optimizers. Fused QKV is treated as one matrix for every o
 1. **Invariants** (from Phase 01 theorems): orthogonality of Gimbal frames after 10⁴ random steps
    (‖QᵀQ−I‖ < 1e-5 in fp32 with the NS polish), equivariance of one step under random orthogonal
    $(P,R)$, scale invariance of the frame flow, descent identity with $\beta_1=0$.
-2. **Golden sequences**: each optimizer applied to 50 fixed gradients on fixed shapes; PyTorch and
-   JAX agree to 1e-5 relative (fp32). SOAP agrees with the official implementation; Muon with the
-   reference implementation.
+2. **Golden sequences** (criteria of C-016; the original "1e-5 relative over 50 steps in fp32" is
+   not met by the PyTorch reference against itself, F-025): each optimizer applied to 50 fixed
+   gradients on fixed shapes (`tests/golden/streams.py`); in float64 PyTorch and JAX agree to 1e-8
+   relative at every step; in float32 every Gimbal step kind started from the reference's state
+   agrees to 2e-5, AdamW agrees to 1e-5 over 50 steps, and SOAP and Gimbal are no farther from the
+   float64 reference than 3× the float32 reference (+1e-5). SOAP agrees with the official
+   implementation (`test_soap_matches_official`).
 3. **Toy convergence**: each optimizer reduces a convex quadratic and overfits a tiny MLP.
 4. **Edge cases**: $m=1$ or $n=1$, very large side (one-sided mode), zero gradients, NaN guards,
    bf16 parameters with fp32 optimizer state.
@@ -64,10 +75,11 @@ same settings for all optimizers. Fused QKV is treated as one matrix for every o
 * G3.4 (premise, formerly G2.5) E3.1 finds the non-separability index $\kappa$ clearly above 0 on
   real LM gradients: median noise-corrected $\kappa\ge0.05$ over snapshot matrices and checkpoints
   (C-005). The held-out frame comparison (Gimbal vs SOAP vs KL) is reported as supporting evidence.
-* G3.5 (small LM, formerly G2.6) In E3.2 Gimbal's mean final validation loss is lower than every
-  peer's at equal steps (paired over seeds; Holm-corrected one-sided paired test $p<0.05$, or lower
-  on every seed when only 3 seeds are affordable), for the configuration that passed Phase 02's
-  cost gate.
+* G3.5 (small LM, formerly G2.6) In E3.2 Gimbal's mean final validation loss is lower than that of
+  every competitor of the study (AdamW, SOAP f=10; D-003) at equal steps (paired over seeds;
+  Holm-corrected one-sided paired test $p<0.05$, or lower on every seed when only 3 seeds are
+  affordable), for the configuration that passed Phase 02's cost gate. Other PyTorch peers run in
+  E3.2 are reported with the same statistics but are not gated.
 
 ## Small-scale validation on real gradients (moved from Phase 02 by C-006)
 

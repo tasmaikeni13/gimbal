@@ -40,6 +40,9 @@ Phase 07 runs, Phase 02 predictions, theory document.
 
 ## Decision rule (predeclared)
 
+After D-003 the core competitors are AdamW and SOAP (f=10); "every core competitor" below means
+these two. The rule is otherwise unchanged.
+
 Gimbal **beats** competitor *c* on loss if, for both seeds, Gimbal's final validation loss is lower
 than *c*'s on the same seed, and the mean paired difference exceeds twice the pooled within-run
 bootstrap SE. Gimbal **beats** *c* on wall-clock if its steady-state step time is lower **or** its

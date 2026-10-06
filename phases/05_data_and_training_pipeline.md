@@ -29,7 +29,11 @@ and curves); **test** = another disjoint 20M tokens, read only in Phase 08. Reco
 50304, context 1024. ≈124M parameters (print the exact count). Init: $\mathcal N(0,0.02)$, output
 projections scaled by $1/\sqrt{2L}$. bf16 compute, fp32 master weights and optimizer state.
 
-**Training.** Global batch 512 × 1024 = 524,288 tokens; 4,768 steps ≈ 2.5B tokens. Learning-rate
+**Training.** (D-003) Global batch 240 × 1024 = 245,760 tokens (the user's sweep of ≈600M tokens
+in 2,500 steps fixes it, and the confirmatory runs keep it so that the tuned learning rates
+transfer): confirmatory runs 10,172 steps = 2.49987B tokens (every full sequence of the 2.5B-token
+train split, each once); tuning runs 2,500 steps = 614M tokens. (Originally: 512 × 1024, 4,768
+steps.) Learning-rate
 schedule: linear warm-up for 5% of steps, then cosine decay to 10% of peak (one schedule family for
 every optimizer; Phase 06 may change the family for all optimizers at once). Global gradient-norm
 clipping at 1.0 for all optimizers. Decoupled weight decay on matrices only. Parameter routing as in

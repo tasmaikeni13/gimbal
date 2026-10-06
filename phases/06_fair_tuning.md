@@ -14,7 +14,22 @@ Phase 05 (pipeline, base config). Phase 02's Gimbal defaults.
 `configs/tuning/*.yaml`, `runs/tuning/` (logs), `configs/frozen/<optimizer>.yaml`,
 `research/ledger/tuning.md` (budget table, chosen values, curves).
 
-## Protocol
+## Protocol after D-003 (user, 2026-10-06; supersedes the stages below where they differ)
+
+* Optimizers: AdamW, SOAP (f=10), Gimbal. Every tuning run: 125M model, 2,500 steps of 240 × 1024
+  tokens (614M tokens), same schedule shape as the confirmatory runs (5% warm-up, cosine to 10%),
+  **two seeds (0 and 1)** per configuration; selection on the mean over the two seeds of the final
+  loss on the full 20M-token validation split.
+* Stage A: 7 peak learning rates on a factor-2 grid centred on the default of each optimizer's
+  reference implementation (AdamW 1e-3, the `torch.optim.AdamW` default; SOAP 3e-3, the official
+  repository's default; Gimbal 3e-3, `gimbal.torch.Gimbal`'s default, equal to SOAP's), two-point
+  extension on an edge, offered to every optimizer alike (if one optimizer needs it, the others
+  receive two more points on the side of their better neighbour so that G6.1 holds exactly).
+* Stage B (full horizon) is not run: the user fixed the tuning horizon. Horizon transfer of the
+  learning rate is a stated limitation for every optimizer alike.
+* Stage C: the secondary knob below, 3 values (the default is the Stage A run at the best LR, so
+  two new values × two seeds).
+* Budget: 18 runs per optimizer (22 with an extension).
 
 **Stage A — learning rate, short horizon.** For every optimizer, 7 peak learning rates on a factor-2
 grid centred on the literature default (record the centre and its source), at 1/4 of the token budget

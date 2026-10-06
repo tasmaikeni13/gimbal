@@ -6,6 +6,12 @@ Make every optimizer as fast as it can reasonably be on a TPU v4-32 slice, with 
 effort for all of them, and verify that Gimbal's step is no slower than SOAP's. Wall-clock claims in
 the paper rest on this phase.
 
+## Scope (D-003)
+
+Optimizers on TPU: AdamW, SOAP (f=10) and Gimbal. Use all 16 chips. Attention uses the Pallas TPU
+flash-attention kernel (or splash attention if faster); other kernels only where a profile shows
+they matter ("good enough" is the user's bar).
+
 ## Hardware facts to verify at the start (do not assume)
 
 * v4-32 = 16 TPU v4 chips (megacore: one JAX device per chip), 4 hosts × 4 chips, 32 GiB HBM per chip.
@@ -64,7 +70,11 @@ Phase 03 (`src/gimbal/jax/`, tests, golden sequences).
 ## Exit gate
 
 * G4.1 Golden and invariant tests pass on TPU (fp32 tolerances documented).
-* G4.2 Gimbal's steady-state step time ≤ SOAP (f=10)'s, and < SOAP real-time's and KL-SOAP's.
+* G4.2 Gimbal's steady-state step time ≤ SOAP (f=10)'s (D-003 removed the real-time SOAP and
+  KL-SOAP clauses). Steady-state step time is fixed before measurement as the median, over the
+  20-step blocks of steps 200–400, of the mean step time within a block: SOAP refreshes its frame
+  every 10 steps and Gimbal moves its frame every 4, so a median of single steps would drop exactly
+  the amortized work (protocol §6 "median over a fixed window", operationalized; C-017).
 * G4.3 No optimizer is slower than necessary because of missing batching or sharding (every
   optimizer's optimizer-only time is within 2× of its FLOP-model lower bound, or the reason is
   documented).
