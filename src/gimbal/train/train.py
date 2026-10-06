@@ -251,6 +251,9 @@ def main() -> None:
     parser.add_argument("--run-dir", required=True)
     parser.add_argument("--set", action="append", default=[], help="dotted.key=yaml_value")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--resume-before", type=int, default=None,
+                        help="resume from the newest checkpoint at or before this step "
+                             "(restart after a divergence)")
     parser.add_argument("--full-eval", action="store_true", default=True)
     parser.add_argument("--no-full-eval", dest="full_eval", action="store_false")
     parser.add_argument("--eval-at-start", action="store_true")
@@ -291,8 +294,9 @@ def main() -> None:
     params, state = trainer.init(args.seed)
     start = 0
     ckpt_dir = run_dir / "ckpt"
-    if args.resume and checkpoint.latest(ckpt_dir) is not None:
-        start = checkpoint.latest(ckpt_dir)
+    if (args.resume or args.resume_before is not None) and checkpoint.latest(
+            ckpt_dir, args.resume_before) is not None:
+        start = checkpoint.latest(ckpt_dir, args.resume_before)
         params, state = checkpoint.restore(ckpt_dir, start, trainer, args.seed)
 
     writer = is_writer()
@@ -308,9 +312,10 @@ def main() -> None:
             "argv": vars(args),
         }
         (run_dir / "config.json").write_text(json.dumps(meta, indent=1, default=str))
-    log = (run_dir / "log.jsonl").open("a") if writer else None
-    evals = (run_dir / "eval.jsonl").open("a") if writer else None
-    diag = (run_dir / "diag.jsonl").open("a") if writer else None
+    mode = "a" if start > 0 else "w"  # a fresh start (or retry) replaces earlier partial logs
+    log = (run_dir / "log.jsonl").open(mode) if writer else None
+    evals = (run_dir / "eval.jsonl").open(mode) if writer else None
+    diag = (run_dir / "diag.jsonl").open(mode) if writer else None
 
     def emit(f, rec):
         if f is not None:
@@ -323,6 +328,10 @@ def main() -> None:
         emit(evals, {"step": start, "val_loss_subset": float(v.sum() / (
             len(v) * trainer.model_cfg.seq_len)), "tokens": start * tokens_per_step})
     pending = None  # (step, loss, gnorm, lr): read one step late so the device never idles
+    # Divergence (Phase 07): loss above twice its minimum over the previous 100 steps for 50
+    # consecutive steps, or a non-finite loss.
+    recent: list[float] = []
+    above = 0
     t_last = time.perf_counter()
     t_start = t_last
     diverged = False
@@ -341,6 +350,11 @@ def main() -> None:
                        "wall": now - t_start})
             t_last = now
             if not math.isfinite(ploss):
+                diverged = True
+                break
+            above = above + 1 if len(recent) == 100 and ploss > 2 * min(recent) else 0
+            recent = (recent + [ploss])[-100:]
+            if above >= 50:
                 diverged = True
                 break
         pending = (s, loss, gnorm, lr)

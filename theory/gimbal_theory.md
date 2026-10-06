@@ -187,7 +187,12 @@ empirical-Bayes shrinkage toward the separable fit (change C-004, Proposition 5.
 relative floor $\rho$. Adam's own second moment $V$ (coefficient $\beta_2$) is used only for the
 step. The rotation rate follows the
 bias-corrected schedule $\alpha_t=\alpha/(1-(1-\alpha)^t)$, capped at $\alpha_{\max}=0.5$ (Theorem 4.4
-explains why), with defaults $\alpha=0.02$, $\delta=0.003$ (change C-002). One step of the left flow:
+explains why), with defaults $\alpha=1-\beta_2=0.05$ (change C-018; $0.02$ from C-002 until then) and
+$\delta=0.003$ (C-002). With $\alpha=1-\beta_2$ the frame, its flow variances and Adam's second moment
+share one estimation window: by Theorem 4.3 the frame behaves like an average over
+$(2-\alpha)/\alpha$ gradients, which equals the effective sample size $(1+\beta_2)/(1-\beta_2)$ of
+Adam's average (39 for $\beta_2=0.95$); SOAP's default `shampoo_beta` $=\beta_2$ is the same
+convention for its factors. One step of the left flow:
 $$\Omega_L=-\alpha_t\,\frac{S_L-S_L^\top}{F_L+\delta n},\qquad
 F_L=DA^\top+AD^\top-2n\,\mathbf 1\mathbf 1^\top,\quad A=D^{\circ-1},$$
 (entrywise division; diagonal set to zero; entries clipped to $[-\theta_{\max},\theta_{\max}]$; spectral norm
@@ -200,12 +205,20 @@ information of Theorem 2 evaluated at the current estimates; dividing by it is A
 gradient, and $\delta$ is a Levenberg–Marquardt damping that bounds the step for near-degenerate
 pairs.
 
-**Amortized flow** (`frame_every` $=k$, default $k=4$ since C-012). The score $S-S^\top$ is
+**Amortized flow** (`frame_every` $=K$, default $K=4$ since C-012). The score $S-S^\top$ is
 accumulated for $k$ steps with the frame fixed, and the frame then takes one step with the mean
 score and the effective rate $1-\prod_{s}(1-\alpha_s)$ over those $k$ steps. Every gradient still enters the estimate; the
 retraction, the polish and the Fisher matrix are paid once per $k$ steps. In the linear regime the
 amortized and per-step recursions agree to first order in $k\alpha$ (L3); Monte Carlo (E2.1 pilot)
 shows unchanged final frame quality for $k\in\{4,10\}$ and a slower first ~$200$ steps.
+*Adaptive amortization* (default since C-018): the block length at step $t$ is
+$k_t=\mathrm{clamp}\big(\mathrm{round}(K\alpha/\alpha_t),1,K\big)$. With the bias-corrected schedule
+$\alpha_t\approx1/t$ for $t\ll1/\alpha$, so a fixed $k=K$ makes $k\alpha_t$ large early, exactly where the
+first-order agreement fails; $k_t$ holds $k_t\alpha_t$ near its steady-state value $K\alpha$ (the frame
+moves every step at first, every $K$ steps after about $T\approx2/\alpha$; for $\alpha=0.05$, $K=4$ from
+step 48 on). The steady-state cost is that of $k=K$. Evidence (L1): on the byte-level language
+model of E3.2 the fixed $K=4$ trailed $k=1$ by 0.05 nats at step 100 and ≈0.012 at the end, and
+the adaptive schedule removed most of the early gap (F-027; `experiments/phase3/results/`).
 
 **Theorem 4 (fixed points, local rate, noise; item 1 L5, item 2 L3 (linearization around $U^\star$ with
 $D$ known), item 3 L5 for the recursion and checked by Monte Carlo within 7%).**
@@ -275,8 +288,11 @@ $\langle u,u'\rangle=\sum_jD_{ij}D_{kj}u_ju'_j$.
    variances. Estimating $D$ therefore costs nothing at first order; item 2 is a finite-memory
    (second-order) effect. For Gaussian entries an EMA with coefficient $\beta$ has
    $\bar\varepsilon^2=2(1-\beta)/(1+\beta)=2/N_{\mathrm{eff}}$: Adam's $\beta_2=0.95$ gives $0.051$, the tied
-   $\beta_D=0.98$ gives $0.020$. For a 48-column layer and a pair with $F_{ik}=5$ the inflation is
-   $\approx2.0$ versus $\approx1.4$.
+   $\beta_D=0.98$ (the default $\alpha=0.02$ before C-018) gives $0.020$. For a 48-column layer and a
+   pair with $F_{ik}=5$ the inflation is $\approx2.0$ versus $\approx1.4$. Since C-018 the tied window
+   equals Adam's ($\beta_D=0.95$): the plug-in noise is that of Adam's average, and the
+   empirical-Bayes shrinkage of Proposition 5.5 is what reduces it (the trade-off against
+   tracking a drifting frame is Corollary 3.1's).
 
 *Proof.* (1) $\sum_sw_s\ell=-\tfrac12\sum_{ij}[W\log D_{ij}+\sum_sw_sZ_{s,ij}^2/D_{ij}]$ with
 $W=\sum_sw_s$; each term is the per-coordinate cost of Proposition 1. (2) Since
@@ -608,4 +624,12 @@ Failures found while auditing (all in the checking code, none in a theorem) are 
   with the seeds of C-013 (tag `_c015`); all gates pass and the paired effect on the frame KL is
   within seed noise (`experiments/phase2/report.md`). Theorem 8 gains the first-step note (F-025).
   No Lean statement is affected (the trust region is not formalized).
+* 2026-10-06 — v0.9 (Phase 03, C-018): defaults $\alpha=1-\beta_2=0.05$ (was 0.02, C-002) and adaptive
+  amortization $k_t=\mathrm{clamp}(\mathrm{round}(K\alpha/\alpha_t),1,K)$ (was a fixed $k=4$, C-012). Reason:
+  gate G3.5 failed on the byte-level language model (F-027): the default lost to SOAP on every
+  seed; on selection seeds the 100-step frame memory and the early amortization were the two
+  causes. The decision rule D-004 (written before the TPU timings were seen) picked the adaptive
+  schedule because no faster-moving variant ($k\in\{1,2\}$) kept the TPU step time within
+  SOAP's. Every Phase 02 experiment that executes the update was re-run (tag `_c018`). Theorem 4.3
+  gains the window-matching remark (§5); no Lean statement is affected.
 

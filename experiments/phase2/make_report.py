@@ -2,10 +2,11 @@
 
 Every number in the report comes from a file in ``results/`` written by an analysis or experiment
 script; this script only collects them and evaluates the gate summary of phases/02. Gates are
-evaluated on the outputs of the current default (change C-015: files tagged ``_c015`` where an
-experiment executes the optimizer, re-run with the seeds of C-013); outputs of earlier defaults
-stay in ``results/`` and the report names them where they decided something (G2.4's failure,
-F-020). The cost model (E2.8) does not depend on C-015 and stays at its C-013 run.
+evaluated on the outputs of the current default (change C-018: files tagged ``_c018`` where an
+experiment executes the optimizer, re-run with the seeds of C-013 and C-015); outputs of earlier
+defaults stay in ``results/`` and the report names them where they decided something (G2.4's
+failure, F-020). The steady-state cost model (E2.8) does not depend on C-015 or C-018 and stays
+at its C-013 run.
 
 Usage: python experiments/phase2/make_report.py
 """
@@ -52,7 +53,7 @@ def gate_rows() -> list[tuple[str, str, str]]:
                      f"{e21.get('G2.1_k4_nonseparable_all_wins_matched')}; separable cells, worst "
                      f"ratio to the best peer {worst:.3f} (bootstrap upper bound {upper:.3f}); "
                      f"frame_every = 1: {verdict(k1)}"))
-        e22b = load_json("e22b_gate_c015.json")
+        e22b = load_json("e22b_gate_c018.json")
         cons = e22b["G2.2_consistency"] if e22b else None
         g22 = None if cons is None else bool(e21.get("tie_k4_all_wins_best") and cons)
         rows.append(("G2.2 identifiability", verdict(g22),
@@ -68,7 +69,7 @@ def gate_rows() -> list[tuple[str, str, str]]:
         rows.append(("(E2.4 heavy tails)", verdict(e21.get("tails_k4_all_wins_best")),
                      "Student-t suite, default; reported, not a gate item; frame_every = 1: "
                      f"{verdict(e21.get('G2.4h_tails_all_wins'))}"))
-    e25 = load_json("e25_gate_full_c015.json")
+    e25 = load_json("e25_gate_full_c018.json")
     before = load_json("e25_gate_full.json")
     history = (f"; before C-013 (evaluation seeds 100–111): {verdict(before['G2.4'])} (F-020)"
                if before else "")
@@ -88,7 +89,7 @@ def gate_rows() -> list[tuple[str, str, str]]:
     else:
         rows.append(("G2.5 theory–simulation", "pending", "E2.10 pending"))
     e211 = load_json("e211_gate.json")
-    e212 = load_json("e212_numerics_c015.json")
+    e212 = load_json("e212_numerics_c018.json")
     e28 = load_json("e28_cost_model_c013.json")
     cost_ok, cost_txt = None, "E2.8 pending"
     if e28:
@@ -115,9 +116,11 @@ def main() -> None:
              "Algorithm: Gimbal with the defaults of change C-004, the numerical fix C-008, "
              "`frame_every = 4` (C-012; rows `gimbal_k4`; rows `gimbal` are `frame_every = 1`) "
              "and frame statistics on the empirical-Bayes innovation (C-013), with the "
-             "sign-equivariant spectral-norm estimate (C-015) "
-             "(`src/gimbal/torch/gimbal.py`, `theory/gimbal_theory.md` v0.8). Rows `*_c013` are "
-             "the default before C-015 on the same seeds; rows `*_c012` and "
+             "sign-equivariant spectral-norm estimate (C-015), rotation rate 0.05 and the "
+             "adaptive amortization (C-018) "
+             "(`src/gimbal/torch/gimbal.py`, `theory/gimbal_theory.md` v0.9). Rows `*_c015` and "
+             "`*_c013` are the default before C-018 and before C-015 on the same seeds; rows "
+             "`*_c012` and "
              "`*_nocenter` are the same configurations before C-013. Seeds: E2.1–E2.4 10–19; E2.5 "
              "tuning 0–2, evaluation 300–311 (100–111 in the run before C-013); E2.9 40–47; "
              "E2.10–E2.12 fixed seeds in the scripts (50+). Seeds 0–9 (E2.1 exploratory), 21–35 "
@@ -127,14 +130,18 @@ def main() -> None:
     lines += [f"| {a} | **{b}** | {c} |" for a, b, c in gate_rows()]
     lines += [""]
     for title, name in (("E2.1–E2.4 frame estimation", "e21_report.md"),
-                        ("E2.2b consistency in a tied plane", "e22b_report_c015.md"),
-                        ("E2.5 noisy quadratics", "e25_report_full_c015.md"),
-                        ("E2.9 ablations", "e29_report_c015.md"),
+                        ("E2.2b consistency in a tied plane", "e22b_report_c018.md"),
+                        ("E2.5 noisy quadratics", "e25_report_full_c018.md"),
+                        ("E2.9 ablations", "e29_report_c018.md"),
                         ("E2.10 theory–simulation agreement", "e210_report.md"),
                         ("E2.11 landscape and global convergence", "e211_report.md"),
-                        ("E2.12 numerical behaviour", "e212_report_c015.md")):
+                        ("E2.12 numerical behaviour", "e212_report_c018.md")):
         lines += [f"## {title}", ""] + section(name)
-    lines += ["Outputs of the default before C-015 (same seeds), kept for the record: E2.2b "
+    lines += ["Outputs of the default before C-018 (same seeds), kept for the record: E2.2b "
+              "`e22b_report_c015.md`, E2.5 `e25_report_full_c015.md`, E2.9 `e29_report_c015.md`, "
+              "E2.12 `e212_report_c015.md`; the paired effect of C-018 on E2.1–E2.4 is tabulated "
+              "in the E2.1 report.", "",
+              "Outputs of the default before C-015 (same seeds), kept for the record: E2.2b "
               "`e22b_report_c013.md`, E2.5 `e25_report_full_c013.md`, E2.9 `e29_report_c013.md`, "
               "E2.12 `e212_report_c013.md`; the paired effect of C-015 on E2.1–E2.4 is tabulated "
               "in the E2.1 report.", "",

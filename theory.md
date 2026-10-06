@@ -123,7 +123,11 @@ $(2-\alpha)/\alpha$ gradients (Theorem 4.3).
 $\theta_{t+1}=\theta_t+\alpha_{t+1}(x_t-\theta_t)$ produces exactly the bias-corrected exponential average of its
 inputs (Theorem 4.4, machine-checked). Early in training the frame is the plain average of all
 per-gradient estimates so far; later it is a tracker with memory $\approx 2/\alpha$. It is the same
-identity that justifies Adam's bias correction.
+identity that justifies Adam's bias correction. The default $\alpha = 1-\beta_2 = 0.05$ gives the frame
+the same effective sample size as Adam's second moment, $(2-\alpha)/\alpha = (1+\beta_2)/(1-\beta_2) = 39$
+gradients, the convention SOAP uses for its factors. (The default was 0.02 until change C-018: a
+100-step frame memory, chosen on stationary synthetic streams, lagged behind the drifting
+statistics of a real language model, F-027.)
 
 ## 6. The variances that weight the score
 
@@ -132,7 +136,9 @@ The score needs $D$, and $D$ must itself be estimated. Three facts decide how.
 **Profile likelihood with one forgetting factor (Lemma 5.4.1).** With forgetting weights
 $\beta^{t-s}$, the weighted likelihood is maximized over $D$ exactly by the bias-corrected EMA of
 $Z^{\circ 2}$ with coefficient $\beta$. Gimbal therefore keeps a separate average $V^F$ with
-$\beta_D = 1-\alpha$, the frame's own memory, instead of Adam's short $\beta_2$.
+$\beta_D = 1-\alpha$, the frame's own memory, instead of Adam's $\beta_2$; with the default
+$\alpha=1-\beta_2$ the two windows have the same length, but the flow's average is taken on the
+innovation and in the frame the flow sees.
 
 **The exact price of noisy weights (Lemma 5.4.2).** For any weights $w$, with the inner product
 $\langle u,u'\rangle=\sum_j D_{ij}D_{kj}u_ju'_j$,
@@ -150,7 +156,9 @@ $\bar\varepsilon^2(6+3R_{ik}/F_{ik})$, and Monte Carlo confirms the corrected fo
 At first order the plug-in is free: the frame score is odd in the entries and the variance score
 even, so the Fisher information is block-diagonal. At finite memory it is not free. For Gaussian
 entries an EMA has
-$\bar\varepsilon^2 = 2(1-\beta)/(1+\beta)$: 0.051 for Adam's $\beta_2=0.95$, 0.020 for $\beta_D=0.98$.
+$\bar\varepsilon^2 = 2(1-\beta)/(1+\beta)$: 0.051 for $\beta=0.95$ (Adam's $\beta_2$, and the flow's
+$\beta_D$ at the default $\alpha=0.05$), 0.020 for $\beta=0.98$. The shrinkage below is what reduces
+the plug-in noise at the default.
 
 **Empirical-Bayes shrinkage toward the separable fit (Proposition 5.5).** Split
 $\log V^F = A + \hat R$ into its additive fit $A_{ij}=r_i+c_j-\bar\ell$ (the separable model) and a
@@ -265,8 +273,11 @@ Per step, for an $m\times n$ matrix, Gimbal needs:
 
 * four matmul "units" of $m^2n+mn^2$: rotate the gradient and the momentum, rotate the update back,
   and compute the score;
-* every $k$ steps (`frame_every`, default 4), the Fisher matrix plus $O(m^3+n^3)$ for the retraction
-  and polish;
+* every $k$ steps, the Fisher matrix plus $O(m^3+n^3)$ for the retraction and polish. The default
+  moves the frame on an adaptive schedule (change C-018): every step while the bias-corrected rate
+  $\alpha_t$ is large, then every $K=4$ steps (from step 48 on at $\alpha=0.05$). The amortized step
+  matches the per-step flow only to first order in $k\alpha_t$, and a fixed $k=4$ in the first steps
+  cost the small language model a deficit it never recovered (F-027);
 * $O(mn)$ elementwise work.
 
 There is no QR or eigendecomposition after step 50. With $k=1$ its state is $m^2+n^2+4mn$ floats
@@ -282,10 +293,13 @@ percentage of forward plus backward compute:
 | plus QR/eigh | yes, every 10 steps | every step | every step | none | none | none |
 
 QR and eigendecomposition run far below matmul throughput on TPUs, which is where the
-matmul-only design pays. Gimbal's default is $k=4$: with $k=1$ the frame moves pay the $m^3$ terms of
-tall layers every step and the optimizer costs more than SOAP. CPU timings taken inside the warm
-start are in `experiments/phase2/results/e28_cost_model.json`; a steady-state CPU benchmark was not
-completed in Phase 02, and the accelerator timing is measured in Phase 04.
+matmul-only design pays. Gimbal's steady state uses $k=4$: with $k=1$ the frame moves pay the $m^3$
+terms of tall layers every step and the optimizer costs more than SOAP. CPU timings taken inside
+the warm start are in `experiments/phase2/results/e28_cost_model.json`; a steady-state CPU benchmark
+was not completed in Phase 02. On the TPU v4-32 slice (Phase 04, `docs/performance.md`) the
+training step with Gimbal at $k=4$ is about 2% slower than with SOAP: the $2048\times2048$ retraction
+and Newton–Schulz polish run at full float32 precision, which the TPU executes far below its
+bfloat16 throughput.
 
 ## 11. Where the peers sit
 

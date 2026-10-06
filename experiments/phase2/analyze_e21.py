@@ -12,8 +12,9 @@ across peers within a cell) and a paired bootstrap interval of the log-ratio.
 Rows of ``gimbal`` and ``gimbal_k4`` re-run after change C-013 (files ``*_c013``) replace the
 earlier ones; those stay in the analysis as the ablation ``*_c012`` (the same configuration with
 frame statistics on the raw gradient), compared with the default on the same streams. Rows re-run
-after change C-015 (sign-equivariant spectral-norm estimate, files ``*_c015``, same seeds) are the
-default; the C-013 rows stay as ``*_c013`` and give the paired effect of C-015.
+after change C-015 (sign-equivariant spectral-norm estimate, files ``*_c015``) and after C-018
+(adaptive amortization, files ``*_c018``; same seeds throughout) replace their predecessors, which
+stay as ``*_c013`` and ``*_c015`` and give the paired effect of each change.
 
 Usage: python experiments/phase2/analyze_e21.py
 """
@@ -58,7 +59,7 @@ def load(suite: str) -> list[dict]:
                  f"e21_{suite}_peerfix.jsonl", f"e21_{suite}_ext_peerfix.jsonl"):
         for r in read_jsonl(RESULTS / name):
             rows[(cell_key(r), r["seed"], r["method"], r["memory"])] = r
-    for change, previous in (("c013", "c012"), ("c015", "c013")):
+    for change, previous in (("c013", "c012"), ("c015", "c013"), ("c018", "c015")):
         rerun = (read_jsonl(RESULTS / f"e21_{suite}_{change}.jsonl")
                  + read_jsonl(RESULTS / f"e21_{suite}_ext_{change}.jsonl"))
         if not rerun:
@@ -83,7 +84,7 @@ def centering_effect(rows: list[dict], summary: list[dict], after: str = "_c013"
         cells = []
         for ours in RERUN[::-1]:
             have = cell["best"]["mean_kl"]
-            num = f"{ours}{after}" if f"{ours}{after}" in have else ours
+            num = f"{ours}{after}" if after and f"{ours}{after}" in have else ours
             if f"{ours}{before}" not in have:
                 cells.append("—")
                 continue
@@ -254,13 +255,21 @@ def main() -> None:
         for label in ("best", "matched"):
             report += [f"## Suite `{suite}` — {label} memory (mean frame KL, lower is better)", "",
                        markdown(summary, label), ""]
+        if any(r["method"].endswith("_c015") for r in rows):
+            report += [f"### Suite `{suite}`: effect of C-018 (adaptive amortization; the memory "
+                       "grid is unchanged, so the new default rate does not enter here)", "",
+                       "Same seeds and streams; geometric mean over seeds of the paired frame-KL "
+                       "ratio, current default / the same configuration before C-018, at each "
+                       "one's best memory, percentile-bootstrap 95% interval.", "",
+                       *centering_effect(rows, summary, after="", before="_c015",
+                                         change="C-018"), ""]
         if any(r["method"].endswith("_c013") for r in rows):
             report += [f"### Suite `{suite}`: effect of C-015 (sign-equivariant spectral-norm "
                        "estimate)", "",
                        "Same seeds and streams; geometric mean over seeds of the paired frame-KL "
-                       "ratio, current default / the same configuration before C-015, at each "
+                       "ratio, the configuration after C-015 / before C-015, at each "
                        "one's best memory, percentile-bootstrap 95% interval.", "",
-                       *centering_effect(rows, summary, after="", before="_c013",
+                       *centering_effect(rows, summary, after="_c015", before="_c013",
                                          change="C-015"), ""]
         if any(r["method"].endswith("_c012") for r in rows):
             report += [f"### Suite `{suite}`: effect of C-013 (frame statistics on the "

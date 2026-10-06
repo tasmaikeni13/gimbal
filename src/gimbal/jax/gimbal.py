@@ -16,7 +16,8 @@ checks agreement):
 * the Fisher matrix is formed only at steps where the frame moves (the reference forms it every
   step and uses the last one).
 
-Only the defaults of the reference are implemented (``rot_schedule="bias_corrected"``,
+Only the defaults of the reference are implemented (``frame_schedule`` both ways,
+``rot_schedule="bias_corrected"``,
 ``flow_beta="tied"``, ``flow_shrink=True``, ``flow_center="adaptive"``, ``init="pooled"``,
 ``transport=False``, ``polish_every=1``); both sides must be preconditioned.
 """
@@ -49,14 +50,14 @@ class GimbalConfig:
     b2: float = 0.95
     eps: float = 1e-8
     weight_decay: float = 0.0
-    rot_rate: float = 0.02
+    rot_rate: float = 0.05  # = 1 - b2: one window for frame, flow variances and V (C-018)
     rot_rate_max: float = 0.5
     damping: float = 0.003
     floor: float = 1e-8
     max_angle: float = 0.25
     max_rotation: float = 1.0
     frame_every: int = 4
-    frame_schedule: str = "fixed"  # or "adaptive": k_t = clamp(round(K·α/α_t), 1, K) (F-027)
+    frame_schedule: str = "adaptive"  # k_t = clamp(round(K·α/α_t), 1, K); "fixed": K (C-018)
     warm_start_steps: int = 50
     polish_max_iters: int = 4
 

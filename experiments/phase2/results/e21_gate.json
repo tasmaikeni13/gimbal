@@ -3,8 +3,8 @@
  "main_k4_beats_practical_all": false,
  "G2.1_k4_nonseparable_all_wins_best": true,
  "G2.1_k4_nonseparable_all_wins_matched": true,
- "G2.1_k4_separable_worst_ratio_vs_best_peer": 1.1057358693793693,
- "G2.1_k4_separable_worst_upper_ratio": 1.1237576489249321,
+ "G2.1_k4_separable_worst_ratio_vs_best_peer": 1.0927454333986124,
+ "G2.1_k4_separable_worst_upper_ratio": 1.1104387976817802,
  "G2.1_k4_pass": true,
  "G2.1_nonseparable_all_wins_best": true,
  "G2.1_nonseparable_all_wins_matched": true,
@@ -13,11 +13,11 @@
  "G2.1_separable_worst_upper_ratio": 1.109785011470161,
  "G2.1_separable_upper_within_25pct": true,
  "random_effects_factor_vs_gimbal_k4": {
-  "soap": 24.374815161610684,
-  "soap_rt": 23.86482343102569,
-  "klsoap": 15.489297534328962,
-  "pooled_eigh": 23.948059091978507,
-  "kl_eigh": 16.17030521440763
+  "soap": 25.459257584635488,
+  "soap_rt": 24.92564210094196,
+  "klsoap": 16.178425318580363,
+  "pooled_eigh": 25.012385185780687,
+  "kl_eigh": 16.889166774185693
  },
  "random_effects_factor_vs_gimbal": {
   "soap": 25.88725838662609,

@@ -8,3 +8,18 @@ other hosts); ``GIMBAL_TEST_PLATFORM=tpu pytest tests/test_jax_optimizers.py`` r
 import os
 
 os.environ.setdefault("JAX_PLATFORMS", os.environ.get("GIMBAL_TEST_PLATFORM", "cpu"))
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _free_compiled_programs():
+    """Drop JAX's compiled executables after each test. Without this, a run of the whole suite
+    accumulates thousands of XLA CPU executables in one process and crashed (segmentation fault)
+    late in the run; every test passes on its own."""
+    yield
+    import sys
+
+    if "jax" in sys.modules:
+        sys.modules["jax"].clear_caches()

@@ -1,0 +1,338 @@
+{
+ "0.0|0.1|adamw": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|soap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|soap_rt": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|klsoap": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|muon": {
+  "lr": 0.1,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|normuon": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|splus": {
+  "lr": 1.0,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|aro": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|gimbal": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|gimbal_k4": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|gimbal_noshrink": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|gimbal_k4_nocenter": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|gimbal_k4_center": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "0.0|0.1|oracle": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|adamw": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|soap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|soap_rt": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|klsoap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|muon": {
+  "lr": 0.1,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|normuon": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|splus": {
+  "lr": 0.5,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|aro": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|gimbal": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|gimbal_k4": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|gimbal_noshrink": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|gimbal_k4_nocenter": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|gimbal_k4_center": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "0.0|1.0|oracle": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|adamw": {
+  "lr": 0.12,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|soap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|soap_rt": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|klsoap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|muon": {
+  "lr": 0.1,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|normuon": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|splus": {
+  "lr": 1.0,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|aro": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|gimbal": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|gimbal_k4": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|gimbal_noshrink": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|gimbal_k4_nocenter": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|gimbal_k4_center": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|0.1|oracle": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|adamw": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|soap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|soap_rt": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|klsoap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|muon": {
+  "lr": 0.1,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|normuon": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|splus": {
+  "lr": 0.5,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|aro": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|gimbal": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|gimbal_k4": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|gimbal_noshrink": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|gimbal_k4_nocenter": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|gimbal_k4_center": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "1.0|1.0|oracle": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|adamw": {
+  "lr": 0.12,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|soap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|soap_rt": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|klsoap": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|muon": {
+  "lr": 0.1,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|normuon": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|splus": {
+  "lr": 1.0,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|aro": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|gimbal": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|gimbal_k4": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|gimbal_noshrink": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|gimbal_k4_nocenter": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|gimbal_k4_center": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|0.1|oracle": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|adamw": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|soap": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|soap_rt": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|klsoap": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|muon": {
+  "lr": 0.05,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|normuon": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|splus": {
+  "lr": 0.5,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|aro": {
+  "lr": 0.03,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|gimbal": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|gimbal_k4": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|gimbal_noshrink": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|gimbal_k4_nocenter": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|gimbal_k4_center": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ },
+ "2.0|1.0|oracle": {
+  "lr": 0.06,
+  "at_grid_edge": false
+ }
+}

@@ -60,6 +60,10 @@ class Gimbal(Optimizer):
     rot_rate:
         Fraction of the per-pair natural-gradient step taken per iteration (``alpha``). The frame
         estimate behaves like an average over about ``(2 - alpha) / alpha`` gradients (Theorem 4).
+        The default 0.05 = 1 - beta_2 gives the frame, its flow variances and Adam's second moment
+        one window (effective sample size 39 for beta_2 = 0.95), the convention of SOAP's default
+        ``shampoo_beta = beta_2``; 0.02 (C-002, chosen on stationary synthetic streams) lagged on
+        language-model gradients (F-027, change C-018).
     rot_schedule:
         ``"constant"`` uses ``rot_rate`` at every step. ``"bias_corrected"`` uses
         ``alpha_t = alpha / (1 - (1 - alpha)^t)`` (capped at ``rot_rate_max``): the frame estimate
@@ -89,7 +93,8 @@ class Gimbal(Optimizer):
         ``k_t = clamp(round(frame_every · rot_rate / α_t), 1, frame_every)`` steps, where ``α_t`` is
         the scheduled rotation rate: the amortized step matches the per-step flow to first order
         in ``k·α`` (Section 5), so the product is held at its steady-state value and the early,
-        fast-moving phase is not amortized (candidate repair R1 for F-027).
+        fast-moving phase is not amortized. Default ``"adaptive"`` since C-018 (F-027): the cost
+        after the first ~50 steps is that of ``frame_every``.
     flow_beta:
         Variance estimate used by the frame flow. ``None`` reuses Adam's second moment (memory set
         by ``betas[1]``). A float keeps a separate EMA with that coefficient; ``"tied"`` uses
@@ -134,7 +139,7 @@ class Gimbal(Optimizer):
         betas: tuple[float, float] = (0.9, 0.95),
         eps: float = 1e-8,
         weight_decay: float = 0.0,
-        rot_rate: float = 0.02,
+        rot_rate: float = 0.05,
         rot_schedule: str = "bias_corrected",
         rot_rate_max: float = 0.5,
         damping: float = 0.003,
@@ -143,7 +148,7 @@ class Gimbal(Optimizer):
         max_rotation: float = 1.0,
         polish_every: int = 1,
         frame_every: int = 4,
-        frame_schedule: str = "fixed",
+        frame_schedule: str = "adaptive",
         flow_beta: float | str | None = "tied",
         flow_shrink: bool = True,
         flow_center: bool | str = "adaptive",

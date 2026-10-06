@@ -7,7 +7,8 @@ cell). The score is the E2.1 metric: time-averaged frame KL over the second half
 The first run (outputs without a tag) used the configuration of the time as its baseline:
 ``frame_every = 1`` and frame statistics on the raw gradient. Since C-013 the baseline is the
 default itself (``frame_every = 4``, empirical-Bayes innovation; ``--tag _c013``), with ``k1``,
-``no_center`` and ``center_always`` among the variants.
+``no_center`` and ``center_always`` among the variants; since C-018 (``--tag _c018``) the default
+moves its frame on the adaptive schedule, and ``fixed_schedule`` is the earlier one.
 
 Usage: python experiments/phase2/e29_ablations.py [--seeds 8] [--workers 4] [--tag _c013]
 """
@@ -51,6 +52,8 @@ VARIANTS = {
     "polish_4": dict(polish_every=4),
     "no_center": dict(flow_center=False),
     "center_always": dict(flow_center=True),
+    # C-018: the default amortization is adaptive; this is the fixed schedule of C-012
+    "fixed_schedule": dict(frame_schedule="fixed"),
 }
 
 CELLS = [

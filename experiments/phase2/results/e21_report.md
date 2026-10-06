@@ -4,63 +4,94 @@
 
 | cell | κ | gimbal | soap | soap_rt | klsoap | pooled_eigh | kl_eigh | gimbal_k4 | gimbal_k4_c012 | gimbal_noshrink | gimbal_v03 | Gimbal better than all (Holm p<0.05) | grid edge |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| γ=0.0 s=0.5 32x48 | 0.00 | 1.69 | 1.94 | 1.80 | 1.60 | 1.79 | 1.57 | 1.71 | 1.72 | 2.74 | 7.98 | no | gimbal_noshrink, kl_eigh, pooled_eigh, soap, soap_rt |
-| γ=0.0 s=0.5 64x64 | 0.00 | 4.36 | 5.19 | 4.80 | 4.02 | 4.77 | 3.99 | 4.42 | 4.41 | 7.38 | 22.43 | no | gimbal_noshrink, kl_eigh, pooled_eigh, soap, soap_rt |
-| γ=0.0 s=1.0 32x48 | 0.00 | 1.88 | 4.82 | 4.64 | 2.12 | 4.63 | 2.10 | 1.95 | 1.96 | 2.92 | 7.46 | yes | gimbal_noshrink, pooled_eigh, soap, soap_rt |
-| γ=0.0 s=1.0 64x64 | 0.00 | 4.92 | 16.31 | 15.74 | 5.60 | 15.70 | 5.49 | 5.04 | 5.04 | 8.19 | 21.31 | yes | gimbal_noshrink, pooled_eigh, soap, soap_rt |
-| γ=0.0 s=1.5 32x48 | 0.00 | 2.11 | 11.81 | 11.57 | 2.87 | 11.56 | 2.90 | 2.26 | 2.22 | 3.21 | 7.10 | yes | pooled_eigh, soap, soap_rt |
-| γ=0.0 s=1.5 64x64 | 0.00 | 6.38 | 46.04 | 45.02 | 7.56 | 44.96 | 7.62 | 6.61 | 6.57 | 9.63 | 20.92 | yes | pooled_eigh, soap, soap_rt |
-| γ=0.5 s=0.5 32x48 | 0.38 | 3.82 | 65.19 | 61.55 | 58.86 | 61.24 | 58.83 | 4.54 | 3.94 | 4.78 | 46.85 | yes | kl_eigh, pooled_eigh, soap_rt |
-| γ=0.5 s=0.5 64x64 | 0.37 | 11.93 | 199.43 | 188.79 | 180.50 | 188.32 | 180.10 | 12.92 | 13.22 | 16.83 | 208.97 | yes | kl_eigh, pooled_eigh, soap_rt |
-| γ=0.5 s=1.0 32x48 | 0.14 | 3.16 | 60.99 | 59.65 | 43.38 | 59.18 | 43.63 | 3.52 | 3.29 | 4.50 | 16.55 | yes | pooled_eigh, soap_rt |
-| γ=0.5 s=1.0 64x64 | 0.13 | 9.90 | 205.08 | 200.64 | 141.64 | 199.41 | 142.73 | 11.22 | 11.21 | 12.31 | 110.43 | yes | pooled_eigh, soap_rt |
-| γ=0.5 s=1.5 32x48 | 0.07 | 3.27 | 77.71 | 75.72 | 38.49 | 75.45 | 39.82 | 3.44 | 3.63 | 4.00 | 10.06 | yes | pooled_eigh, soap_rt |
-| γ=0.5 s=1.5 64x64 | 0.06 | 10.87 | 268.70 | 262.72 | 115.77 | 262.38 | 122.46 | 11.29 | 11.43 | 12.03 | 58.16 | yes | pooled_eigh, soap_rt |
-| γ=1.0 s=0.5 32x48 | 0.69 | 2.80 | 228.08 | 215.98 | 209.17 | 216.78 | 211.19 | 3.28 | 3.10 | 3.03 | 19.90 | yes | kl_eigh, pooled_eigh |
-| γ=1.0 s=0.5 64x64 | 0.69 | 8.14 | 711.73 | 668.79 | 648.39 | 670.42 | 658.62 | 9.88 | 10.29 | 10.23 | 174.44 | yes | kl_eigh, pooled_eigh, soap_rt |
-| γ=1.0 s=1.0 32x48 | 0.38 | 2.77 | 202.09 | 198.64 | 155.14 | 198.07 | 163.15 | 3.20 | 2.87 | 2.97 | 12.14 | yes | pooled_eigh, soap, soap_rt |
-| γ=1.0 s=1.0 64x64 | 0.37 | 9.00 | 703.44 | 687.68 | 517.79 | 687.38 | 539.36 | 9.83 | 10.76 | 9.41 | 64.55 | yes | pooled_eigh, soap_rt |
-| γ=1.0 s=1.5 32x48 | 0.22 | 3.33 | 233.00 | 232.04 | 139.47 | 231.56 | 152.07 | 3.54 | 3.99 | 3.96 | 7.83 | yes | pooled_eigh |
-| γ=1.0 s=1.5 64x64 | 0.21 | 11.00 | 810.13 | 797.02 | 446.08 | 795.11 | 489.53 | 11.21 | 11.37 | 11.75 | 35.66 | yes | pooled_eigh, soap_rt |
-| γ=2.0 s=0.5 32x48 | 0.87 | 5.64 | 541.40 | 565.42 | 544.88 | 580.04 | 577.19 | 5.58 | 5.95 | 5.57 | 37.25 | yes | kl_eigh, pooled_eigh |
-| γ=2.0 s=0.5 64x64 | 0.88 | 14.68 | 1873.03 | 1859.03 | 1824.15 | 1933.80 | 1970.17 | 14.92 | 14.93 | 14.70 | 202.87 | yes | kl_eigh, pooled_eigh |
-| γ=2.0 s=1.0 32x48 | 0.69 | 5.52 | 534.26 | 558.41 | 468.53 | 572.22 | 526.17 | 5.72 | 5.60 | 5.51 | 26.62 | yes | pooled_eigh, soap_rt |
-| γ=2.0 s=1.0 64x64 | 0.69 | 15.27 | 1889.38 | 1921.37 | 1561.45 | 1958.94 | 1717.13 | 15.61 | 15.53 | 15.37 | 199.65 | yes | pooled_eigh |
-| γ=2.0 s=1.5 32x48 | 0.51 | 7.55 | 566.93 | 577.30 | 424.30 | 582.79 | 487.24 | 7.26 | 7.08 | 7.28 | 41.85 | yes | pooled_eigh |
-| γ=2.0 s=1.5 64x64 | 0.51 | 20.76 | 2095.06 | 2141.42 | 1466.59 | 2164.15 | 1750.37 | 21.55 | 21.43 | 20.20 | 217.74 | yes | pooled_eigh, soap_rt |
+| γ=0.0 s=0.5 32x48 | 0.00 | 1.69 | 1.94 | 1.80 | 1.60 | 1.79 | 1.57 | 1.69 | 1.72 | 2.74 | 7.98 | no | gimbal_noshrink, kl_eigh, pooled_eigh, soap, soap_rt |
+| γ=0.0 s=0.5 64x64 | 0.00 | 4.36 | 5.19 | 4.80 | 4.02 | 4.77 | 3.99 | 4.36 | 4.41 | 7.38 | 22.43 | no | gimbal_noshrink, kl_eigh, pooled_eigh, soap, soap_rt |
+| γ=0.0 s=1.0 32x48 | 0.00 | 1.88 | 4.82 | 4.64 | 2.12 | 4.63 | 2.10 | 1.89 | 1.96 | 2.92 | 7.46 | yes | gimbal_noshrink, pooled_eigh, soap, soap_rt |
+| γ=0.0 s=1.0 64x64 | 0.00 | 4.92 | 16.31 | 15.74 | 5.60 | 15.70 | 5.49 | 4.93 | 5.04 | 8.19 | 21.31 | yes | gimbal_noshrink, pooled_eigh, soap, soap_rt |
+| γ=0.0 s=1.5 32x48 | 0.00 | 2.11 | 11.81 | 11.57 | 2.87 | 11.56 | 2.90 | 2.12 | 2.22 | 3.21 | 7.10 | yes | pooled_eigh, soap, soap_rt |
+| γ=0.0 s=1.5 64x64 | 0.00 | 6.38 | 46.04 | 45.02 | 7.56 | 44.96 | 7.62 | 6.40 | 6.57 | 9.63 | 20.92 | yes | pooled_eigh, soap, soap_rt |
+| γ=0.5 s=0.5 32x48 | 0.38 | 3.82 | 65.19 | 61.55 | 58.86 | 61.24 | 58.83 | 3.94 | 3.94 | 4.78 | 46.85 | yes | kl_eigh, pooled_eigh, soap_rt |
+| γ=0.5 s=0.5 64x64 | 0.37 | 11.93 | 199.43 | 188.79 | 180.50 | 188.32 | 180.10 | 12.86 | 13.22 | 16.83 | 208.97 | yes | kl_eigh, pooled_eigh, soap_rt |
+| γ=0.5 s=1.0 32x48 | 0.14 | 3.16 | 60.99 | 59.65 | 43.38 | 59.18 | 43.63 | 3.31 | 3.29 | 4.50 | 16.55 | yes | pooled_eigh, soap_rt |
+| γ=0.5 s=1.0 64x64 | 0.13 | 9.90 | 205.08 | 200.64 | 141.64 | 199.41 | 142.73 | 10.28 | 11.21 | 12.31 | 110.43 | yes | pooled_eigh, soap_rt |
+| γ=0.5 s=1.5 32x48 | 0.07 | 3.27 | 77.71 | 75.72 | 38.49 | 75.45 | 39.82 | 3.32 | 3.63 | 4.00 | 10.06 | yes | pooled_eigh, soap_rt |
+| γ=0.5 s=1.5 64x64 | 0.06 | 10.87 | 268.70 | 262.72 | 115.77 | 262.38 | 122.46 | 11.06 | 11.43 | 12.03 | 58.16 | yes | pooled_eigh, soap_rt |
+| γ=1.0 s=0.5 32x48 | 0.69 | 2.80 | 228.08 | 215.98 | 209.17 | 216.78 | 211.19 | 2.81 | 3.10 | 3.03 | 19.90 | yes | kl_eigh, pooled_eigh |
+| γ=1.0 s=0.5 64x64 | 0.69 | 8.14 | 711.73 | 668.79 | 648.39 | 670.42 | 658.62 | 8.26 | 10.29 | 10.23 | 174.44 | yes | kl_eigh, pooled_eigh, soap_rt |
+| γ=1.0 s=1.0 32x48 | 0.38 | 2.77 | 202.09 | 198.64 | 155.14 | 198.07 | 163.15 | 2.78 | 2.87 | 2.97 | 12.14 | yes | pooled_eigh, soap, soap_rt |
+| γ=1.0 s=1.0 64x64 | 0.37 | 9.00 | 703.44 | 687.68 | 517.79 | 687.38 | 539.36 | 9.44 | 10.76 | 9.41 | 64.55 | yes | pooled_eigh, soap_rt |
+| γ=1.0 s=1.5 32x48 | 0.22 | 3.33 | 233.00 | 232.04 | 139.47 | 231.56 | 152.07 | 3.42 | 3.99 | 3.96 | 7.83 | yes | pooled_eigh |
+| γ=1.0 s=1.5 64x64 | 0.21 | 11.00 | 810.13 | 797.02 | 446.08 | 795.11 | 489.53 | 11.04 | 11.37 | 11.75 | 35.66 | yes | pooled_eigh, soap_rt |
+| γ=2.0 s=0.5 32x48 | 0.87 | 5.64 | 541.40 | 565.42 | 544.88 | 580.04 | 577.19 | 5.72 | 5.95 | 5.57 | 37.25 | yes | kl_eigh, pooled_eigh |
+| γ=2.0 s=0.5 64x64 | 0.88 | 14.68 | 1873.03 | 1859.03 | 1824.15 | 1933.80 | 1970.17 | 14.80 | 14.93 | 14.70 | 202.87 | yes | kl_eigh, pooled_eigh |
+| γ=2.0 s=1.0 32x48 | 0.69 | 5.52 | 534.26 | 558.41 | 468.53 | 572.22 | 526.17 | 5.60 | 5.60 | 5.51 | 26.62 | yes | pooled_eigh, soap_rt |
+| γ=2.0 s=1.0 64x64 | 0.69 | 15.27 | 1889.38 | 1921.37 | 1561.45 | 1958.94 | 1717.13 | 15.53 | 15.53 | 15.37 | 199.65 | yes | pooled_eigh |
+| γ=2.0 s=1.5 32x48 | 0.51 | 7.55 | 566.93 | 577.30 | 424.30 | 582.79 | 487.24 | 7.67 | 7.08 | 7.28 | 41.85 | yes | pooled_eigh |
+| γ=2.0 s=1.5 64x64 | 0.51 | 20.76 | 2095.06 | 2141.42 | 1466.59 | 2164.15 | 1750.37 | 21.57 | 21.43 | 20.20 | 217.74 | yes | pooled_eigh, soap_rt |
 
 ## Suite `main` — matched memory (mean frame KL, lower is better)
 
 | cell | κ | gimbal | soap | soap_rt | klsoap | pooled_eigh | kl_eigh | gimbal_k4 | Gimbal better than all (Holm p<0.05) |
 |---|---|---|---|---|---|---|---|---|---|
 | γ=0.0 s=0.5 32x48 | 0.00 | 3.76 | 3.88 | 4.75 | 3.67 | 4.94 | 3.82 | 3.78 | no |
-| γ=0.0 s=0.5 64x64 | 0.00 | 9.28 | 10.31 | 12.64 | 9.16 | 13.15 | 9.57 | 9.32 | no |
-| γ=0.0 s=1.0 32x48 | 0.00 | 4.00 | 10.94 | 12.40 | 4.00 | 12.66 | 4.11 | 4.02 | no |
+| γ=0.0 s=0.5 64x64 | 0.00 | 9.28 | 10.31 | 12.64 | 9.16 | 13.15 | 9.57 | 9.31 | no |
+| γ=0.0 s=1.0 32x48 | 0.00 | 4.00 | 10.94 | 12.40 | 4.00 | 12.66 | 4.11 | 4.01 | no |
 | γ=0.0 s=1.0 64x64 | 0.00 | 9.80 | 36.39 | 41.12 | 9.82 | 42.01 | 10.11 | 9.83 | no |
-| γ=0.0 s=1.5 32x48 | 0.00 | 4.03 | 27.99 | 30.47 | 4.14 | 30.88 | 4.22 | 4.04 | yes |
-| γ=0.0 s=1.5 64x64 | 0.00 | 10.11 | 107.68 | 116.48 | 10.40 | 117.92 | 10.63 | 10.13 | yes |
-| γ=0.5 s=0.5 32x48 | 0.38 | 4.47 | 69.84 | 76.45 | 70.02 | 78.57 | 72.65 | 4.54 | yes |
-| γ=0.5 s=0.5 64x64 | 0.37 | 11.93 | 210.49 | 223.12 | 209.04 | 228.58 | 215.05 | 12.92 | yes |
-| γ=0.5 s=1.0 32x48 | 0.14 | 4.35 | 72.45 | 80.30 | 53.24 | 82.09 | 55.41 | 4.41 | yes |
-| γ=0.5 s=1.0 64x64 | 0.13 | 11.12 | 236.58 | 257.10 | 163.68 | 261.08 | 171.89 | 11.22 | yes |
-| γ=0.5 s=1.5 32x48 | 0.07 | 4.32 | 99.07 | 107.59 | 43.50 | 108.97 | 45.54 | 4.30 | yes |
-| γ=0.5 s=1.5 64x64 | 0.06 | 10.87 | 344.20 | 364.52 | 130.95 | 367.88 | 140.00 | 11.29 | yes |
-| γ=1.0 s=0.5 32x48 | 0.69 | 4.22 | 239.55 | 261.80 | 251.47 | 272.59 | 263.57 | 4.31 | yes |
-| γ=1.0 s=0.5 64x64 | 0.69 | 10.77 | 735.04 | 801.81 | 757.36 | 830.39 | 792.71 | 10.88 | yes |
-| γ=1.0 s=1.0 32x48 | 0.38 | 4.23 | 225.59 | 259.12 | 185.95 | 267.21 | 198.01 | 4.24 | yes |
-| γ=1.0 s=1.0 64x64 | 0.37 | 10.65 | 767.01 | 849.84 | 597.57 | 868.84 | 646.16 | 10.71 | yes |
-| γ=1.0 s=1.5 32x48 | 0.22 | 4.24 | 276.64 | 306.94 | 158.36 | 311.93 | 171.40 | 4.27 | yes |
-| γ=1.0 s=1.5 64x64 | 0.21 | 11.00 | 927.46 | 996.61 | 483.61 | 1009.49 | 529.97 | 11.21 | yes |
-| γ=2.0 s=0.5 32x48 | 0.87 | 5.64 | 558.30 | 691.91 | 701.53 | 771.99 | 785.69 | 5.58 | yes |
-| γ=2.0 s=0.5 64x64 | 0.88 | 14.68 | 1883.45 | 2234.66 | 2202.95 | 2496.34 | 2475.54 | 14.92 | yes |
-| γ=2.0 s=1.0 32x48 | 0.69 | 5.52 | 583.33 | 722.24 | 591.78 | 781.69 | 678.61 | 5.72 | yes |
-| γ=2.0 s=1.0 64x64 | 0.69 | 15.27 | 1971.65 | 2303.14 | 1845.27 | 2490.79 | 2120.72 | 15.61 | yes |
-| γ=2.0 s=1.5 32x48 | 0.51 | 7.55 | 645.95 | 749.63 | 501.77 | 791.81 | 576.33 | 7.26 | yes |
-| γ=2.0 s=1.5 64x64 | 0.51 | 20.76 | 2312.30 | 2632.63 | 1627.30 | 2761.95 | 1902.94 | 22.20 | yes |
+| γ=0.0 s=1.5 32x48 | 0.00 | 4.03 | 27.99 | 30.47 | 4.14 | 30.88 | 4.22 | 4.03 | yes |
+| γ=0.0 s=1.5 64x64 | 0.00 | 10.11 | 107.68 | 116.48 | 10.40 | 117.92 | 10.63 | 10.12 | yes |
+| γ=0.5 s=0.5 32x48 | 0.38 | 4.47 | 69.84 | 76.45 | 70.02 | 78.57 | 72.65 | 4.51 | yes |
+| γ=0.5 s=0.5 64x64 | 0.37 | 11.93 | 210.49 | 223.12 | 209.04 | 228.58 | 215.05 | 12.86 | yes |
+| γ=0.5 s=1.0 32x48 | 0.14 | 4.35 | 72.45 | 80.30 | 53.24 | 82.09 | 55.41 | 4.35 | yes |
+| γ=0.5 s=1.0 64x64 | 0.13 | 11.12 | 236.58 | 257.10 | 163.68 | 261.08 | 171.89 | 11.34 | yes |
+| γ=0.5 s=1.5 32x48 | 0.07 | 4.32 | 99.07 | 107.59 | 43.50 | 108.97 | 45.54 | 4.37 | yes |
+| γ=0.5 s=1.5 64x64 | 0.06 | 10.87 | 344.20 | 364.52 | 130.95 | 367.88 | 140.00 | 11.06 | yes |
+| γ=1.0 s=0.5 32x48 | 0.69 | 4.22 | 239.55 | 261.80 | 251.47 | 272.59 | 263.57 | 4.24 | yes |
+| γ=1.0 s=0.5 64x64 | 0.69 | 10.77 | 735.04 | 801.81 | 757.36 | 830.39 | 792.71 | 10.82 | yes |
+| γ=1.0 s=1.0 32x48 | 0.38 | 4.23 | 225.59 | 259.12 | 185.95 | 267.21 | 198.01 | 4.23 | yes |
+| γ=1.0 s=1.0 64x64 | 0.37 | 10.65 | 767.01 | 849.84 | 597.57 | 868.84 | 646.16 | 10.85 | yes |
+| γ=1.0 s=1.5 32x48 | 0.22 | 4.24 | 276.64 | 306.94 | 158.36 | 311.93 | 171.40 | 4.28 | yes |
+| γ=1.0 s=1.5 64x64 | 0.21 | 11.00 | 927.46 | 996.61 | 483.61 | 1009.49 | 529.97 | 11.04 | yes |
+| γ=2.0 s=0.5 32x48 | 0.87 | 5.64 | 558.30 | 691.91 | 701.53 | 771.99 | 785.69 | 5.72 | yes |
+| γ=2.0 s=0.5 64x64 | 0.88 | 14.68 | 1883.45 | 2234.66 | 2202.95 | 2496.34 | 2475.54 | 14.80 | yes |
+| γ=2.0 s=1.0 32x48 | 0.69 | 5.52 | 583.33 | 722.24 | 591.78 | 781.69 | 678.61 | 5.60 | yes |
+| γ=2.0 s=1.0 64x64 | 0.69 | 15.27 | 1971.65 | 2303.14 | 1845.27 | 2490.79 | 2120.72 | 15.53 | yes |
+| γ=2.0 s=1.5 32x48 | 0.51 | 7.55 | 645.95 | 749.63 | 501.77 | 791.81 | 576.33 | 7.67 | yes |
+| γ=2.0 s=1.5 64x64 | 0.51 | 20.76 | 2312.30 | 2632.63 | 1627.30 | 2761.95 | 1902.94 | 21.92 | yes |
+
+### Suite `main`: effect of C-018 (adaptive amortization; the memory grid is unchanged, so the new default rate does not enter here)
+
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-018, at each one's best memory, percentile-bootstrap 95% interval.
+
+| cell | k = 4: with / before C-018 | k = 1: with / before C-018 |
+|---|---|---|
+| γ=0.0 s=0.5 32x48 | 0.989 [0.980, 0.999] | 1.000 [1.000, 1.000] |
+| γ=0.0 s=0.5 64x64 | 0.988 [0.977, 0.999] | 1.000 [1.000, 1.000] |
+| γ=0.0 s=1.0 32x48 | 0.967 [0.948, 0.987] | 1.000 [1.000, 1.000] |
+| γ=0.0 s=1.0 64x64 | 0.979 [0.966, 0.989] | 1.000 [1.000, 1.000] |
+| γ=0.0 s=1.5 32x48 | 0.938 [0.919, 0.957] | 1.000 [1.000, 1.000] |
+| γ=0.0 s=1.5 64x64 | 0.969 [0.962, 0.976] | 1.000 [1.000, 1.000] |
+| γ=0.5 s=0.5 32x48 | 0.842 [0.746, 0.977] | 1.000 [1.000, 1.000] |
+| γ=0.5 s=0.5 64x64 | 0.998 [0.938, 1.069] | 1.000 [1.000, 1.000] |
+| γ=0.5 s=1.0 32x48 | 0.918 [0.806, 1.061] | 1.000 [1.000, 1.000] |
+| γ=0.5 s=1.0 64x64 | 0.900 [0.810, 1.018] | 1.000 [1.000, 1.000] |
+| γ=0.5 s=1.5 32x48 | 0.961 [0.887, 1.044] | 1.000 [1.000, 1.000] |
+| γ=0.5 s=1.5 64x64 | 0.980 [0.951, 1.003] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=0.5 32x48 | 0.877 [0.778, 0.953] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=0.5 64x64 | 0.868 [0.715, 1.006] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.0 32x48 | 0.897 [0.758, 0.989] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.0 64x64 | 0.971 [0.919, 1.027] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.5 32x48 | 0.956 [0.841, 1.105] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.5 64x64 | 0.986 [0.974, 0.998] | 1.000 [1.000, 1.000] |
+| γ=2.0 s=0.5 32x48 | 1.023 [0.979, 1.090] | 1.000 [1.000, 1.000] |
+| γ=2.0 s=0.5 64x64 | 0.992 [0.985, 1.000] | 1.000 [1.000, 1.000] |
+| γ=2.0 s=1.0 32x48 | 0.982 [0.940, 1.012] | 1.000 [1.000, 1.000] |
+| γ=2.0 s=1.0 64x64 | 0.994 [0.972, 1.026] | 1.000 [1.000, 1.000] |
+| γ=2.0 s=1.5 32x48 | 1.039 [0.993, 1.107] | 1.000 [1.000, 1.000] |
+| γ=2.0 s=1.5 64x64 | 1.001 [0.996, 1.009] | 1.000 [1.000, 1.000] |
 
 ### Suite `main`: effect of C-015 (sign-equivariant spectral-norm estimate)
 
-Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-015, at each one's best memory, percentile-bootstrap 95% interval.
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, the configuration after C-015 / before C-015, at each one's best memory, percentile-bootstrap 95% interval.
 
 | cell | k = 4: with / before C-015 | k = 1: with / before C-015 |
 |---|---|---|
@@ -130,11 +161,11 @@ Gimbal default (frame_every = 4):
 
 | peer | pooled factor | 95% CI | I² | cells |
 |---|---|---|---|---|
-| soap | 24.37 | [12.14, 48.96] | 1.00 | 24 |
-| soap_rt | 23.86 | [11.16, 51.03] | 1.00 | 24 |
-| klsoap | 15.49 | [7.33, 32.72] | 1.00 | 24 |
-| pooled_eigh | 23.95 | [11.08, 51.76] | 1.00 | 24 |
-| kl_eigh | 16.17 | [7.20, 36.32] | 1.00 | 24 |
+| soap | 25.46 | [12.42, 52.20] | 1.00 | 24 |
+| soap_rt | 24.93 | [11.51, 53.99] | 1.00 | 24 |
+| klsoap | 16.18 | [7.39, 35.44] | 1.00 | 24 |
+| pooled_eigh | 25.01 | [11.53, 54.25] | 1.00 | 24 |
+| kl_eigh | 16.89 | [7.21, 39.54] | 1.00 | 24 |
 
 Gimbal frame_every = 1:
 
@@ -150,21 +181,31 @@ Gimbal frame_every = 1:
 
 | cell | κ | gimbal | soap | soap_rt | klsoap | pooled_eigh | kl_eigh | gimbal_k4 | gimbal_k4_c012 | gimbal_noshrink | gimbal_v03 | Gimbal better than all (Holm p<0.05) | grid edge |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| γ=0.0 s=1.0 32x48 tie | 0.41 | 3.14 | 137.97 | 138.57 | 103.80 | 142.21 | 111.91 | 3.28 | 2.97 | 4.03 | 9.71 | yes | pooled_eigh |
-| γ=0.5 s=1.0 32x48 tie | 0.51 | 2.89 | 182.78 | 184.68 | 136.96 | 190.49 | 147.67 | 2.83 | 3.01 | 2.80 | 7.73 | yes | kl_eigh, pooled_eigh |
-| γ=1.0 s=1.0 32x48 tie | 0.61 | 3.15 | 332.18 | 332.65 | 264.23 | 342.23 | 277.49 | 3.81 | 3.95 | 3.68 | 10.34 | yes | pooled_eigh |
+| γ=0.0 s=1.0 32x48 tie | 0.41 | 3.14 | 137.97 | 138.57 | 103.80 | 142.21 | 111.91 | 3.15 | 2.97 | 4.03 | 9.71 | yes | pooled_eigh |
+| γ=0.5 s=1.0 32x48 tie | 0.51 | 2.89 | 182.78 | 184.68 | 136.96 | 190.49 | 147.67 | 2.96 | 3.01 | 2.80 | 7.73 | yes | kl_eigh, pooled_eigh |
+| γ=1.0 s=1.0 32x48 tie | 0.61 | 3.15 | 332.18 | 332.65 | 264.23 | 342.23 | 277.49 | 3.18 | 3.95 | 3.68 | 10.34 | yes | pooled_eigh |
 
 ## Suite `tie` — matched memory (mean frame KL, lower is better)
 
 | cell | κ | gimbal | soap | soap_rt | klsoap | pooled_eigh | kl_eigh | gimbal_k4 | Gimbal better than all (Holm p<0.05) |
 |---|---|---|---|---|---|---|---|---|---|
-| γ=0.0 s=1.0 32x48 tie | 0.41 | 4.29 | 144.84 | 178.68 | 129.62 | 191.87 | 141.92 | 4.32 | yes |
+| γ=0.0 s=1.0 32x48 tie | 0.41 | 4.29 | 144.84 | 178.68 | 129.62 | 191.87 | 141.92 | 4.33 | yes |
 | γ=0.5 s=1.0 32x48 tie | 0.51 | 4.24 | 185.47 | 224.19 | 174.47 | 242.61 | 189.48 | 4.24 | yes |
-| γ=1.0 s=1.0 32x48 tie | 0.61 | 4.25 | 336.33 | 394.40 | 310.48 | 425.23 | 340.34 | 4.29 | yes |
+| γ=1.0 s=1.0 32x48 tie | 0.61 | 4.25 | 336.33 | 394.40 | 310.48 | 425.23 | 340.34 | 4.27 | yes |
+
+### Suite `tie`: effect of C-018 (adaptive amortization; the memory grid is unchanged, so the new default rate does not enter here)
+
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-018, at each one's best memory, percentile-bootstrap 95% interval.
+
+| cell | k = 4: with / before C-018 | k = 1: with / before C-018 |
+|---|---|---|
+| γ=0.0 s=1.0 32x48 tie | 0.955 [0.883, 1.034] | 1.000 [1.000, 1.000] |
+| γ=0.5 s=1.0 32x48 tie | 1.042 [0.984, 1.109] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.0 32x48 tie | 0.869 [0.738, 0.989] | 1.000 [1.000, 1.000] |
 
 ### Suite `tie`: effect of C-015 (sign-equivariant spectral-norm estimate)
 
-Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-015, at each one's best memory, percentile-bootstrap 95% interval.
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, the configuration after C-015 / before C-015, at each one's best memory, percentile-bootstrap 95% interval.
 
 | cell | k = 4: with / before C-015 | k = 1: with / before C-015 |
 |---|---|---|
@@ -220,13 +261,23 @@ Default (frame_every = 4) below SOAP, SOAP real-time and KL-SOAP (Holm p < 0.05)
 
 | cell | κ | gimbal | soap | soap_rt | klsoap | pooled_eigh | kl_eigh | gimbal_k4 | Gimbal better than all (Holm p<0.05) |
 |---|---|---|---|---|---|---|---|---|---|
-| γ=1.0 s=1.0 32x48 drift=0.001 | 0.38 | 24.73 | 239.82 | 272.50 | 200.79 | 279.72 | 213.90 | 25.35 | yes |
-| γ=1.0 s=1.0 32x48 drift=0.003 | 0.38 | 135.66 | 325.29 | 335.61 | 292.10 | 339.95 | 296.16 | 138.61 | yes |
-| γ=1.0 s=1.0 32x48 drift=0.01 | 0.38 | 514.02 | 571.66 | 539.74 | 522.09 | 538.43 | 520.37 | 518.03 | yes |
+| γ=1.0 s=1.0 32x48 drift=0.001 | 0.38 | 24.73 | 239.82 | 272.50 | 200.79 | 279.72 | 213.90 | 25.36 | yes |
+| γ=1.0 s=1.0 32x48 drift=0.003 | 0.38 | 135.66 | 325.29 | 335.61 | 292.10 | 339.95 | 296.16 | 138.73 | yes |
+| γ=1.0 s=1.0 32x48 drift=0.01 | 0.38 | 514.02 | 571.66 | 539.74 | 522.09 | 538.43 | 520.37 | 518.32 | yes |
+
+### Suite `drift`: effect of C-018 (adaptive amortization; the memory grid is unchanged, so the new default rate does not enter here)
+
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-018, at each one's best memory, percentile-bootstrap 95% interval.
+
+| cell | k = 4: with / before C-018 | k = 1: with / before C-018 |
+|---|---|---|
+| γ=1.0 s=1.0 32x48 drift=0.001 | 1.000 [1.000, 1.000] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.0 32x48 drift=0.003 | 1.000 [1.000, 1.000] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.0 32x48 drift=0.01 | 1.000 [1.000, 1.000] | 1.000 [1.000, 1.000] |
 
 ### Suite `drift`: effect of C-015 (sign-equivariant spectral-norm estimate)
 
-Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-015, at each one's best memory, percentile-bootstrap 95% interval.
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, the configuration after C-015 / before C-015, at each one's best memory, percentile-bootstrap 95% interval.
 
 | cell | k = 4: with / before C-015 | k = 1: with / before C-015 |
 |---|---|---|
@@ -250,21 +301,31 @@ Default (frame_every = 4) below SOAP, SOAP real-time and KL-SOAP (Holm p < 0.05)
 
 | cell | κ | gimbal | soap | soap_rt | klsoap | pooled_eigh | kl_eigh | gimbal_k4 | gimbal_k4_c012 | gimbal_noshrink | gimbal_v03 | Gimbal better than all (Holm p<0.05) | grid edge |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| γ=1.0 s=1.0 32x48 t(ν=3) | 0.38 | 2.38 | 145.76 | 192.09 | 129.41 | 204.29 | 163.61 | 2.47 | 2.50 | 2.48 | 4.37 | yes | — |
-| γ=1.0 s=1.0 32x48 t(ν=5) | 0.38 | 2.70 | 184.18 | 195.30 | 145.01 | 197.23 | 158.55 | 2.74 | 2.71 | 2.72 | 5.89 | yes | pooled_eigh |
-| γ=1.0 s=1.0 32x48 | 0.38 | 2.77 | 202.09 | 198.64 | 155.14 | 198.07 | 163.15 | 3.20 | 2.87 | 2.97 | 12.14 | yes | pooled_eigh, soap, soap_rt |
+| γ=1.0 s=1.0 32x48 t(ν=3) | 0.38 | 2.38 | 145.76 | 192.09 | 129.41 | 204.29 | 163.61 | 2.39 | 2.50 | 2.48 | 4.37 | yes | — |
+| γ=1.0 s=1.0 32x48 t(ν=5) | 0.38 | 2.70 | 184.18 | 195.30 | 145.01 | 197.23 | 158.55 | 2.71 | 2.71 | 2.72 | 5.89 | yes | pooled_eigh |
+| γ=1.0 s=1.0 32x48 | 0.38 | 2.77 | 202.09 | 198.64 | 155.14 | 198.07 | 163.15 | 2.78 | 2.87 | 2.97 | 12.14 | yes | pooled_eigh, soap, soap_rt |
 
 ## Suite `tails` — matched memory (mean frame KL, lower is better)
 
 | cell | κ | gimbal | soap | soap_rt | klsoap | pooled_eigh | kl_eigh | gimbal_k4 | Gimbal better than all (Holm p<0.05) |
 |---|---|---|---|---|---|---|---|---|---|
-| γ=1.0 s=1.0 32x48 t(ν=3) | 0.38 | 3.54 | 155.05 | 239.84 | 159.09 | 267.24 | 204.97 | 3.56 | yes |
-| γ=1.0 s=1.0 32x48 t(ν=5) | 0.38 | 4.05 | 194.55 | 250.97 | 175.87 | 265.75 | 202.83 | 4.07 | yes |
-| γ=1.0 s=1.0 32x48 | 0.38 | 4.23 | 225.59 | 259.12 | 185.95 | 267.21 | 198.01 | 4.24 | yes |
+| γ=1.0 s=1.0 32x48 t(ν=3) | 0.38 | 3.54 | 155.05 | 239.84 | 159.09 | 267.24 | 204.97 | 3.55 | yes |
+| γ=1.0 s=1.0 32x48 t(ν=5) | 0.38 | 4.05 | 194.55 | 250.97 | 175.87 | 265.75 | 202.83 | 4.06 | yes |
+| γ=1.0 s=1.0 32x48 | 0.38 | 4.23 | 225.59 | 259.12 | 185.95 | 267.21 | 198.01 | 4.23 | yes |
+
+### Suite `tails`: effect of C-018 (adaptive amortization; the memory grid is unchanged, so the new default rate does not enter here)
+
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-018, at each one's best memory, percentile-bootstrap 95% interval.
+
+| cell | k = 4: with / before C-018 | k = 1: with / before C-018 |
+|---|---|---|
+| γ=1.0 s=1.0 32x48 t(ν=3) | 0.968 [0.958, 0.978] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.0 32x48 t(ν=5) | 0.990 [0.975, 1.006] | 1.000 [1.000, 1.000] |
+| γ=1.0 s=1.0 32x48 | 0.897 [0.758, 0.989] | 1.000 [1.000, 1.000] |
 
 ### Suite `tails`: effect of C-015 (sign-equivariant spectral-norm estimate)
 
-Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, current default / the same configuration before C-015, at each one's best memory, percentile-bootstrap 95% interval.
+Same seeds and streams; geometric mean over seeds of the paired frame-KL ratio, the configuration after C-015 / before C-015, at each one's best memory, percentile-bootstrap 95% interval.
 
 | cell | k = 4: with / before C-015 | k = 1: with / before C-015 |
 |---|---|---|
@@ -292,8 +353,8 @@ Default (frame_every = 4) below SOAP, SOAP real-time and KL-SOAP (Holm p < 0.05)
  "main_k4_beats_practical_all": false,
  "G2.1_k4_nonseparable_all_wins_best": true,
  "G2.1_k4_nonseparable_all_wins_matched": true,
- "G2.1_k4_separable_worst_ratio_vs_best_peer": 1.1057358693793693,
- "G2.1_k4_separable_worst_upper_ratio": 1.1237576489249321,
+ "G2.1_k4_separable_worst_ratio_vs_best_peer": 1.0927454333986124,
+ "G2.1_k4_separable_worst_upper_ratio": 1.1104387976817802,
  "G2.1_k4_pass": true,
  "G2.1_nonseparable_all_wins_best": true,
  "G2.1_nonseparable_all_wins_matched": true,
@@ -302,11 +363,11 @@ Default (frame_every = 4) below SOAP, SOAP real-time and KL-SOAP (Holm p < 0.05)
  "G2.1_separable_worst_upper_ratio": 1.109785011470161,
  "G2.1_separable_upper_within_25pct": true,
  "random_effects_factor_vs_gimbal_k4": {
-  "soap": 24.374815161610684,
-  "soap_rt": 23.86482343102569,
-  "klsoap": 15.489297534328962,
-  "pooled_eigh": 23.948059091978507,
-  "kl_eigh": 16.17030521440763
+  "soap": 25.459257584635488,
+  "soap_rt": 24.92564210094196,
+  "klsoap": 16.178425318580363,
+  "pooled_eigh": 25.012385185780687,
+  "kl_eigh": 16.889166774185693
  },
  "random_effects_factor_vs_gimbal": {
   "soap": 25.88725838662609,

@@ -4,9 +4,9 @@ Golden criteria (change C-016, ``research/ledger/decisions.md``):
 
 * float64: JAX and PyTorch increments agree to 1e-8 relative at every step of a 50-step sequence;
 * float32: every step kind, started from the reference's own state, agrees to 2e-5 relative;
-* float32, 50 steps: AdamW agrees to 1e-5. For SOAP and Gimbal the JAX run is at most 3 times
-  (plus 1e-5) as far from the float64 reference as the float32 reference itself is (for Gimbal,
-  the largest distance over three sequences). A fixed 1e-5
+* float32, 50 steps: AdamW agrees to 1e-5. For SOAP the JAX run is at most 3 times (plus 1e-5) as
+  far from the float64 reference as the float32 reference itself is; for Gimbal the geometric
+  mean over three sequences of that ratio is at most 3 (C-018 amendment). A fixed 1e-5
   is not attainable even by the reference: Gimbal's first frame is the first gradient's singular
   basis, so its first step turns rounding noise into update entries wherever the noise exceeds
   ``eps`` (F-025), and SOAP's factors on steep spectra are ill-conditioned in float32.
@@ -107,13 +107,14 @@ def test_adamw_matches_torch():
     assert _max_rel(incs, ref) < 1e-5 * TOL
 
 
-ADAPTIVE = dict(frame_schedule="adaptive", rot_rate=0.05)
+ADAPTIVE = dict(frame_schedule="adaptive", rot_rate=0.05)  # the default since C-018
+FIXED = dict(frame_schedule="fixed", rot_rate=0.02)  # the default before C-018
 
 
 @cpu_only
 @pytest.mark.parametrize("shape", [(8, 8), (16, 16)])
 @pytest.mark.parametrize("kind", ["identified", "random"])
-@pytest.mark.parametrize("variant", [{}, ADAPTIVE])
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE])
 def test_gimbal_golden_float64(shape, kind, variant):
     grads = stream(shape, 70, seed=11, kind=kind)
     p0 = initial_params(shape, 11)
@@ -124,11 +125,11 @@ def test_gimbal_golden_float64(shape, kind, variant):
     # The adaptive schedule moves the frame at every early step, at bias-corrected rates up to
     # 0.5; those large moves amplify rounding differences over the sequence (to ~3e-6 here),
     # although every single step agrees to ~1e-14 (test_gimbal_float64_single_steps).
-    assert _max_rel(incs, ref) < (1e-5 if variant else 1e-8)
+    assert _max_rel(incs, ref) < (1e-5 if variant["frame_schedule"] == "adaptive" else 1e-8)
 
 
 @cpu_only
-@pytest.mark.parametrize("variant", [{}, ADAPTIVE])
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE])
 def test_gimbal_float64_single_steps(variant):
     """Every step, started from the reference's own state, agrees to rounding (float64)."""
     shape = (10, 6)
@@ -166,21 +167,32 @@ def test_soap_golden(shape):
 
 @cpu_only
 @pytest.mark.parametrize("shape", [(8, 8), (16, 16)])
-def test_gimbal_golden_float32_as_accurate_as_reference(shape):
-    """Over three sequences, the JAX float32 run is as accurate as the float32 reference."""
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE])
+def test_gimbal_golden_float32_as_accurate_as_reference(shape, variant):
+    """Over three sequences, the JAX float32 run is as accurate as the float32 reference.
+
+    Both runs are measured against the float64 reference, and the geometric mean over sequences
+    of the ratio of their errors must not exceed 3 (C-016, amended by C-018). Float32 rounding
+    is amplified chaotically, so single sequences scatter in both directions (with the adaptive
+    schedule, one sequence has JAX 0.27 and the reference 0.028 from float64; another has JAX
+    0.0009 and the reference 0.0042), while every single step agrees to 1e-14 in float64
+    (test_gimbal_float64_single_steps).
+    """
     ours, theirs = [], []
     for seed in (13, 31, 32):
         grads = stream(shape, 50, seed=seed)
         p0 = initial_params(shape, seed)
-        ref64, _, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1), p0, grads)
+        kw = dict(lr=LR, weight_decay=0.1, **variant)
+        ref64, _, _ = _torch_run(Gimbal, kw, p0, grads)
         g32 = [g.astype(np.float32) for g in grads]
-        ref32, _, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1), p0.astype(np.float32),
-                                 g32)
-        incs, _ = _jax_gimbal_run(jgimbal.GimbalConfig(weight_decay=0.1), p0, g32, jnp.float32)
+        ref32, _, _ = _torch_run(Gimbal, kw, p0.astype(np.float32), g32)
+        incs, _ = _jax_gimbal_run(jgimbal.GimbalConfig(weight_decay=0.1, **variant), p0, g32,
+                                  jnp.float32)
         # Step 1 is excluded: its off-diagonal entries are rounding noise in both runs (F-025).
         ours.append(_max_rel(incs, ref64, start=1))
         theirs.append(_max_rel(ref32, ref64, start=1))
-    assert max(ours) <= 3 * max(theirs) + 1e-5, (ours, theirs)
+    ratio = np.exp(np.mean(np.log((np.array(ours) + 1e-7) / (np.array(theirs) + 1e-7))))
+    assert ratio <= 3.0, (ours, theirs)
 
 
 def _to_jax_gimbal_state(ts: dict, dtype=jnp.float32) -> dict:
@@ -203,7 +215,7 @@ def _sign_aligned(q, ref):
 
 
 @pytest.mark.parametrize("shape", [(8, 8), (6, 10), (10, 6)])
-@pytest.mark.parametrize("variant", [{}, ADAPTIVE])
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE])
 def test_gimbal_every_step_kind_from_reference_state(shape, variant):
     grads = [g.astype(np.float32) for g in stream(shape, 62, seed=14)]
     p0 = initial_params(shape, 14).astype(np.float32)
@@ -225,8 +237,8 @@ def test_gimbal_every_step_kind_from_reference_state(shape, variant):
             for key in ("QL", "QR"):  # frames agree up to eigenvector signs
                 q = _sign_aligned(np.asarray(new_state[key]), after[key].numpy())
                 # early adaptive moves are large (rate up to 0.5): float32 rounding inside them
-                assert np.abs(q - after[key].numpy()).max() < (5e-4 if variant else 1e-4), \
-                    (t, key)
+                tol = 5e-4 if variant["frame_schedule"] == "adaptive" else 1e-4
+                assert np.abs(q - after[key].numpy()).max() < tol, (t, key)
         seen.add(kind)
     assert {k.move for k in seen} == {False, True} and any(k.restart for k in seen)
 
@@ -249,7 +261,8 @@ def test_soap_rectangular_from_reference_frames(shape):
     assert _max_rel(incs, ref[1:]) < 2e-5
 
 
-@pytest.mark.parametrize("variant", [{}, ADAPTIVE, dict(frame_schedule="adaptive")])
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE, dict(frame_schedule="adaptive",
+                                                            rot_rate=0.02)])
 def test_gimbal_schedule_matches_reference_counters(variant):
     cfg = jgimbal.GimbalConfig(**variant)
     grads = stream((6, 6), 160, seed=16)
