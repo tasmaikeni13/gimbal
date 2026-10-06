@@ -1,0 +1,52 @@
+{
+  "efficiency_inequality": {
+    "min_ratio_V_times_F": 0.9999999999999996,
+    "mle_equality_max_err": 6.661338147750939e-16,
+    "pass": true
+  },
+  "separable_formulas": {
+    "kl_efficiency_max_err": 1.6653345369377348e-15,
+    "soap_loss_formula_max_err": 2.5229818234606682e-12,
+    "pass": true
+  },
+  "delta_method_variances": {
+    "pooled_pred": 0.0004361979166666666,
+    "pooled_emp": 0.00043557010374519,
+    "kl_pred": 0.002294008875739643,
+    "kl_emp": 0.0022267258366821248,
+    "cramer_rao": 5e-05,
+    "pass": true
+  },
+  "fisher_monte_carlo": {
+    "fisher": 1.1110785439974402,
+    "mc_score_second_moment": 1.1135949973467916,
+    "mean_score": -0.0027323152404253974,
+    "pass": true
+  },
+  "flow_stationary_variance": {
+    "pred": 0.00026726103583876964,
+    "emp": 0.00028598501509886963,
+    "mean": -0.0006329922851194826,
+    "pass": true
+  },
+  "retractions": {
+    "expm2_identity_err": 7.840950111415168e-16,
+    "ns_identity_err": 1.233794967234192e-15,
+    "cayley_orth_err": 1.1102230246251565e-15,
+    "pass": true
+  },
+  "transport": {
+    "double_stochastic_err": 1.1102230246251565e-15,
+    "kron_hadamard_err": 2.220446049250313e-16,
+    "pass": true
+  },
+  "tie_identifiability": {
+    "pooled_angle_spread_rad": 0.4693025378659484,
+    "flow_final_error_deg": -0.22297483041566707,
+    "pass": true
+  },
+  "gimbal_step_equivariance": {
+    "equivariance_err": 2.5598469455268003e-09,
+    "pass": true
+  }
+}

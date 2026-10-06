@@ -1,0 +1,9 @@
+PASS  efficiency_inequality: min_ratio_V_times_F=1, mle_equality_max_err=8.882e-16
+PASS  separable_formulas: kl_efficiency_max_err=2.22e-15, soap_loss_formula_max_err=1.581e-13
+PASS  delta_method_variances: pooled_pred=0.0001636, pooled_emp=0.0001602, kl_pred=0.0008603, kl_emp=0.0008493, cramer_rao=1.875e-05
+PASS  fisher_monte_carlo: fisher=26.71, mc_score_second_moment=26.72, mean_score=-0.0005919
+PASS  flow_stationary_variance: pred=0.0004717, emp=0.0004815, mean=8.067e-05
+PASS  retractions: expm2_identity_err=7.078e-16, ns_identity_err=1.101e-15, cayley_orth_err=1.534e-15
+PASS  transport: double_stochastic_err=1.554e-15, kron_hadamard_err=2.22e-16
+PASS  tie_identifiability: pooled_angle_spread_rad=0.4544, flow_final_error_deg=1.677
+PASS  gimbal_step_equivariance: equivariance_err=2.56e-09

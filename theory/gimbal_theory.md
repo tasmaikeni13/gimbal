@@ -41,7 +41,8 @@ equivariant (Theorem 6), and scale-invariant (Theorem 8).
 
 ## 2. The objective behind SOAP's own preconditioner
 
-**Proposition 1 (profile KL; L4).** Let $S\succ0$ be the second-moment operator of $\mathrm{vec}\,G$.
+**Proposition 1 (profile KL; L4, per-coordinate minimization L5: `eigenvalue_cost_nonneg`,
+`eigenvalue_cost_eq_iff`; Hadamard's inequality cited).** Let $S\succ0$ be the second-moment operator of $\mathrm{vec}\,G$.
 For a frame $U$ let $d_U\in\mathbb R^{m\times n}$, $(d_U)_{ij}=E_S[Z_U(G)_{ij}^2]$. Then
 $$\min_{D>0}\mathrm{KL}\big(\mathcal N(0,S)\,\|\,\mathrm{KRD}(U,D)\big)
 = J(U) := \tfrac12\Big(\sum_{ij}\log (d_U)_{ij} - \log\det S\Big)\ \ge 0,$$
@@ -75,7 +76,8 @@ the likelihood still identifies it, and Example 1 shows how much an arbitrary ch
 $a\ne b$. Pooled row sums tie ($r_1=r_2=a+b$), so the pooled frame may be rotated by $45^\circ$
 in the left plane. There the diagonal model sees variances $(a+b)/2$ for both rotated rows of each
 column and $J = 2\log\frac{(a+b)/2}{\sqrt{ab}}\to\infty$ as $a/b\to\infty$, while
-$J(U^\star)=0$. (Lean: `Formal/Identifiability.lean`, the tie witness.)
+$J(U^\star)=0$. (Lean, L5: `tie_cost_pos`, `tie_cost_unbounded`; Monte Carlo: pooled frames spread over
+≈0.47 rad in the tied plane while the likelihood flow converges to within 0.3°.)
 
 ## 3. Identifiability and information
 
@@ -95,7 +97,8 @@ $d\ell[\Omega]=-\sum_{ik}\Omega_{ik}\sum_j Z_{ij}Z_{kj}/D_{ij} = \tfrac12\langle
 using $\Omega^\top=-\Omega$. Setting $\Omega_{ik}=\theta=-\Omega_{ki}$ gives
 $\partial\ell/\partial\theta_{ik}=E^L_{ik}$. The right side is identical with $Z\mapsto Z(I+\Psi)$. ∎
 
-**Theorem 2 (Fisher information and identifiability; L4, finite-sum parts L5).**
+**Theorem 2 (Fisher information and identifiability; L4 for the moment computation, L5 for the
+finite-sum statements; Fisher value also checked by Monte Carlo).**
 In $\mathrm{KRD}(U^\star,D)$ the Fisher information of one observation is diagonal in the rotation
 coordinates, block-orthogonal to $D$, with entries
 $$F^L_{ik}=\sum_j\frac{(D_{ij}-D_{kj})^2}{D_{ij}D_{kj}},\qquad
@@ -111,8 +114,8 @@ pairs, or of a rotation score with a $D$-score $\tfrac12(Z_{ij}^2/D_{ij}^2-1/D_{
 entry to an odd power and has mean zero. Each summand of $F^L_{ik}$ is $\ge0$ and vanishes iff
 $D_{ij}=D_{kj}$. If $\sum_jD_{ij}\ne\sum_jD_{kj}$ some $D_{ij}\ne D_{kj}$; the converse fails for
 $D_{i\cdot}=(2,1)$, $D_{k\cdot}=(1,2)$. ∎
-(Lean: `Formal/Identifiability.lean`: `fisher_pos_iff`, `pooled_implies_profile`,
-`tie_but_identifiable`.)
+(Lean, L5: `fisher_pos_iff`, `pooled_implies_profile`, `tie_but_identifiable`, `score_variance_term`,
+`fisher_term_identity`.)
 
 ## 4. Efficiency: why every single-factor estimator loses information
 
@@ -121,8 +124,8 @@ with column weights $w\in\mathbb R^n_{>0}$ (expressed in the true right frame):
 $\hat L_w = \frac1N\sum_t G_tQ_R^\star\mathrm{diag}(w)Q_R^{\star\top}G_t^\top$, $\hat Q_L=$ eigenvectors of
 $\hat L_w$. Shampoo/SOAP use $w\equiv1$; KL-Shampoo uses $w=1/\hat\mu$ (its $R^{-1}$ weighting).
 
-**Theorem 3 (efficiency; L3: asymptotics by the delta method under distinct population eigenvalues
-$\ell_i(w)=\sum_jw_jD_{ij}$; the inequality itself L5).**
+**Theorem 3 (efficiency; item 1 L3 — asymptotics by the delta method under distinct population
+eigenvalues $\ell_i(w)=\sum_jw_jD_{ij}$; items 2–4 L5 except the necessity half of item 3, L4).**
 
 1. $\sqrt N\,\hat\theta^{\,w}_{ik}\Rightarrow\mathcal N\big(0,V_w(i,k)\big)$ with
    $$V_w(i,k)=\frac{\sum_jw_j^2D_{ij}D_{kj}}{\big(\sum_jw_j(D_{ij}-D_{kj})\big)^2}.$$
@@ -135,9 +138,13 @@ $\ell_i(w)=\sum_jw_jD_{ij}$; the inequality itself L5).**
    * SOAP's $w\equiv1$ requires $D^{\circ-1}$ to be additive ($\alpha_i+\beta_j$). Under separability its
      efficiency loss is $V_1F=n\sum_j\mu_j^2/(\sum_j\mu_j)^2=n/n_{\mathrm{eff}}(\mu)$, which is large for
      steep spectra (for $\mu_j\propto1/j$, $n=768$: $n/n_{\mathrm{eff}}\approx28$).
-4. The MLE needs **pair-dependent** weights $w^{(ik)}_j\propto D_{kj}^{-1}-D_{ij}^{-1}$. No single
-   factor matrix can supply them unless item 3 holds. Gimbal's generator applies exactly these weights
-   (Lemma A), so its estimating equation is the likelihood equation.
+4. The MLE needs **pair-dependent** weights $w^{(ik)}_j\propto D_{kj}^{-1}-D_{ij}^{-1}$, which attain
+   $1/F$ exactly. No single factor matrix can supply them unless item 3 holds; there are
+   non-separable arrays on which **every** positive weighting (SOAP's, KL-Shampoo's, any other) is
+   strictly above the bound for several pairs at once — e.g. rows $(1,1),(2,1),(1,2)$, where any
+   $w$ with $w_2>0$ is strictly inefficient for the pair 1–2 and any $w$ with $w_1>0$ for the pair
+   1–3. Gimbal's generator applies exactly the pair-dependent weights (Lemma A), so its estimating
+   equation is the likelihood equation.
 
 *Proof.* (1) In the true left frame the off-diagonal entry $(i,k)$ of $Q_L^{\star\top}\hat L_wQ_L^\star$ is
 $\frac1N\sum_t\sum_jw_jZ^{(t)}_{ij}Z^{(t)}_{kj}$ with variance $\frac1N\sum_jw_j^2D_{ij}D_{kj}$; first-order
@@ -148,7 +155,11 @@ equality iff $w_j\sqrt{D_{ij}D_{kj}}\propto(D_{ij}-D_{kj})/\sqrt{D_{ij}D_{kj}}$.
 (3) Equality for all pairs means $D_{kj}^{-1}-D_{ij}^{-1}=c_{ik}w_j$; fixing $k=k_0$ gives
 $D_{ij}^{-1}=D_{k_0j}^{-1}-c_{ik_0}w_j$, the stated form; the converse is direct. The separable
 efficiency ratio follows by substitution. ∎
-(Lean: `Formal/Efficiency.lean`: `weighted_cs`, `pooled_ge_mle`, `kl_weights_efficient_separable`.)
+(Lean, L5: `weighted_cs`, `weighted_ge_mle`, `pooled_ge_mle` (item 2); `kl_weights_efficient_separable`,
+`pooled_loss_separable`, `pooled_loss_ge_one`, `efficient_if_additive_inverse'` (item 3, sufficiency;
+necessity is the written proof, L4); `mle_weights_attain`, `factor_estimators_strictly_inefficient`
+(item 4). Item 1 is L3 and was checked by Monte Carlo: predicted vs. simulated $N\,\mathrm{Var}$ agree
+within 2% for pooled and weighted factors, `experiments/phase1/check_identities.py`.)
 
 **Corollary 3.1 (L3).** Under a basis that drifts at angular velocity $\omega$ per step in pair
 $(i,k)$, an EMA estimator with memory $\tau$ has asymptotic tracking MSE
@@ -162,14 +173,16 @@ Let $V$ be Adam's second-moment EMA of $Z_U(G)^{\circ2}$ (bias corrected) and
 $D=V+\rho\,\overline V$ (relative floor $\rho$, $\overline V$ the mean). One step of the left flow:
 $$\Omega_L=-\alpha\,\frac{S_L-S_L^\top}{F_L+\delta n},\qquad
 F_L=DA^\top+AD^\top-2n\,\mathbf 1\mathbf 1^\top,\quad A=D^{\circ-1},$$
-(entrywise division; diagonal set to zero), and $Q_L\leftarrow Q_L\,(I+\Omega_L+\tfrac12\Omega_L^2)$. The
+(entrywise division; diagonal set to zero; entries clipped to $[-\theta_{\max},\theta_{\max}]$; spectral norm
+capped at $1$), then $Q_L\leftarrow \mathrm{polish}\big(Q_L\,(I+\Omega_L+\tfrac12\Omega_L^2)\big)$. The
 right flow is symmetric with $S_R=Z^\top(Z\odot A)$, $F_R=D^\top A+A^\top D-2m$, damping $\delta m$. Note
 $(DA^\top+AD^\top)_{ik}-2n=\sum_j(D_{ij}/D_{kj}+D_{kj}/D_{ij}-2)=F^L_{ik}$, so $F_L$ is the Fisher
 information of Theorem 2 evaluated at the current estimates; dividing by it is Amari's natural
 gradient, and $\delta$ is a Levenberg–Marquardt damping that bounds the step for near-degenerate
 pairs.
 
-**Theorem 4 (fixed points, local rate, noise; L3: linearization around $U^\star$ with $D$ known).**
+**Theorem 4 (fixed points, local rate, noise; item 1 L5, item 2 L3 (linearization around $U^\star$ with
+$D$ known), item 3 L5 for the recursion and checked by Monte Carlo within 7%).**
 
 1. If the rotated second moment has no within-column cross terms, $E[Z_{ij}Z_{kj}]=0$ for all
    $i\ne k$ and $j$, then $E[E^L]=0$: such frames are fixed points of the mean flow. This holds at
@@ -185,8 +198,8 @@ pairs.
 
 *Proof.* (1) $E[E^L_{ik}]=\sum_jE[Z_{ij}Z_{kj}](D_{kj}^{-1}-D_{ij}^{-1})=0$. (2) The expected score at a
 displaced parameter equals Fisher times displacement to first order; the natural-gradient step
-divides by $F$. (3) Standard AR(1) algebra. ∎ (Lean: `Formal/Recursion.lean`, fixed point and
-geometric convergence of the variance recursion.)
+divides by $F$. (3) Standard AR(1) algebra. ∎ (Lean, L5: `stationary_generator`,
+`variance_recursion_closed_form`, `variance_recursion_tendsto`.)
 
 **Conjecture 4.1 (L2).** For $S$ in the KRD family with all profiles pairwise distinct, the minimizers of
 $J$ on $\mathcal G$ are $U^\star$ up to signed permutations, every other critical point is a strict
@@ -199,21 +212,27 @@ converges almost surely to a minimizer. (ODE-method route; not proved here.)
    retraction loses orthogonality only at fourth order.
 3. For any $X$ with $X^\top X=I+E$, one Newton–Schulz step $Y=\tfrac12X(3I-X^\top X)$ gives
    $Y^\top Y-I=-\tfrac34E^2+\tfrac14E^3$ (quadratic convergence).
-(Lean: `Formal/Retraction.lean`.)
+(Lean: `cayley_orthogonal`, `expm2_defect`, `ns_error`.) In the implementation each step's
+generator is additionally limited to $\|\Omega\|_2\le1$ (spectral trust region): then the retraction's
+singular values lie in $[1,\sqrt{5}/2]$, inside the convergence region of the Newton–Schulz polish,
+which is repeated until the defect is below working precision.
 
 **Theorem 6 (equivariance; L5 for the one-step algebra).** For $(P,R)\in\mathcal G$, run Gimbal on
 gradients $G_t$ from frame $(Q_L,Q_R)$ and on $PG_tR^\top$ from $(PQ_L,RQ_R)$ with $M\mapsto PMR^\top$,
 same $V$. Then all rotated quantities ($Z$, $V$, $S$, $F$, $\Omega$) coincide, the frames stay related
 by $(P,R)$, and the parameter updates satisfy $\Delta W'=P\,\Delta W\,R^\top$. AdamW is not equivariant
-in this sense; SOAP and Shampoo are. (Lean: `Formal/Equivariance.lean`.)
+in this sense; SOAP and Shampoo are. (Lean: `rotated_coords_invariant`, `update_covariant`. The eigh
+initialization is equivariant up to the sign of each eigenvector, to which the update is
+invariant; with repeated eigenvalues the initial frame is a gauge choice and equivariance holds
+from any pair of initial frames related by $(P,R)$.)
 
 **Theorem 7 (second-moment transport; L5).** If the frame moves by an orthogonal $P$ (new frame
 $QP$), the diagonal of a diagonal covariance $\mathrm{diag}(d)$ seen in the new frame is $(P^{\circ2})^\top d$;
 $P^{\circ2}$ is doubly stochastic, so total variance is preserved and the transported variances are
 majorized by the old ones. For Kronecker frames $(P_L\otimes P_R)^{\circ2}=P_L^{\circ2}\otimes P_R^{\circ2}$,
 so the transport of the matrix $V$ is $V\mapsto P_L^{\circ2\top}VP_R^{\circ2}$ (two matmuls). SOAP's
-re-ordering of $V$ is the special case where $P$ is a signed permutation. (Lean:
-`Formal/Transport.lean`.)
+re-ordering of $V$ is the special case where $P$ is a signed permutation. (Lean: `hadamard_sq_kronecker`,
+`rowsum_hadamard_sq`, `colsum_hadamard_sq`, `transport_preserves_total`.)
 
 **Theorem 8 (descent and scale invariance; L5 for the algebra).**
 1. With $\beta_1=0$, the update $U=Q_L(Z\oslash(\sqrt{\hat V}+\epsilon))Q_R^\top$ satisfies
@@ -221,7 +240,8 @@ re-ordering of $V$ is the special case where $P$ is a signed permutation. (Lean:
 2. Replacing every gradient by $cG$ ($c\ne0$) leaves $\Omega_L,\Omega_R$ unchanged (with a relative floor):
    $S$ is homogeneous of degree $0$ in $(Z,D)$ jointly and so is $F$. The frame dynamics does not
    depend on gradient scale.
-(Lean: `Formal/Descent.lean`.)
+(Lean: `frobenius_adjoint`, `descent`, `descent_strict`, `generator_scale_invariant`,
+`fisher_scale_invariant`.)
 
 **Proposition 9 (cost; L4).** Per step for an $m\times n$ layer, counting multiply–adds:
 
@@ -272,6 +292,28 @@ Phase 2 measures both costs by Monte Carlo for every method on the same gradient
 * Interaction with momentum: the frame flow uses the instantaneous gradient while the step uses the
   momentum; Theorem 8.1 covers $\beta_1=0$ only.
 
+## 8. Proof audit (Phase 01, `theory-research` checklist)
+
+| Item | Quantifiers and scope | Divisions / limits | Degenerate cases tested | Status |
+|---|---|---|---|---|
+| Prop. 1 | for every frame $U$, every $S\succ0$ | $D_{ij}>0$ required; $\log$ of positive reals | $S$ diagonal in $U$ (equality) | L4 (+L5 per coordinate) |
+| Prop. 2 | $S\in$ KRD | none | tied row sums (Example 1) | L4 |
+| Thm 2 | per pair, at the true frame | $D>0$ | equal profiles ($F=0$), tied sums | L4/L5 |
+| Thm 3 | asymptotic in $N$ (item 1); exact inequalities (2–4) | gap $\ne0$, $F>0$ assumed explicitly | near-degenerate gaps, ratios $10^{\pm8}$, $n=1$ | L3 (1), L5 (2–4) |
+| Thm 4 | local, $D$ known (item 2) | $\alpha\in(0,2)$ | $\alpha\to0$, $\alpha\to2$ | L3/L5 |
+| Thm 5 | all real skew $\Omega$ | $I\pm\Omega$ invertible (proved) | large $\|\Omega\|$ (relative errors) | L5 |
+| Thm 6 | all orthogonal $(P,R)$, same hyper-parameters | none | repeated eigenvalues at init (gauge) | L5 (one step) + test |
+| Thm 7 | orthogonal $P$ | none | signed permutations | L5 |
+| Thm 8 | $c\ne0$, relative floor | $D\ne0$ | $\beta_1=0$ only for item 1 | L5 |
+
+Failures found while auditing (all in the checking code, none in a theorem) are recorded in
+`research/ledger/failures.md` (F-001 to F-004).
+
 ## Changelog
 
 * 2026-10-06 — v0.1: initial statement of Propositions 1–2, 9–10, Theorems 2–8, Conjecture 4.1.
+* 2026-10-06 — v0.2 (Phase 01): 37 statements machine-checked in Lean (`formal/README.md`); Theorem 3
+  item 4 strengthened with a strict, machine-checked separation from every single-factor estimator;
+  algorithm §5 gains the spectral trust region ($\|\Omega\|_2\le1$) and the adaptive Newton–Schulz
+  polish after a unit test exposed a 1% orthogonality defect at large rotation rates (change-id
+  C-001, `research/ledger/decisions.md`).
