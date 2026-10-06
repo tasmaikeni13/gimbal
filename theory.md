@@ -225,9 +225,11 @@ Centring a second moment by the running mean is old (centred RMSProp, Graves 201
 et al. 2020), always with $c=1$ and applied to the step's variances, and SR-Adam (2026) shrinks the
 gradient toward the momentum by a Stein rule. Gimbal centres only the frame's
 statistic, uses a predictable plug-in (which is what makes the cross terms vanish), and lets an
-empirical-Bayes factor turn the centring off when no mean is detectable. Its measured effect, on the
-noisy quadratics (E2.5) and on zero-mean frame-estimation streams (E2.1, E2.9), is in
-`experiments/phase2/report.md`.
+empirical-Bayes factor turn the centring off when no mean is detectable. Measured: with the change
+Gimbal has the lowest final loss on the noisy quadratics in every configuration, including the
+separable low-noise one it lost before (`experiments/phase2/results/e25_report_full_c013.md`),
+while on zero-mean frame-estimation streams the frame KL moves by a few percent at most, in either
+direction (`experiments/phase2/results/e21_report.md`, centering-effect tables).
 
 ## 8. Invariances and guarantees
 
