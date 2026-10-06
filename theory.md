@@ -269,11 +269,12 @@ Per step, for an $m\times n$ matrix, Gimbal needs:
   and polish;
 * $O(mn)$ elementwise work.
 
-There is no QR or eigendecomposition after step 50. Its state is $m^2+n^2+4mn$ floats (two frames,
-momentum, Adam's second moment, the flow's variance average and its odd-step half). That is never
-more than SOAP's $2m^2+2n^2+2mn$, because $2mn\le m^2+n^2$. For the 125M configuration, the cost
-model in `experiments/phase2/e28_cost_model.py` gives, as a percentage of forward plus backward
-compute:
+There is no QR or eigendecomposition after step 50. With $k=1$ its state is $m^2+n^2+4mn$ floats
+(two frames, momentum, Adam's second moment, the flow's variance average and its odd-step half),
+never more than SOAP's $2m^2+2n^2+2mn$ because $2mn\le m^2+n^2$. The default $k=4$ also keeps the
+accumulated scores ($m^2+n^2$), which puts it $2mn$ per layer above SOAP (F-023, open). For the 125M
+configuration, the cost model (`experiments/phase2/results/e28_cost_model_c013.json`) gives, as a
+percentage of forward plus backward compute:
 
 | | SOAP (f=10) | SOAP real-time | KL-SOAP | Gimbal k=1 | Gimbal k=4 | Gimbal k=10 |
 |---|---|---|---|---|---|---|
@@ -282,9 +283,9 @@ compute:
 
 QR and eigendecomposition run far below matmul throughput on TPUs, which is where the
 matmul-only design pays. Gimbal's default is $k=4$: with $k=1$ the frame moves pay the $m^3$ terms of
-tall layers every step and the optimizer costs more than SOAP. On a CPU, where QR is cheap, Gimbal
-is slower than SOAP at every tested $k$ (`experiments/phase2/report.md`); the accelerator timing is
-measured in Phase 04.
+tall layers every step and the optimizer costs more than SOAP. CPU timings taken inside the warm
+start are in `experiments/phase2/results/e28_cost_model.json`; a steady-state CPU benchmark was not
+completed in Phase 02, and the accelerator timing is measured in Phase 04.
 
 ## 11. Where the peers sit
 

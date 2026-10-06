@@ -289,20 +289,20 @@ class Gimbal(Optimizer):
                         t: int) -> torch.Tensor:
         """Empirical-Bayes factor of the previous momentum as an estimate of the mean (Prop. 5.7).
 
-        The bias-corrected momentum over ``t - 1`` gradients carries sampling noise ``kappa`` times
-        the total gradient variance, ``kappa`` being the sum of its squared normalized weights
+        The bias-corrected momentum over ``t - 1`` gradients carries sampling noise ``eta`` times
+        the total gradient variance, ``eta`` being the sum of its squared normalized weights
         (Lean: ``ema_weight_sq_sum``). With ``S_M = ||M||^2`` and ``S_V = sum V`` (Adam's
         uncentered second moment, whose sum does not depend on the frame), the total variance is
-        about ``(S_V - S_M) / (1 - kappa)``, and ``c = (1 - noise / S_M)_+`` is the plug-in of the
+        about ``(S_V - S_M) / (1 - eta)``, and ``c = (1 - noise / S_M)_+`` is the plug-in of the
         risk-optimal factor ``S / (S + noise)`` (Lean: ``shrinkage_risk_eq_iff``).
         """
-        kappa = (1 - b1) * (1 + b1 ** (t - 1)) / ((1 + b1) * (1 - b1 ** (t - 1)))
-        if 1 - kappa < 1e-6:
+        eta = (1 - b1) * (1 + b1 ** (t - 1)) / ((1 + b1) * (1 - b1 ** (t - 1)))
+        if 1 - eta < 1e-6:
             # One gradient (t = 2) or no momentum (b1 = 0): mean and noise are not separable.
             return torch.zeros((), dtype=m_buf.dtype, device=m_buf.device)
         s_m = m_buf.square().sum() / (1 - b1 ** (t - 1)) ** 2
         s_v = v_buf.sum() / (1 - b2 ** (t - 1))
-        noise = kappa * (s_v - s_m).clamp_min(0.0) / (1 - kappa)
+        noise = eta * (s_v - s_m).clamp_min(0.0) / (1 - eta)
         return (1 - noise / s_m.clamp_min(torch.finfo(s_m.dtype).tiny)).clamp(0.0, 1.0)
 
     @staticmethod

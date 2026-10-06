@@ -53,7 +53,7 @@ Every theorem below depends only on `propext`, `Classical.choice` and `Quot.soun
 | Prop. 5.7 | `ema_weight_sq_sum` (with `shrinkage_risk_eq_iff`) | `Variance.lean` | the bias-corrected momentum over $T$ inputs has $\sum w_s^2=\eta=(1-\beta)(1+\beta^T)/((1+\beta)(1-\beta^T))$; the optimal centering factor is $\|\mu\|^2/(\|\mu\|^2+\eta\,\mathrm{tr}\,\Sigma)$ |
 | §3 (E2.10 a) | `pair_rotation_product`, `pair_rotation_cost_nonneg`, `pair_rotation_cost_le`, `pair_rotation_cost_sum_le` | `PairCost.lean` | a single-pair rotation changes column $j$'s variances to $c^2a+s^2b$, $s^2a+c^2b$, with product $ab+c^2s^2(a-b)^2$; its frame KL lies in $[0,\,c^2s^2F]$ |
 | §3 (E2.10 a) | `sin_sq_mul_cos_sq_le`, `pair_rotation_cost_le_half_fisher_sq` | `PairCost.lean` | the frame KL of a rotation by $\theta$ in one pair is at most $\tfrac12F\theta^2$ (equality to second order) |
-| Prop. 9 | `gimbal_state_le_soap` | `PairCost.lean` | $m^2+n^2+4mn\le2m^2+2n^2+2mn$: Gimbal's optimizer state never exceeds SOAP's |
+| Prop. 9 | `gimbal_state_le_soap` | `PairCost.lean` | $m^2+n^2+4mn\le2m^2+2n^2+2mn$: with `frame_every = 1` Gimbal's optimizer state never exceeds SOAP's (the default $k=4$ adds $m^2+n^2$ of score accumulators, F-023) |
 
 ## What is *not* formalized (and why)
 

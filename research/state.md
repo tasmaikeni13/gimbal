@@ -1,4 +1,4 @@
-# Research state — Gimbal — updated 2026-10-06
+# Research state — Gimbal — updated 2026-10-06 (end of Phase 02)
 
 ## Contract
 Target claim: Gimbal reaches lower validation loss/perplexity than SOAP and its peers at 125M
@@ -15,10 +15,13 @@ every peer on synthetic problems with known ground truth.
 
 ## Current evidence
 - Phase 01 passed: theory, Lean formalization, counterexample battery (E1.1).
-- Phase 02: algorithm C-004 (+ numerical fix C-008); theory v0.5; 52 Lean theorems on standard
-  axioms. Gate verdicts and evidence: `experiments/phase2/report.md`. Claims C4–C7 in
-  `research/ledger/claims.md`.
-- Failures found and resolved in Phase 02: F-009 … F-018 (`research/ledger/failures.md`).
+- Phase 02 passed (2026-10-06): algorithm C-004 + C-008 + C-012 (`frame_every = 4`) + C-013
+  (frame statistics on the empirical-Bayes innovation); theory v0.7; 53 Lean theorems on standard
+  axioms. All gates G2.1–G2.6 pass (`experiments/phase2/report.md`); claims C4–C7 in
+  `research/ledger/claims.md`. Failures F-009 … F-023 recorded with mechanisms.
+- Known limits: KL-SOAP's frame is slightly better on the flattest separable spectra (within the
+  non-inferiority margin; theory §7); the default's optimizer state exceeds SOAP's by 2mn per
+  layer (F-023); no language-model evidence yet.
 
 ## Live hypotheses
 - H1 Gimbal (main). Reserves: H2 transport (ablation in E2.9), H5 Lie-algebra momentum, H6 robust

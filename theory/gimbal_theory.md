@@ -479,7 +479,7 @@ QR/eigh):
 | frame update | $(m^3+n^3)$ matmul $+$ QR every $f$ | QR every step | QR every step | $S$: $m^2n+mn^2$ per step; every $k$ steps $F$: $m^2n+mn^2$, retraction + polish $4(m^3+n^3)$ |
 | non-matmul linear algebra | QR every $f$ steps | QR every step | QR every step | **none** after the warm start (two eigendecompositions in total) |
 | elementwise per step | $O(mn)$ | $O(mn)$ | $O(mn)$ | $O(mn)$ (variance averages, shrinkage: two logs, one exp) |
-| optimizer state | $2m^2+2n^2+2mn$ | same | $2m^2+2n^2+2mn$ | $m^2+n^2+4mn$ ($k=1$; never more than SOAP since $2mn\le m^2+n^2$); $+m^2+n^2$ score accumulators for $k>1$; $+m^2+n^2$ during the 50-step warm start |
+| optimizer state | $2m^2+2n^2+2mn$ | same | $2m^2+2n^2+2mn$ | $m^2+n^2+4mn$ ($k=1$; never more than SOAP since $2mn\le m^2+n^2$); $+m^2+n^2$ score accumulators for $k>1$, so the default $k=4$ exceeds SOAP by $2mn$ (F-023); $+m^2+n^2$ during the 50-step warm start |
 
 The amortized flow divides the $m^3$ terms and the Fisher matrix by $k$.
 
