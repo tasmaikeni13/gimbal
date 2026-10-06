@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gimbal"
+version = "0.1.0"
+description = "Gimbal: matrix-preconditioned optimization with a self-consistent, online maximum-likelihood eigenbasis"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "torch>=2.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5", "matplotlib>=3.8", "statsmodels>=0.14", "pandas>=2.0"]
+jax = ["jax>=0.4.30", "optax>=0.2.3", "flax>=0.8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["formal/.lake"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N"]
+ignore = ["E741", "N802", "N803", "N806", "N812"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
