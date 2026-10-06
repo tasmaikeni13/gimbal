@@ -50,6 +50,7 @@ Every theorem below depends only on `propext`, `Classical.choice` and `Quot.soun
 | Lemma 5.4.2 | `excess_variance_identity`, `excess_component_orthogonal` | `Variance.lean` | $\|w\|^2/\langle w,v\rangle^2 = 1/F + \|u\|^2/\langle w,v\rangle^2$, $u\perp v$: the exact cost of non-efficient (e.g. noisy plug-in) weights |
 | Prop. 5.5 | `shrinkage_risk_ge`, `shrinkage_risk_eq_iff` | `Variance.lean` | $(c-1)^2S+c^2\nu\ge S\nu/(S+\nu)$, equality iff $c=S/(S+\nu)$ (optimal shrinkage factor) |
 | Remark 5.6 | `restart_closed_form` | `Variance.lean` | after a restart at $T$, the bias-corrected schedule gives the restart value exactly the weight $1-\beta^T$ of the inputs it replaces |
+| Prop. 5.7 | `ema_weight_sq_sum` (with `shrinkage_risk_eq_iff`) | `Variance.lean` | the bias-corrected momentum over $T$ inputs has $\sum w_s^2=\eta=(1-\beta)(1+\beta^T)/((1+\beta)(1-\beta^T))$; the optimal centering factor is $\|\mu\|^2/(\|\mu\|^2+\eta\,\mathrm{tr}\,\Sigma)$ |
 | §3 (E2.10 a) | `pair_rotation_product`, `pair_rotation_cost_nonneg`, `pair_rotation_cost_le`, `pair_rotation_cost_sum_le` | `PairCost.lean` | a single-pair rotation changes column $j$'s variances to $c^2a+s^2b$, $s^2a+c^2b$, with product $ab+c^2s^2(a-b)^2$; its frame KL lies in $[0,\,c^2s^2F]$ |
 | §3 (E2.10 a) | `sin_sq_mul_cos_sq_le`, `pair_rotation_cost_le_half_fisher_sq` | `PairCost.lean` | the frame KL of a rotation by $\theta$ in one pair is at most $\tfrac12F\theta^2$ (equality to second order) |
 | Prop. 9 | `gimbal_state_le_soap` | `PairCost.lean` | $m^2+n^2+4mn\le2m^2+2n^2+2mn$: Gimbal's optimizer state never exceeds SOAP's |
@@ -69,6 +70,10 @@ Every theorem below depends only on `propext`, `Classical.choice` and `Quot.soun
   `pair_rotation_product`, with the bound `pair_rotation_cost_le_half_fisher_sq`.
 * Statistical properties of the split-sample noise estimate (Proposition 5.5) are checked by Monte
   Carlo (E2.10 (c)); Lean covers the optimal shrinkage factor (`shrinkage_risk_eq_iff`).
+* Proposition 5.7's conditional expectations (the plug-in mean's score bias, the diagonal noise
+  term) are elementary on paper (L4); Lean covers the closed form of the momentum's noise factor
+  and the optimal factor. The plug-in factor's behaviour is tested (`tests/test_optimizers.py`) and
+  its effect measured in E2.5.
 
 ## Fidelity audit
 

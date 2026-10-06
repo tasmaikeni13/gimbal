@@ -47,6 +47,7 @@ import Formal
 #print axioms Gimbal.shrinkage_risk_ge
 #print axioms Gimbal.shrinkage_risk_eq_iff
 #print axioms Gimbal.restart_closed_form
+#print axioms Gimbal.ema_weight_sq_sum
 #print axioms Gimbal.pair_rotation_product
 #print axioms Gimbal.pair_rotation_cost_nonneg
 #print axioms Gimbal.pair_rotation_cost_le

@@ -16,6 +16,10 @@
     power-iteration contraction (eigenvalue ratio) for the same pairs, for contrast.
 (e) The Hessian of J at the true frame against the Fisher information, and the gradient of J at a
     random frame against the expected score (finite differences).
+(f) Proposition 5.7: the momentum's noise factor eta against the Monte Carlo variance of the
+    bias-corrected momentum; the mean skew score at the true frame with a plug-in mean c M_{t-1}
+    against (1 - c)^2 times the uncentred bias; the optimizer's plug-in factor (its own code path)
+    against the oracle c* = |mu|^2 / (|mu|^2 + eta tr Sigma). Criteria fixed before the run (C-014).
 
 Usage: python experiments/phase2/e210_theory_vs_simulation.py
 """
@@ -30,6 +34,7 @@ from collections import defaultdict
 
 import numpy as np
 import torch
+from analyze_e21 import load as load_e21
 from common import make_variances, rand_orth
 from population import (
     ema_sum_sq_weights,
@@ -91,7 +96,8 @@ def per_sample_costs(d: np.ndarray, rho_start: float) -> dict:
 
 
 def part_a() -> dict:
-    rows = read_jsonl("e21_main.jsonl") + read_jsonl("e21_main_ext.jsonl")
+    # the analysis's own loader: peer-fix (C-011) and C-013 re-runs replace earlier rows (F-022)
+    rows = load_e21("main")
     measured = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
     cfgs = {}
     for r in rows:
@@ -375,10 +381,85 @@ def part_e(h: float = 1e-4) -> dict:
             "max_F": fmax, "max_rel_err_gradient": max(grad_err), "pass": bool(ok)}
 
 
+# ---------------------------------------------------------------------------------------------
+# (f) Proposition 5.7: centering the frame statistic
+# ---------------------------------------------------------------------------------------------
+
+
+def part_f(seed: int = 63) -> dict:
+    rng = np.random.default_rng(seed)
+    b1, b2 = 0.9, 0.95
+    # (f1) eta = sum of squared weights of the bias-corrected momentum (Lean: ema_weight_sq_sum),
+    # against the variance of the optimizer's recursion applied to unit-variance noise
+    eta_rows = []
+    for horizon in (2, 5, 20, 100, 1000):
+        m = np.zeros(200_000)
+        for _ in range(horizon):
+            m = b1 * m + (1 - b1) * rng.standard_normal(m.shape)
+        mc = float(np.var(m / (1 - b1**horizon)))
+        pred = float(ema_sum_sq_weights(b1, np.array([horizon]))[0])
+        eta_rows.append({"T": horizon, "eta": pred, "mc_variance": mc,
+                         "rel_err": abs(mc - pred) / pred})
+    ok1 = all(r["rel_err"] <= 0.03 for r in eta_rows)
+    # (f2) mean skew score at the true frame (rotated coordinates, U* = I by equivariance) with the
+    # plug-in mean c M_{t-1} built from t - 1 = 29 past gradients of the same law
+    m_, n_, past, reps = 6, 8, 29, 100_000
+    d = make_variances(m_, n_, 1.0, 1.0, rng)
+    a = 1.0 / d
+    theta = 0.7 * np.sqrt(d) * rng.standard_normal((m_, n_))
+    bias0 = theta @ (theta * a).T
+    bias0 = bias0 - bias0.T
+    mom = np.zeros((reps, m_, n_))
+    for _ in range(past):
+        mom = b1 * mom + (1 - b1) * (theta + np.sqrt(d) * rng.standard_normal((reps, m_, n_)))
+    mom /= 1 - b1**past
+    w = np.sqrt(d) * rng.standard_normal((reps, m_, n_))
+    score_rows = []
+    for c in (0.0, 0.5, 1.0):
+        z = theta + w - c * mom
+        s_l = z @ np.swapaxes(z * a, 1, 2)
+        mean = (s_l - np.swapaxes(s_l, 1, 2)).mean(axis=0)
+        pred = (1 - c) ** 2 * bias0
+        score_rows.append({"c": c, "rel_err": float(np.linalg.norm(mean - pred)
+                                                    / np.linalg.norm(bias0)),
+                           "pred_norm_rel": float(np.linalg.norm(pred) / np.linalg.norm(bias0))})
+    ok2 = all(r["rel_err"] <= 0.05 for r in score_rows)
+    # (f3) the optimizer's plug-in factor (Gimbal._mean_shrinkage on buffers built by the
+    # optimizer's recursions) against the oracle, 32x48 Gaussian streams, factor read at t = 200
+    m_, n_, t_read, runs = 32, 48, 200, 100
+    d = make_variances(m_, n_, 1.0, 1.0, rng)
+    eta = float(ema_sum_sq_weights(b1, np.array([t_read - 1]))[0])
+    direction = rng.standard_normal((m_, n_))
+    direction /= np.linalg.norm(direction)
+    factor_rows = []
+    for snr, decay in ((0.0, 1.0), (0.1, 1.0), (1.0, 1.0), (10.0, 1.0), (100.0, 1.0),
+                       (10.0, 0.99)):
+        mu0 = np.sqrt(snr * eta * d.sum()) * direction
+        cs = []
+        for _ in range(runs):
+            mb = torch.zeros(m_, n_, dtype=torch.float64)
+            vb = torch.zeros(m_, n_, dtype=torch.float64)
+            for t in range(1, t_read):
+                g = torch.from_numpy(mu0 * decay**t + np.sqrt(d) * rng.standard_normal((m_, n_)))
+                mb.mul_(b1).add_(g, alpha=1 - b1)
+                vb.mul_(b2).addcmul_(g, g, value=1 - b2)
+            cs.append(float(Gimbal._mean_shrinkage(mb, vb, b1, b2, t_read)))
+        mu_now = np.linalg.norm(mu0 * decay ** (t_read - 1)) ** 2
+        oracle = mu_now / (mu_now + eta * d.sum())
+        factor_rows.append({"snr": snr, "decay": decay, "c_mean": float(np.mean(cs)),
+                            "c_sd": float(np.std(cs)), "oracle": float(oracle),
+                            "gated": decay == 1.0})
+    ok3 = all(abs(r["c_mean"] - r["oracle"]) <= 0.1 for r in factor_rows if r["gated"])
+    return {"eta": eta_rows, "score": score_rows, "factor": factor_rows,
+            "pass_eta": bool(ok1), "pass_score": bool(ok2), "pass_factor": bool(ok3),
+            "pass": bool(ok1 and ok2 and ok3)}
+
+
 def main() -> None:
     res = {"a": part_a(), "b_preregistered": part_b(61, "leading"),
-           "b": part_b(62, "second_order"), "c": part_c(), "d": part_d(), "e": part_e()}
-    res["G2.5"] = all(res[k]["pass"] for k in "abcde")
+           "b": part_b(62, "second_order"), "c": part_c(), "d": part_d(), "e": part_e(),
+           "f": part_f()}
+    res["G2.5"] = all(res[k]["pass"] for k in "abcdef")
     (RESULTS / "e210_theory_vs_simulation.json").write_text(json.dumps(res, indent=1))
     lines = ["# E2.10 theory–simulation agreement (generated by e210_theory_vs_simulation.py)", "",
              "## (a) Predicted vs measured frame KL (second-half mean, E2.1 seeds 10–19)", "",
@@ -436,7 +517,27 @@ def main() -> None:
               f"{e['max_rel_err_hessian_diag']:.1e}; largest mixed second derivative "
               f"{e['max_abs_cross']:.1e} (max F {e['max_F']:.3g}); max relative error of the "
               f"gradient against the expected score: {e['max_rel_err_gradient']:.1e}. Gate (v): "
-              f"**{e['pass']}**.", "", f"**G2.5: {res['G2.5']}**"]
+              f"**{e['pass']}**.", "",
+              "## (f) Proposition 5.7: centering the frame statistic", "",
+              "Momentum noise factor η (β₁ = 0.9) against the Monte Carlo variance of the "
+              "bias-corrected momentum (200,000 draws):", "",
+              "| T | η | Monte Carlo | rel. error |", "|---|---|---|---|"]
+    f = res["f"]
+    lines += [f"| {r['T']} | {r['eta']:.5f} | {r['mc_variance']:.5f} | {r['rel_err']:.4f} |"
+              for r in f["eta"]]
+    lines += ["", "Mean skew score at the true frame with plug-in mean c·M̂ (6×8, 29 past "
+              "gradients, 100,000 draws), error relative to the uncentred bias; prediction "
+              "(1 − c)² × uncentred bias:", "", "| c | predicted norm (rel.) | rel. error |",
+              "|---|---|---|"]
+    lines += [f"| {r['c']:g} | {r['pred_norm_rel']:.3f} | {r['rel_err']:.4f} |"
+              for r in f["score"]]
+    lines += ["", "The optimizer's plug-in factor against the oracle (32×48, t = 200, 100 runs; "
+              "SNR = ‖μ‖²/(η tr Σ); the decaying mean μ_t = μ₀·0.99^t is reported, not gated):",
+              "", "| SNR (at t = 0) | decay | mean ĉ | s.d. | oracle c* |", "|---|---|---|---|---|"]
+    lines += [f"| {r['snr']:g} | {r['decay']:g} | {r['c_mean']:.3f} | {r['c_sd']:.3f} | "
+              f"{r['oracle']:.3f} |" for r in f["factor"]]
+    lines += ["", f"Gate (vi): η {f['pass_eta']}, score bias {f['pass_score']}, plug-in factor "
+              f"{f['pass_factor']}: **{f['pass']}**.", "", f"**G2.5: {res['G2.5']}**"]
     (RESULTS / "e210_report.md").write_text("\n".join(lines))
     print("\n".join(lines[-12:]))
 

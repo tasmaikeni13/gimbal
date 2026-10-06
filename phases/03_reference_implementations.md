@@ -23,7 +23,7 @@ Phase 02 (frozen Gimbal algorithm and defaults; peer list). If Phase 02 changed 
 
 | Optimizer | Source of truth for the rule | Notes |
 |---|---|---|
-| Gimbal | `theory/gimbal_theory.md` §5 | left/right flows, retraction, NS polish, flow variance average tied to the frame memory with empirical-Bayes shrinkage and odd/even split (Lemma 5.4, Prop. 5.5), pooled warm start with one eigh at step 50 (Remark 5.6), optional transport; state `QL, QR, M, V, VF, VF_odd` (+ `L_acc, R_acc` for 50 steps) |
+| Gimbal | `theory/gimbal_theory.md` §5 | left/right flows, retraction, NS polish, flow variance average tied to the frame memory with empirical-Bayes shrinkage and odd/even split (Lemma 5.4, Prop. 5.5), pooled warm start with one eigh at step 50 (Remark 5.6), frame statistic on the empirical-Bayes innovation `G − c·M_{t−1}` computed from the rotation of the previous momentum (Prop. 5.7, C-013; two scalar reductions, no extra matmul), optional transport; state `QL, QR, M, V, VF, VF_odd` (+ `L_acc, R_acc` for 50 steps) |
 | AdamW | Loshchilov & Hutter 2019 | decoupled weight decay |
 | SOAP (f=10) | arXiv:2409.11321 + official repo `nikhilvyas/SOAP` | first step only initializes; V re-ordered by estimated eigenvalues at refresh |
 | SOAP real-time | arXiv:2607.20548 §5.4.2 | factors include current gradient; frame refreshed every step before projection |

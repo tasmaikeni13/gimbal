@@ -2,7 +2,7 @@
 
 This note explains the ideas and the equations behind Gimbal in one pass. The full statements,
 proofs and evidence labels are in [`theory/gimbal_theory.md`](theory/gimbal_theory.md); the
-machine-checked parts are in [`formal/`](formal/README.md) (Lean 4 + Mathlib, 52 theorems).
+machine-checked parts are in [`formal/`](formal/README.md) (Lean 4 + Mathlib, 53 theorems).
 
 ## 1. What SOAP does, and the inconsistency inside it
 
@@ -107,7 +107,7 @@ nearly degenerate pairs. The generator is skew-symmetric, so the update is a rot
 * A spectral cap $\|\Omega\|_2\le 1$ keeps the iterate inside the polish's convergence region.
 
 Everything is matrix multiplication. There are no factor buffers, and no QR or eigendecomposition
-after the warm start (section 8).
+after the warm start (section 9).
 
 **What the flow does near the answer.** At the true frame the expected score is zero (Theorem 4.1,
 for any weights). The expected score is also the gradient of $J$, and the Hessian of $J$ at the true
@@ -178,12 +178,63 @@ efficient. The principle, shrinking toward Kronecker separability by an amount t
 is Hoff, McCormack and Zhang's core shrinkage for matrix-variate covariances (2023); here it is
 applied to the diagonal core of the KRD model, on the log scale.
 
-## 7. Invariances and guarantees
+## 7. Gradients with a mean: fit the frame to the innovation
+
+The likelihood so far treats the gradient as zero-mean noise. A real gradient also carries a mean:
+the descent signal. Write $G_t=\mu_t+N_t$ with KRD noise $N_t$. Two facts follow (Proposition 5.7).
+
+**The mean tilts the frame.** Subtract any estimate $\hat\mu_t$ formed from past gradients and let
+$B_t$ be what remains of the mean, in rotated coordinates at the true frame. The expected score
+there is
+
+$$E\big[E^L\big]=B_t(B_t\odot A)^\top-(B_t\odot A)B_t^\top ,$$
+
+because the noise part is diagonal and the cross terms average out. Without centering $B_t$ is the
+whole mean, and the score is non-zero at the true frame: the rank-one signal pulls the estimate
+toward its own direction. On a noisy quadratic at low noise this cost Gimbal its lead over KL-SOAP in
+the separable configuration (F-020).
+
+**How much of the momentum to subtract.** Using $c\,\hat M_{t-1}$, with $\hat M_{t-1}$ the previous
+momentum, leaves $B=(1-c)\,\Theta-c\,\Xi$: the bias shrinks by $(1-c)^2$, and the momentum's own noise
+$\Xi$ enters instead, with variance $\eta$ times the gradient noise, where
+
+$$\eta=\sum_sw_s^2=\frac{(1-\beta_1)(1+\beta_1^{t-1})}{(1+\beta_1)(1-\beta_1^{t-1})}$$
+
+is the momentum's sum of squared weights (machine-checked). The excess energy
+$(1-c)^2\|\mu\|^2+c^2\eta\,\mathrm{tr}\,\Sigma$ is minimized exactly at the James–Stein factor
+$c^\star=\|\mu\|^2/(\|\mu\|^2+\eta\,\mathrm{tr}\,\Sigma)$, the same machine-checked risk identity as in
+section 6. Gimbal estimates it from quantities it already has:
+
+$$c_t=\Big(1-\frac{\eta\,\widehat{\mathrm{tr}\,\Sigma}}{\|\hat M_{t-1}\|^2}\Big)_+,\qquad
+\widehat{\mathrm{tr}\,\Sigma}=\frac{\sum\hat V_{t-1}-\|\hat M_{t-1}\|^2}{1-\eta},$$
+
+using $E\|\hat M\|^2=\|\mu\|^2+\eta\,\mathrm{tr}\,\Sigma$ and $E\sum\hat V=\|\mu\|^2+\mathrm{tr}\,\Sigma$. Adam's step is
+unchanged; only the frame's statistic (score, variance average, warm-start factors) uses
+$G_t-c_t\hat M_{t-1}$.
+
+* Zero-mean gradients give $c\approx0$: the statistic is the gradient, and the true frame stays a
+  fixed point of the expected flow for any $c$.
+* A dominant mean gives $c\to1$: the frame is fitted to the noise, which in the noisy quadratic
+  model shares the curvature's frame.
+* $c_t$ is invariant to rotations and to the gradient's scale, so equivariance and scale invariance
+  survive.
+* It is free: in a fixed frame $Z(\hat M_t)=\beta_1Z(\hat M_{t-1})+(1-\beta_1)Z(G_t)$, so rotating the
+  previous momentum instead of the new one gives both.
+
+Centring a second moment by the running mean is old (centred RMSProp, Graves 2013; AdaBelief, Zhuang
+et al. 2020), always with $c=1$ and applied to the step's variances, and SR-Adam (2026) shrinks the
+gradient toward the momentum by a Stein rule. Gimbal centres only the frame's
+statistic, uses a predictable plug-in (which is what makes the cross terms vanish), and lets an
+empirical-Bayes factor turn the centring off when no mean is detectable. Its measured effect, on the
+noisy quadratics (E2.5) and on zero-mean frame-estimation streams (E2.1, E2.9), is in
+`experiments/phase2/report.md`.
+
+## 8. Invariances and guarantees
 
 * **Equivariance** (Theorem 6). Rotating every gradient by $(P,R)$ and the initial frame accordingly
   rotates every update by the same $(P,R)$. SOAP and Shampoo share this property; AdamW does not.
 * **Scale invariance** (Theorem 8.2). Multiplying all gradients by $c$ leaves the frame dynamics
-  unchanged; the shrinkage factor is scale-free as well. In floating point this holds to rounding at
+  unchanged; the shrinkage and centering factors are scale-free as well. In floating point this holds to rounding at
   every scale once no absolute constant enters a scale-free formula; the eigenvectors of a
   rank-deficient first-gradient factor are an arbitrary basis of its null space, so the starting
   frame itself is only defined up to that choice (as for SOAP).
@@ -192,7 +243,7 @@ applied to the diagonal core of the KRD model, on the log scale.
   carried by the doubly stochastic matrix $P\odot P$. Its Kronecker form needs two matmuls, and it
   preserves the total.
 
-## 8. Warm start: a one-step estimator
+## 9. Warm start: a one-step estimator
 
 For the first $T_w=50$ steps Gimbal also accumulates the pooled factors. At step $T_w$ it restarts
 the frame from their eigenvectors, transports the averages to the new frame, frees the factors,
@@ -206,7 +257,7 @@ decays only like $T_w/t$ while the memory exceeds the elapsed time, so at a fixe
 memories pay a small bias; with the memory matched to the horizon the error still vanishes
 (E2.2b).
 
-## 9. Cost
+## 10. Cost
 
 Per step, for an $m\times n$ matrix, Gimbal needs:
 
@@ -233,7 +284,7 @@ tall layers every step and the optimizer costs more than SOAP. On a CPU, where Q
 is slower than SOAP at every tested $k$ (`experiments/phase2/report.md`); the accelerator timing is
 measured in Phase 04.
 
-## 10. Where the peers sit
+## 11. Where the peers sit
 
 | Method | Frame from | Frame efficiency | Eigenvalues |
 |---|---|---|---|
@@ -243,9 +294,9 @@ measured in Phase 04.
 | KL-SOAP | KL factors | efficient only if separable | free (Adam) |
 | Muon, NorMuon | singular vectors of the momentum, instantaneous | no averaging | all set to one (NorMuon: per-row normalization) |
 | ARO | loss-driven rotation | not a covariance fit | base optimizer |
-| **Gimbal** | likelihood flow with empirical-Bayes variances | efficient in both regimes; identifies ties | free (Adam) |
+| **Gimbal** | likelihood flow on the innovation, with empirical-Bayes variances | efficient in both regimes; identifies ties | free (Adam) |
 
-## 11. Where the idea comes from
+## 12. Where the idea comes from
 
 The generator $E_L = Z\,g(Z)^\top - g(Z)\,Z^\top$ with $g(z)=z/D$ is the rotation part of the
 EASI relative-gradient update for source separation (Cardoso and Laheld, 1996), with the score of
@@ -256,17 +307,18 @@ transfers is the estimating equation; what does not is the independence of sourc
 everything here is stated for the working likelihood. The variance shrinkage of section 6 transfers
 core shrinkage (Hoff, McCormack and Zhang, 2023) from matrix-variate statistics.
 
-## 12. What is proved, what is measured, what is open
+## 13. What is proved, what is measured, what is open
 
 * **Machine-checked** (Lean): the efficiency inequality and its equality cases, KL-Shampoo's
   efficiency under separability, SOAP's loss factor, the strict separation example, Fisher
   positivity and the tie example, the retraction and polish identities, transport, equivariance
   and descent algebra, scale invariance, the bias-corrected schedule, the profile likelihood, the
-  excess-variance identity, the optimal shrinkage factor, the warm-start weighting, the frame KL of
-  a single-pair rotation ($\le\tfrac12F\theta^2$), and the memory bound against SOAP.
+  excess-variance identity, the optimal shrinkage factor, the warm-start weighting, the momentum's
+  noise factor, the frame KL of a single-pair rotation ($\le\tfrac12F\theta^2$), and the memory bound
+  against SOAP.
 * **Proved on paper**: asymptotic normality of factor estimators (delta method), the local
   contraction (Fisher identity), orthogonality of frame and variance scores, the second-order
-  plug-in correction.
+  plug-in correction, the score bias of a plug-in mean.
 * **Measured** (Phase 02, `experiments/phase2/report.md`; no model is trained in Phase 02): frame
   efficiency against every peer on synthetic KRD streams (separable and non-separable, ties,
   drift, heavy tails) and consistency in tied planes; optimization on noisy quadratics; agreement
@@ -275,5 +327,5 @@ core shrinkage (Hoff, McCormack and Zhang, 2023) from matrix-variate statistics.
   Phase 03.
 * **Open**: a proof of global convergence (Conjecture 4.1, which has numerical support: every
   random start reached the global minimum and constructed critical points are strict saddles); a
-  Student-$t$ score for heavy tails; richer shrinkage targets; the interaction of the frame flow
-  with momentum.
+  Student-$t$ score for heavy tails; richer shrinkage targets; a mean that drifts within Adam's
+  windows (the centering factor assumes it is stationary there).

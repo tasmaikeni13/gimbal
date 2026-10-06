@@ -18,6 +18,9 @@ Proposition 5.5, Remark 5.6).
 * `restart_closed_form`: after a restart at time `T` from the value `θT`, the bias-corrected
   schedule gives `θT` exactly the weight `1 - β^T` that the first `T` inputs would have had
   (Remark 5.6, the pooled warm start).
+* `ema_weight_sq_sum`: the normalized weights of a bias-corrected exponential average over `T`
+  inputs have squared sum `η = (1 - β)(1 + β^T) / ((1 + β)(1 - β^T))`, the factor by which the
+  momentum averages the gradient noise (Proposition 5.7, the empirical-Bayes centering).
 -/
 
 open Finset
@@ -165,5 +168,33 @@ theorem restart_closed_form (β θT : ℝ) (hβ0 : 0 ≤ β) (hβ1 : β < 1) (T 
       · simp
     rw [step, ih, hnum]
     ring
+
+/-- **Proposition 5.7 (momentum noise).** The bias-corrected average of `T` inputs with forgetting
+factor `β` has normalized weights `(1 - β) β^s / (1 - β^T)`, `s < T` (they sum to one). The sum of
+their squares, the factor `η` by which the average scales the variance of independent inputs, is
+`(1 - β)(1 + β^T) / ((1 + β)(1 - β^T))`: `1` for one input and `(1 - β) / (1 + β)` as `T → ∞`. -/
+theorem ema_weight_sq_sum (β : ℝ) (hβ0 : 0 ≤ β) (hβ1 : β < 1) (T : ℕ) (hT : 0 < T) :
+    ∑ s ∈ range T, ((1 - β) * β ^ s / (1 - β ^ T)) ^ 2 =
+      (1 - β) * (1 + β ^ T) / ((1 + β) * (1 - β ^ T)) := by
+  have hT1 : β ^ T < 1 := pow_lt_one₀ hβ0 hβ1 hT.ne'
+  have hden : 1 - β ^ T ≠ 0 := by linarith
+  have h1b : 1 + β ≠ 0 := by linarith
+  have h1mb : 1 - β ≠ 0 := by linarith
+  have hb2 : β ^ 2 ≠ 1 := by
+    have : β ^ 2 < 1 := by nlinarith
+    exact this.ne
+  have hb2' : β ^ 2 - 1 ≠ 0 := sub_ne_zero.mpr hb2
+  have hgeom : ∑ s ∈ range T, (β ^ 2) ^ s = ((β ^ 2) ^ T - 1) / (β ^ 2 - 1) :=
+    geom_sum_eq hb2 T
+  have hterm : ∀ s ∈ range T, ((1 - β) * β ^ s / (1 - β ^ T)) ^ 2 =
+      (1 - β) ^ 2 / (1 - β ^ T) ^ 2 * (β ^ 2) ^ s := by
+    intro s _
+    rw [← pow_mul, mul_comm 2 s, pow_mul]
+    field_simp
+  rw [Finset.sum_congr rfl hterm, ← Finset.mul_sum, hgeom]
+  have hpow : (β ^ 2) ^ T = (β ^ T) ^ 2 := by rw [← pow_mul, ← pow_mul, mul_comm]
+  rw [hpow]
+  field_simp
+  ring
 
 end Gimbal

@@ -51,12 +51,12 @@ instance and the same noise stream. The experimental unit is the seed.
 | E2.2 | Identifiability stress | Crossing profiles with tied row sums (Example 1 family); E2.2b: horizons 800, 4,000, 16,000 steps with memory matched to the horizon (seeds 10–14) | $J$; $J$ against the horizon |
 | E2.3 | Tracking under drift | $U^\star(t)$ rotates at angular velocity $\omega$; best memory per method | time-averaged $J$ |
 | E2.4 | Heavy tails | Student-$t$ noise ($\nu\in\{3,5,\infty\}$) | $J$ |
-| E2.5 | Noisy quadratic optimization | Loss $\tfrac12\sum H_{ij}(Q_L^{\star\top}(W-W^\star)Q_R^\star)_{ij}^2$, gradient noise with KRD covariance $\propto H$, noise levels × $\gamma$ grid; LR tuned per method on an equal 7-point grid (seeds 0–2), evaluated on fresh seeds 100–111 | final loss |
+| E2.5 | Noisy quadratic optimization | Loss $\tfrac12\sum H_{ij}(Q_L^{\star\top}(W-W^\star)Q_R^\star)_{ij}^2$, gradient noise with KRD covariance $\propto H$, noise levels × $\gamma$ grid; LR tuned per method on an equal 7-point grid (seeds 0–2), evaluated on fresh seeds 100–111 (re-test after C-013: 300–311, with two centering ablations of ours) | final loss |
 | E2.8 | Cost model | Multiply–accumulate counts and state for the 125M configuration (Prop. 9), QR/eigh counted separately; CPU microbenchmarks per matrix shape | % of model compute, state, ms per step |
-| E2.9 | Ablations | One setting of the default changed at a time: transport, initialization, warm-start length, shrinkage, flow variance source, $\delta$, $\rho$, trust region, schedule, amortization $k$, polish period; 8 seeds (40–47) | $J$ relative to the default |
-| E2.10 | Theory–simulation agreement | (a) predicted frame KL from the asymptotic variances of Theorem 3 and the expansion $J\approx\tfrac12\sum_pF_p\theta_p^2$ against measured E2.1 values (pooled factors exactly; Gimbal against the Cramér–Rao value); (b) Lemma 5.4.2's plug-in inflation against its exact value on random pairs; (c) Proposition 5.5's split-sample noise estimate and shrinkage factor against the truth; (d) Theorem 4.2's gap-independent contraction against SOAP's power-iteration rate, by deterministic one-step perturbation; (e) Hessian of $J$ at $U^\star$ against the Fisher information | ratios measured/predicted |
+| E2.9 | Ablations | One setting of the default changed at a time: transport, initialization, warm-start length, shrinkage, flow variance source, $\delta$, $\rho$, trust region, schedule, amortization $k$, polish period, centering of the frame statistic (none, always; C-013); 8 seeds (40–47) | $J$ relative to the default |
+| E2.10 | Theory–simulation agreement | (a) predicted frame KL from the asymptotic variances of Theorem 3 and the expansion $J\approx\tfrac12\sum_pF_p\theta_p^2$ against measured E2.1 values (pooled factors exactly; Gimbal against the Cramér–Rao value); (b) Lemma 5.4.2's plug-in inflation against its exact value on random pairs; (c) Proposition 5.5's split-sample noise estimate and shrinkage factor against the truth; (d) Theorem 4.2's gap-independent contraction against SOAP's power-iteration rate, by deterministic one-step perturbation; (e) Hessian of $J$ at $U^\star$ against the Fisher information; (f) Proposition 5.7: the momentum's noise factor, the $(1-c)^2$ score bias of a plug-in mean, the plug-in factor against the oracle (C-014) | ratios measured/predicted |
 | E2.11 | Landscape and global convergence (Conjecture 4.1) | Noise-free population flow (exact expected score at the current frame) from Haar-random starts on separable, non-separable, tied and near-degenerate arrays; Riemannian Hessian at every end point that is not the global minimum | fraction converged to $J<10^{-8}$; type of other end points |
-| E2.12 | Numerical behaviour | float32 vs float64 on E2.1 cells; 10⁴-step orthogonality; gradient scales $10^{\pm30}$ (float64) and $10^{\pm15}$ (float32); zero gradients, dead rows, rank-one gradients, variance range $10^{12}$ | NaN/Inf count, orthogonality defect, $J$ ratio fp32/fp64, frame deviation across scales |
+| E2.12 | Numerical behaviour | float32 vs float64 on E2.1 cells; 10⁴-step orthogonality; gradient scales $10^{\pm30}$ (float64) and $10^{\pm15}$ (float32); zero gradients, dead rows, rank-one gradients, variance range $10^{12}$, a constant (noise-free) gradient | NaN/Inf count, orthogonality defect, $J$ ratio fp32/fp64, frame deviation across scales |
 
 Peers: AdamW, SOAP (f=10), SOAP real-time (per-step frame from factors including the current
 gradient), KL-SOAP (F=1), Muon, NorMuon, SPlus, ARO; exact pooled-factor and KL-factor
@@ -92,6 +92,14 @@ eigenvectors at every step as controls in E2.1–E2.4.
   (iv) Theorem 4.2: the measured one-step contraction of the population flow is within 10% of
   $1-\alpha F_{ik}/(F_{ik}+\delta n)$ for every tested pair, across eigen-gaps spanning at least 100×.
   (v) The Hessian of $J$ at $U^\star$ equals the Fisher information to relative error $10^{-4}$.
+  (vi) Proposition 5.7 (added with C-013 by C-014, criteria fixed before the check ran): the Monte
+  Carlo variance of the bias-corrected momentum of unit-variance noise is within 3% of $\eta$ for
+  $T\in\{2,5,20,100,1000\}$; the Monte Carlo mean of the skew score at the true frame with the plug-in
+  mean $c\hat M_{t-1}$ is within 5% (Frobenius norm, relative to the uncentred bias) of
+  $(1-c)^2$ times the uncentred bias for $c\in\{0,0.5,1\}$; and the mean of the optimizer's plug-in
+  factor (its own code path, 32×48 Gaussian streams, $t=200$) is within 0.1 of the oracle $c^\star$ at
+  signal-to-noise ratios $\|\mu\|^2/(\eta\,\mathrm{tr}\,\Sigma)\in\{0,0.1,1,10,100\}$. A decaying mean is reported,
+  not gated.
 * **G2.6 (landscape, cost, numerics; C-006).**
   (i) E2.11: for arrays with pairwise-distinct profiles, ≥ 99% of random starts reach the global
   minimum; every other end point found is a strict saddle. A spurious local minimum refutes
@@ -117,4 +125,4 @@ and, where it changes a theorem, re-checked in Lean (Phase 01 files become stale
 ## Invalidation triggers
 
 Changes to the Gimbal update rule or defaults, to any peer implementation, or to the theory items
-that define the metrics (Prop. 1, Thm. 3, Lemma 5.4, Prop. 5.5).
+that define the metrics (Prop. 1, Thm. 3, Lemma 5.4, Prop. 5.5, Prop. 5.7).

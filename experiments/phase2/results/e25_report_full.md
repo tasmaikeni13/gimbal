@@ -79,6 +79,21 @@ Mean final loss over the evaluation seeds at each method's selected learning rat
 * klsoap: diff -0.03459 [-0.06022, -0.01109], loss ratio 0.949
 * soap: diff -0.03195 [-0.05437, -0.011], loss ratio 0.951
 
+## Pooled across configurations (random effects)
+
+Geometric-mean final-loss ratio default / peer, DerSimonian–Laird pooling of the per-configuration mean paired log-ratios; < 1 means the default is better.
+
+| peer | pooled ratio | 95% CI | I² | configurations |
+|---|---|---|---|---|
+| adamw | 0.675 | [0.550, 0.829] | 1.00 | 6 |
+| aro | 0.780 | [0.715, 0.852] | 0.99 | 6 |
+| klsoap | 0.948 | [0.898, 1.001] | 0.99 | 6 |
+| muon | 0.805 | [0.745, 0.869] | 0.99 | 6 |
+| normuon | 0.771 | [0.701, 0.849] | 0.99 | 6 |
+| soap | 0.925 | [0.898, 0.953] | 0.99 | 6 |
+| soap_rt | 0.882 | [0.839, 0.928] | 0.98 | 6 |
+| splus | 0.743 | [0.676, 0.818] | 0.98 | 6 |
+
 ## Gate
 
 G2.4 (default, frame_every = 4): **fail**; with frame_every = 1: **fail**

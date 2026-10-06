@@ -30,6 +30,24 @@ RESULTS = pathlib.Path(__file__).parent / "results"
 ORACLE = "oracle"
 
 
+def pooled_log_ratio(diffs: list[np.ndarray]) -> dict:
+    """DerSimonian–Laird random-effects pooling of per-configuration mean paired log-ratios
+    (configurations as studies; within-configuration standard error from the seeds)."""
+    y = np.array([d.mean() for d in diffs])
+    v = np.array([max(d.var(ddof=1) / len(d), 1e-12) for d in diffs])
+    w = 1 / v
+    fixed = np.sum(w * y) / np.sum(w)
+    q = float(np.sum(w * (y - fixed) ** 2))
+    k = len(y)
+    tau2 = max(0.0, (q - (k - 1)) / (np.sum(w) - np.sum(w**2) / np.sum(w)))
+    w_re = 1 / (v + tau2)
+    mu = np.sum(w_re * y) / np.sum(w_re)
+    se = np.sqrt(1 / np.sum(w_re))
+    return {"factor": float(np.exp(mu)), "lo": float(np.exp(mu - 1.96 * se)),
+            "hi": float(np.exp(mu + 1.96 * se)),
+            "i2": float(max(0.0, (q - (k - 1)) / q)) if q > 0 else 0.0, "k": k}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--tag", default="full_c013")
@@ -97,6 +115,24 @@ def main() -> None:
             report.append(f"* {m}: diff {v['mean_diff']:.4g} [{v['ci95'][0]:.4g}, "
                           f"{v['ci95'][1]:.4g}], loss ratio {v['geo_ratio']:.3f}")
         report.append("")
+    # Random-effects summary across configurations (reported, not a gate item)
+    peers = sorted({m for by_method in loss.values() for m in by_method
+                    if m != ORACLE and not m.startswith("gimbal")})
+    gate["random_effects_loss_ratio"] = {}
+    report += ["## Pooled across configurations (random effects)", "",
+               "Geometric-mean final-loss ratio default / peer, DerSimonian–Laird pooling of the "
+               "per-configuration mean paired log-ratios; < 1 means the default is better.", "",
+               "| peer | pooled ratio | 95% CI | I² | configurations |", "|---|---|---|---|---|"]
+    for peer in peers:
+        diffs = []
+        for by_method in loss.values():
+            g, q = by_method["gimbal_k4"], by_method[peer]
+            diffs.append(np.array([np.log(g[s]) - np.log(q[s]) for s in sorted(g)]))
+        r = pooled_log_ratio(diffs)
+        gate["random_effects_loss_ratio"][peer] = r
+        report.append(f"| {peer} | {r['factor']:.3f} | [{r['lo']:.3f}, {r['hi']:.3f}] | "
+                      f"{r['i2']:.2f} | {r['k']} |")
+    report.append("")
     # Frame statistics (C-013): the default (empirical-Bayes innovation) against the raw gradient
     # and the fully centered innovation, paired over the evaluation seeds.
     arms = ("gimbal_k4_nocenter", "gimbal_k4_center")

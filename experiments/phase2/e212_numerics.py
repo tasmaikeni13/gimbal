@@ -160,6 +160,9 @@ def part4() -> dict:
                      for _ in range(steps)],
         "range_1e12": [ql @ (np.sqrt(10.0 ** rng.uniform(-6, 6, (m, n)))
                              * rng.standard_normal((m, n))) @ qr.T for _ in range(steps)],
+        # noise-free: the momentum equals the gradient, so the centered statistic (C-013) is
+        # rounding residue
+        "constant": [base[0]] * steps,
     }
     res, ok = {}, True
     for name, grads in cases.items():

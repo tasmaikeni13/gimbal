@@ -28,7 +28,10 @@ equivariant (Theorem 6), and scale-invariant (Theorem 8). The variances that wei
 are estimated with the frame's own memory and shrunk toward their separable (Kronecker) fit by an
 empirical-Bayes factor (Lemma 5.4, Proposition 5.5), so the estimator behaves like KL-Shampoo's
 efficient estimator on separable spectra and like the free maximum-likelihood estimator on
-non-separable ones, choosing between them from the measured non-separability.
+non-separable ones, choosing between them from the measured non-separability. The frame is fitted to
+the gradient's innovation with respect to the momentum, scaled by a second empirical-Bayes factor
+(Proposition 5.7): a deterministic descent signal does not tilt the frame, and zero-mean gradients
+are used unchanged.
 
 ## 1. Setting and notation
 
@@ -41,7 +44,9 @@ non-separable ones, choosing between them from the measured non-separability.
   vectorization) is $C(U,D)=(Q_L\otimes Q_R)\,\mathrm{diag}(\mathrm{vec}\,D)\,(Q_L\otimes Q_R)^\top$.
 * **Separable sub-model**: $D=\lambda\mu^\top$ (Kronecker product covariance: Shampoo, K-FAC,
   KL-Shampoo).
-* We model the *uncentred* second moment, as Shampoo, SOAP and Adam do. The Gaussian is a working
+* Adam's step uses the *uncentred* second moment, as Shampoo, SOAP and Adam do. The frame is fitted
+  to the innovation $G_t-c\,\hat M_{t-1}$ (Proposition 5.7, change C-013), which is the uncentred
+  model when the gradient's mean is small against its noise ($c\approx0$). The Gaussian is a working
   likelihood (a surrogate fixing the estimating equation), not a claim that gradients are Gaussian.
 
 ## 2. The objective behind SOAP's own preconditioner
@@ -174,7 +179,9 @@ likelihood flow is no larger than that of any single-factor method at its best m
 
 ## 5. The Gimbal flow
 
-Let $V^F$ be an exponential moving average of $Z_U(G)^{\circ2}$ with coefficient $\beta_D=1-\alpha$
+Write $\tilde G_t=G_t-c_t\hat M_{t-1}$ for the innovation the frame is fitted to (Proposition 5.7;
+$\tilde G_t=G_t$ before C-013) and, in this section, $Z=Z_U(\tilde G_t)$. Let $V^F$ be an exponential
+moving average of $Z^{\circ2}$ with coefficient $\beta_D=1-\alpha$
 (bias corrected; "tied" to the frame's memory, change C-003, Lemma 5.4), and let $D$ be its
 empirical-Bayes shrinkage toward the separable fit (change C-004, Proposition 5.5), with a
 relative floor $\rho$. Adam's own second moment $V$ (coefficient $\beta_2$) is used only for the
@@ -335,6 +342,66 @@ geometrically. At a fixed horizon the frame error is therefore U-shaped in the m
 cells (observed in E2.2, F-016), and it still vanishes as the horizon grows with the memory matched
 to it (E2.2b, `experiments/phase2/results/e22b_report.md`).
 
+**Proposition 5.7 (the frame statistic of a gradient with a mean; items 1–2 and item 3 for a fixed
+$c$ L4, the optimal factor and $\eta$ L5, the plug-in factor L3; checked by Monte Carlo in E2.10 (f),
+effect measured in E2.5).** Let $G_t=\mu_t+N_t$, where $N_t$ is KRD
+noise at the true frame $U^\star$ ($Z_{U^\star}(N_t)=D^{\circ1/2}\odot\varepsilon_t$, entries of $\varepsilon_t$
+independent, zero-mean, unit-variance, independent over $t$) and the mean $\mu_t$ is predictable
+(a function of the past). Write $\Theta_t=Z_{U^\star}(\mu_t)$ and let $\mathcal F_{t-1}$ be the past.
+1. *Likelihood.* The Gaussian log-likelihood of $G_t$ under $\mathrm{KRD}(U,D)$ with mean $\mu_t$ is the
+   KRD log-likelihood of $G_t-\mu_t$, so the score in $U$ at a given mean is Lemma A's score of the
+   innovation. Fitting the frame to $G_t$ itself treats the mean as noise.
+2. *Bias of a plug-in mean.* Let $\hat\mu_t$ be $\mathcal F_{t-1}$-measurable, $B_t=\Theta_t-Z_{U^\star}(\hat\mu_t)$,
+   $Z=Z_{U^\star}(G_t-\hat\mu_t)$, and $A>0$ any fixed weight array. Then
+   $$E\big[Z(Z\odot A)^\top-(Z\odot A)Z^\top\,\big|\,\mathcal F_{t-1}\big]=B_t(B_t\odot A)^\top-(B_t\odot A)B_t^\top ,$$
+   because the noise term $E[W(W\odot A)^\top]$ ($W=D^{\circ1/2}\odot\varepsilon_t$) is diagonal and the cross
+   terms have conditional mean zero. The uncentred statistic ($\hat\mu=0$, $B=\Theta$) therefore has a
+   non-zero expected score at the true frame whenever $\Theta_t\ne0$: the rank-one "signal" term tilts
+   the estimate away from $U^\star$, the mechanism of F-020.
+3. *Momentum as the mean, and its factor.* Let $\mu_t=\mu$ over the momentum's window and
+   $\hat\mu_t=c\,\hat M_{t-1}$, where $\hat M_{t-1}=\sum_sw_sG_s$ is the bias-corrected momentum over $t-1$
+   gradients (weights $w_s=(1-\beta_1)\beta_1^{t-1-s}/(1-\beta_1^{t-1})$). Then $B=(1-c)\Theta-c\,\Xi$ with
+   $\Xi=\sum_sw_s\,D^{\circ1/2}\odot\varepsilon_s$, whose entries are independent with variance $\eta D_{ij}$,
+   $$\eta=\sum_sw_s^2=\frac{(1-\beta_1)(1+\beta_1^{t-1})}{(1+\beta_1)(1-\beta_1^{t-1})}$$
+   (Lean: `ema_weight_sq_sum`). For a fixed $c$, averaging item 2 over the momentum's noise as well
+   gives $(1-c)^2\big(\Theta(\Theta\odot A)^\top-(\Theta\odot A)\Theta^\top\big)$, the uncentred bias scaled by
+   $(1-c)^2$, since $E[\Xi(\Xi\odot A)^\top]$ is diagonal; the price is noise in the statistic, which
+   becomes serially correlated through $\Xi$. The excess second moment of the statistic,
+   $E\|B\|^2=(1-c)^2\|\mu\|^2+c^2\eta\,\mathrm{tr}\,\Sigma$ ($\mathrm{tr}\,\Sigma=\sum_{ij}D_{ij}$), is minimized exactly at
+   $c^\star=\|\mu\|^2/(\|\mu\|^2+\eta\,\mathrm{tr}\,\Sigma)$ (Lean: `shrinkage_risk_eq_iff` with $S=\|\mu\|^2$,
+   $\nu=\eta\,\mathrm{tr}\,\Sigma$). Gimbal uses the positive-part plug-in
+   $$c_t=\Big(1-\frac{\eta\,\widehat{\mathrm{tr}\,\Sigma}}{\|\hat M_{t-1}\|^2}\Big)_+,\qquad
+   \widehat{\mathrm{tr}\,\Sigma}=\frac{\big(\textstyle\sum_{ij}\hat V_{t-1}-\|\hat M_{t-1}\|^2\big)_+}{1-\eta},$$
+   from $E\|\hat M_{t-1}\|^2=\|\mu\|^2+\eta\,\mathrm{tr}\,\Sigma$ and $E\sum\hat V=\|\mu\|^2+\mathrm{tr}\,\Sigma$ for Adam's
+   bias-corrected second moment $\hat V$ (its total does not depend on the frame). With one gradient
+   ($t=2$, $\eta=1$) or no momentum ($\beta_1=0$) mean and noise are not separable and $c_t=0$.
+
+*Proof.* (1) Substitute $G_t-\mu_t$ for the zero-mean variable in the KRD density. (2) Expand
+$Z=W+B_t$; $E[W\mid\mathcal F_{t-1}]=0$ and $B_t$ is $\mathcal F_{t-1}$-measurable, so the cross terms vanish,
+and $E[W(W\odot A)^\top]_{ik}=\sum_jE[W_{ij}W_{kj}]A_{kj}=\delta_{ik}\sum_jD_{ij}A_{ij}$ is diagonal. (3) The
+entries of $\Xi$ are weighted sums of independent zero-mean terms, so the same computation makes
+$E[\Xi(\Xi\odot A)^\top]$ diagonal and kills the cross terms with $\Theta$; the risk identity is
+Proposition 5.5's with $(S,\nu)=(\|\mu\|^2,\eta\,\mathrm{tr}\,\Sigma)$; $\eta$ is a geometric sum. ∎
+
+Consequences. *Zero-mean gradients* ($\mu=0$): $c^\star=0$ and the statistic is the gradient, as
+before C-013; the plug-in fluctuates near 0 (test `test_mean_shrinkage_separates_signal_from_noise`)
+and, since $E[\Xi(\Xi\odot A)^\top]$ is diagonal, the true frame stays a fixed point of the expected flow
+for any $c$ (Theorem 4.1 is unchanged). *A dominant mean* ($\|\mu\|^2\gg\eta\,\mathrm{tr}\,\Sigma$): $c\to1$, and
+the frame is fitted to the noise, which on a quadratic with gradient noise proportional to the
+curvature (the noisy quadratic model) shares the curvature's frame. *Invariances*: $c_t$ is a ratio of
+quantities that are invariant under $(P,R)\in\mathcal G$ and scale as $\gamma^2$ under $G\mapsto\gamma G$, so
+Theorems 6 and 8.2 hold. *Cost*: $Z_U(\hat M_t)=\beta_1Z_U(\hat M_{t-1})+(1-\beta_1)Z_U(G_t)$ in a fixed frame,
+so rotating $\hat M_{t-1}$ instead of $\hat M_t$ gives both; the centering adds $O(mn)$ elementwise work and
+two reductions, no matrix product. *Limits*: the plug-in assumes the mean is stationary over Adam's
+windows; a mean that drifts within them (a decaying descent signal) leaves a lag bias in $B$, which
+the factor treats as part of $\|\hat M\|^2$. *Sources*: centring a second moment by the running mean of
+the gradient is centred RMSProp (Graves, 2013, arXiv:1308.0850) and AdaBelief (Zhuang et al.,
+NeurIPS 2020, arXiv:2010.07468), both with $c=1$, the current gradient included, and applied to the
+step's variances; a Stein rule toward the momentum also appears in SR-Adam (arXiv:2602.01777),
+which shrinks the gradient itself. Here only the frame's statistic is centred, the plug-in is
+predictable (so item 2's cross terms vanish), and $c$ is a James–Stein factor (James and Stein,
+1961) that returns the uncentred statistic when the mean is not detectable.
+
 **Proposition 4.5 (the flow descends $J$; Newton step at the optimum; L4, checked numerically in
 E2.10 (e)).** Let $D=d_U$ (the profile variances at the current frame). Then
 1. the expected score is the gradient of $J$ in left-trivialized skew coordinates: with
@@ -452,8 +519,9 @@ Phase 2 measures both costs by Monte Carlo for every method on the same gradient
   $g(z)=z/(D+z^2/\nu)$ (hypothesis H6); its Fisher weights change accordingly. The split-sample
   noise estimate of Proposition 5.5 already adapts the variance estimate to heavy tails.
 * Richer shrinkage targets for $\log D$ (low rank instead of additive; per-row factors $c_i$).
-* Interaction with momentum: the frame flow uses the instantaneous gradient while the step uses the
-  momentum; Theorem 8.1 covers $\beta_1=0$ only.
+* Interaction with momentum: the frame flow uses the innovation with respect to the momentum
+  (Proposition 5.7) while the step uses the momentum itself; Theorem 8.1 covers $\beta_1=0$ only. The
+  mean plug-in of Proposition 5.7 assumes a mean that is stationary over Adam's windows.
 
 ## 8. Proof audit (Phase 01, `theory-research` checklist)
 
@@ -472,6 +540,7 @@ Phase 2 measures both costs by Monte Carlo for every method on the same gradient
 | Lemma 5.4 | fixed frame (1); one pair, independent relative errors (2); Gaussian KRD (3) | $W>0$, weighted mean $>0$; $\langle w,w^\star\rangle\ne0$ | $F_{ik}\to0$ (expansion invalid: angle bounded), $\beta\to1$ | L5 (1, 2 identity), L3 (2 expansion, 3) |
 | Prop. 5.5 | residual = signal + independent noise | $S+\nu>0$; $\|\hat R\|^2>0$ (else $c=0$) | separable ($S=0$), pure noise, $m=1$ or $n=1$ (no shrinkage possible) | L5 (risk), L3 (noise estimate) |
 | Remark 5.6 | linearized dynamics, $\beta\in[0,1)$ | $1-\beta^{T+k}>0$ | $T_w=1$, ties | L5 (weighting), L3 |
+| Prop. 5.7 | predictable plug-in (2); stationary mean, fixed $c$ (3) | $1-\eta>0$ (else $c=0$); $\|\hat M\|^2>0$ | $\mu=0$, $t=2$, $\beta_1=0$, frameless layers | L4 (1, 2; 3 for fixed $c$), L5 ($c^\star$, $\eta$), L3 (plug-in), L1 (E2.10 (f)) |
 
 Failures found while auditing (all in the checking code, none in a theorem) are recorded in
 `research/ledger/failures.md` (F-001 to F-004).
@@ -506,4 +575,11 @@ Failures found while auditing (all in the checking code, none in a theorem) are 
   optimizer above SOAP even with QR at 10× matmul cost (F-019); $k=4$ was pre-registered in the
   confirmatory runs and keeps the frame quality within a few percent. Proposition 4.5 (the flow
   descends $J$; Hessian of $J$ at $U^\star$ = Fisher) and numerical evidence for Conjecture 4.1 added.
+* 2026-10-06 — v0.7 (Phase 02, C-013): Proposition 5.7. The frame is fitted to the innovation
+  $G_t-c_t\hat M_{t-1}$ with an empirical-Bayes factor $c_t$; item 2 shows that the uncentred statistic
+  has a non-zero expected score at the true frame when the gradient has a mean, which is how the
+  noisy quadratic's deterministic signal tilted the frame and G2.4 failed in its separable low-noise
+  configuration (F-020). One new Lean theorem (`ema_weight_sq_sum`, the momentum's noise factor
+  $\eta$); the optimal factor reuses `shrinkage_risk_eq_iff`. Notation §1, §5 and the open items
+  updated; earlier statements are unchanged (they concern the zero-mean model, where $c^\star=0$).
 

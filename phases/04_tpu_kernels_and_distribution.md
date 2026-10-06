@@ -48,7 +48,9 @@ Phase 03 (`src/gimbal/jax/`, tests, golden sequences).
    (`frame_every`, default 4 since C-012; the score is accumulated, so no gradient is dropped), NS polish period, Fisher
    matrix refresh period. With `frame_every = k > 1` the momentum may be kept in rotated
    coordinates and transported only when the frame moves (saves one $m^2n+mn^2$ unit per step;
-   prove equality with the reference to rounding first). The shrinkage step (Prop. 5.5) is
+   prove equality with the reference to rounding first). The centering of the frame statistic
+   (Prop. 5.7, C-013) needs the rotated previous momentum, which that layout holds directly, and
+   two scalar reductions per layer ($\|M\|^2$, $\sum V$). The shrinkage step (Prop. 5.5) is
    elementwise plus row/column means and one global variance: fuse it into one kernel with the
    variance-average updates. The warm start needs one `eigh` per matrix at step 50 and a
    temporary $m^2+n^2$ buffer; run it outside the jitted steady-state step if that keeps the

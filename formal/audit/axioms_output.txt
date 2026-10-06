@@ -43,6 +43,7 @@
 'Gimbal.shrinkage_risk_ge' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Gimbal.shrinkage_risk_eq_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Gimbal.restart_closed_form' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Gimbal.ema_weight_sq_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Gimbal.pair_rotation_product' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Gimbal.pair_rotation_cost_nonneg' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Gimbal.pair_rotation_cost_le' depends on axioms: [propext, Classical.choice, Quot.sound]

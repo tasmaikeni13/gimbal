@@ -77,6 +77,28 @@ def test_gimbal_equivariance():
     assert torch.allclose(w_b, p_left @ w_a @ p_right.T, atol=1e-8)
 
 
+def test_gimbal_equivariance_and_scale_invariance_with_a_mean():
+    # Proposition 5.7: the centering factor is built from rotation-invariant, scale-homogeneous
+    # quantities, so Theorems 6 and 8.2 survive when the centering is active (c near 1 here).
+    gen = torch.Generator().manual_seed(8)
+    mean = torch.randn(5, 5, generator=gen)
+    grads = [mean + 0.3 * torch.randn(5, 5, generator=gen) * torch.linspace(0.2, 2, 5)
+             for _ in range(60)]
+    p_left, p_right = random_orthogonal(5, gen), random_orthogonal(5, gen)
+    w0 = torch.randn(5, 5, generator=gen)
+    kw = dict(lr=1e-2, rot_rate=0.2, transport=True)
+    w_a, opt_a = run_steps(Gimbal, grads, shape=(5, 5), w0=w0, **kw)
+    st = next(iter(opt_a.state.values()))
+    assert float(Gimbal._mean_shrinkage(st["M"], st["V"], 0.9, 0.95, st["step"] + 1)) > 0.9
+    w_b, _ = run_steps(Gimbal, [p_left @ g @ p_right.T for g in grads], shape=(5, 5),
+                       w0=p_left @ w0 @ p_right.T, **kw)
+    assert torch.allclose(w_b, p_left @ w_a @ p_right.T, atol=1e-8)
+    _, opt_c = run_steps(Gimbal, [1e3 * g for g in grads], shape=(5, 5), w0=w0, **kw)
+    sc = next(iter(opt_c.state.values()))
+    assert torch.allclose(st["QL"], sc["QL"], atol=1e-9)
+    assert torch.allclose(st["QR"], sc["QR"], atol=1e-9)
+
+
 def test_adamw_is_not_equivariant(grads):
     gen = torch.Generator().manual_seed(2)
     p_left, p_right = random_orthogonal(6, gen), random_orthogonal(4, gen)

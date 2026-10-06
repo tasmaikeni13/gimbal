@@ -8,7 +8,9 @@ components) problem. Gimbal follows it online with one natural-gradient step on 
 groups per iteration. The variances that weight that step are shrunk toward their separable
 (Kronecker) fit by an empirical-Bayes factor measured from the data, so the estimator behaves like
 KL-Shampoo's on separable gradients and like the free maximum-likelihood estimator on
-non-separable ones. The step uses only matrix multiplications: after a 50-step warm start there
+non-separable ones. The frame is fitted to the gradient minus the part of the momentum that a
+second empirical-Bayes factor judges to be signal, so a deterministic descent direction does not
+tilt it. The step uses only matrix multiplications: after a 50-step warm start there
 are no Kronecker factor buffers and no QR or eigendecomposition.
 
 ## Why
@@ -29,7 +31,7 @@ inefficient way to find the frame, and they can fail to identify it at all. The 
   bias-corrected exponential average (Theorem 4.4, machine-checked).
 
 `theory.md` explains the ideas and equations; `theory/gimbal_theory.md` has statements, proofs and
-evidence labels; `formal/` has 52 Lean 4 + Mathlib theorems.
+evidence labels; `formal/` has 53 Lean 4 + Mathlib theorems.
 
 ## Status
 
@@ -65,8 +67,10 @@ opt = build("gimbal", hidden, other, matrix_kwargs={"lr": 3e-3}, other_kwargs={"
 ```
 
 Gimbal's knobs beyond AdamW's: `rot_rate` (frame memory, default 0.02), `damping` (default 0.003)
-and `frame_every` (the frame moves every k steps with the mean score of those steps, default 4). The variance shrinkage
-(`flow_shrink`) and the warm start (`init="pooled"`, `warm_start_steps=50`) have no tuning knobs.
+and `frame_every` (the frame moves every k steps with the mean score of those steps, default 4).
+The variance shrinkage (`flow_shrink`), the centering of the frame statistic
+(`flow_center="adaptive"`) and the warm start (`init="pooled"`, `warm_start_steps=50`) have no
+tuning knobs.
 
 ## Repository
 

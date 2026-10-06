@@ -38,6 +38,23 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
   falls about as 1/T; pooled-factor frames fall less than 2×, passing that clause narrowly.
 * Decision: G2.2 passes.
 
+## E2.5 — Optimization on noisy quadratics (Phase 02, gate G2.4)
+* Question: does Gimbal reach a lower loss than every peer when each optimizer is tuned the same
+  way, on quadratics whose curvature and gradient noise share a KRD frame?
+* Design: γ ∈ {0, 1, 2} × σ ∈ {0.1, 1}, 32×48, 400 steps, warm-up and cosine schedule; every method
+  gets the same 7-point learning-rate grid (factor 2 around its own centre), selected on seeds 0–2
+  and evaluated on 12 fresh paired seeds; Adam in the true frame is the ceiling, not a peer.
+* Code: `experiments/phase2/e25_noisy_quadratic.py`, `analyze_e25.py`.
+* Run 1 (after C-011, default of C-012, evaluation seeds 100–111): G2.4 failed in the separable
+  low-noise configuration (F-020); outputs `results/e25_*_full.*`.
+* Run 2 (after C-013, evaluation seeds 300–311, two centering ablations of ours): the default has
+  the lowest mean final loss in all six configurations and every paired bootstrap interval against
+  every peer excludes 0; no selected learning rate on a grid edge; centering gains most where the
+  deterministic signal dominates (low noise) and is neutral at σ = 1, and the adaptive factor stays
+  within about 1% of always-on centering here. Outputs `results/e25_*_full_c013.*`, report
+  `results/e25_report_full_c013.md`.
+* Decision: G2.4 passes on run 2; F-020 closed by C-013.
+
 ## E2.10 — Theory–simulation agreement (Phase 02)
 * Question: do the theory's quantitative predictions match simulation?
 * Parts: (a) Theorem 3 + small-angle expansion vs measured E2.1 frame KL; (b) Lemma 5.4.2 vs exact
@@ -48,6 +65,12 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
   leading-order formula (F-013) and passed on fresh pairs with the derived second-order term.
   (a) passes in the six separable cells (the only ones in the linear regime, C-009); pooled factors
   are saturated in the non-separable cells, as the theory predicts.
+* Part (f), added with C-013 (criteria fixed first, C-014): Proposition 5.7's noise factor η, the
+  (1 − c)² law for the score bias of a plug-in mean, and the optimizer's plug-in factor against the
+  oracle at five signal-to-noise ratios; a decaying mean is reported (the factor lags slightly
+  above the oracle, as the proposition's limits say). Part (a) now reads the E2.1 rows through the
+  analysis loader, so its KL columns are the C-011 re-runs and its Gimbal columns the C-013 re-runs
+  (F-022). E2.10 re-run in full after the E2.1 re-runs.
 * Raw: `results/e210_theory_vs_simulation.json`, report `results/e210_report.md`.
 
 ## E2.11 — Landscape and global convergence (Phase 02)
