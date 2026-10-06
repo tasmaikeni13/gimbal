@@ -1,0 +1,39 @@
+{
+  "dataset": "HuggingFaceFW/fineweb-edu",
+  "config": "sample-10BT",
+  "revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+  "tokenizer": "tiktoken gpt2 (0.14.0), end-of-text 50256 after each doc",
+  "split_rule": "sha256(id) % 1000: 0-9 val, 10-19 test, else train",
+  "order_rule": "sha256('order:' + id), ascending, within each split",
+  "inputs": {
+    "000_00000.parquet": "b1ba7b2ce4cb5ea6ef42dca40263eabb85f37700d01693a68e9b30a31d78e871",
+    "001_00000.parquet": "3fcf2dc69cd52503986276d3d2d26a8c356d0f2ea28a0de4fdbda8cf87755693",
+    "002_00000.parquet": "547ae182d132c9f06b6ce63149567208ea9f57630bfd9b1a2938e504f0c9ebd7",
+    "003_00000.parquet": "22184e6eb25759ddd97783751ffc73e1705dfa2542e630dae1f2a8bac8ee6ddb"
+  },
+  "corpus_docs": 2916000,
+  "corpus_tokens": 3004523761,
+  "splits": {
+    "train": {
+      "tokens": 2500000000,
+      "docs_used": 2426419,
+      "docs_available": 2857405,
+      "tokens_available": 2944276620,
+      "sha256": "f4a3c2a4603eccb4e034e266592e4337d7b3a6f9983cca24c4cd4271a943a51d"
+    },
+    "val": {
+      "tokens": 20000000,
+      "docs_used": 19798,
+      "docs_available": 29146,
+      "tokens_available": 29694345,
+      "sha256": "841db9a7f1dacb45771ff67a300bf8175a31851d6d17567a0faa6ea368524772"
+    },
+    "test": {
+      "tokens": 20000000,
+      "docs_used": 19055,
+      "docs_available": 29449,
+      "tokens_available": 30552796,
+      "sha256": "05411556994a6a05d7dce6a5d32bec1ea78fdd212c079cc6af342b1821052da2"
+    }
+  }
+}
