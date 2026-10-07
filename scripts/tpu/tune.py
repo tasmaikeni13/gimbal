@@ -33,6 +33,12 @@ SECONDARY = {  # (config key, three values including the default)
     "gimbal": ("rot_rate", (0.025, 0.05, 0.1)),
 }
 DEFAULT_SECONDARY = {"adamw": 0.95, "soap": 0.95, "gimbal": 0.05}
+# D-010: the next value beyond each edge of the secondary grid (the grids' own spacing)
+KNOB_EXTENSION = {
+    "adamw": {"low": 0.9, "high": 0.9995},
+    "soap": {"low": 0.8, "high": 0.995},
+    "gimbal": {"low": 0.0125, "high": 0.2},
+}
 
 
 def run_name(opt: str, lr: float, seed: int, knob: str | None = None) -> str:
@@ -95,7 +101,7 @@ def write_manifest(grids: dict) -> None:
             for s in SEEDS:
                 rows.append(("A", opt, lr, "", s, run_name(opt, lr, s)))
         key, values = SECONDARY[opt]
-        for v in values:
+        for v in (*values, *grids.get(f"{opt}_knob_ext", [])):
             if v == DEFAULT_SECONDARY[opt]:
                 continue
             for lr in grids.get(f"{opt}_best", []):
@@ -205,10 +211,10 @@ def main() -> None:
                     run_name(opt, best[opt], s, f"{key}{v}"),
                 )
                 write_manifest(grids)
-    final = {}
-    for opt in CENTRE:
-        key, values = SECONDARY[opt]
-        scores = {
+
+    def knob_scores(opt: str, values) -> dict:
+        key = SECONDARY[opt][0]
+        return {
             v: (
                 score(opt, best[opt])
                 if v == DEFAULT_SECONDARY[opt]
@@ -216,16 +222,49 @@ def main() -> None:
             )
             for v in values
         }
-        top = min(scores.values())
-        # ties within 0.002 nats keep the default
-        chosen = (
-            DEFAULT_SECONDARY[opt]
-            if scores[DEFAULT_SECONDARY[opt]] <= top + 0.002
-            else min(scores, key=scores.get)
-        )
+
+    def choose(opt: str, scores: dict) -> float:
+        top = min(scores.values())  # ties within 0.002 nats keep the default
+        default = DEFAULT_SECONDARY[opt]
+        return default if scores[default] <= top + 0.002 else min(scores, key=scores.get)
+
+    # Stage C edge extension (D-010): if any selection lies on an edge of its grid, every
+    # optimizer gets one more value: beyond that edge, or on the side of its better neighbour.
+    chosen = {o: choose(o, knob_scores(o, SECONDARY[o][1])) for o in CENTRE}
+    at_edge = {o: chosen[o] in (min(SECONDARY[o][1]), max(SECONDARY[o][1])) for o in CENTRE}
+    if any(at_edge.values()):
+        for opt in CENTRE:
+            vs = sorted(SECONDARY[opt][1])
+            sc = knob_scores(opt, vs)
+            if chosen[opt] == vs[0]:
+                side = "low"
+            elif chosen[opt] == vs[-1]:
+                side = "high"
+            else:
+                i = vs.index(chosen[opt])
+                side = "low" if sc[vs[i - 1]] < sc[vs[i + 1]] else "high"
+            grids[f"{opt}_knob_ext"] = [KNOB_EXTENSION[opt][side]]
+        print("stage C extension", {o: grids[f"{o}_knob_ext"] for o in CENTRE}, flush=True)
+        for s in SEEDS:
+            for opt in CENTRE:
+                key = SECONDARY[opt][0]
+                v = grids[f"{opt}_knob_ext"][0]
+                launch(
+                    snapshot,
+                    opt,
+                    best[opt],
+                    s,
+                    [f"optimizers.{opt}.{key}={v}"],
+                    run_name(opt, best[opt], s, f"{key}{v}"),
+                )
+                write_manifest(grids)
+    final = {}
+    for opt in CENTRE:
+        key, values = SECONDARY[opt]
+        scores = knob_scores(opt, (*values, *grids.get(f"{opt}_knob_ext", [])))
         final[opt] = {
             "lr": best[opt],
-            key: chosen,
+            key: choose(opt, scores),
             "stage_c_scores": scores,
             "stage_a_scores": {f"{lr:.4g}": score(opt, lr) for lr in sorted(grids[opt])},
         }
