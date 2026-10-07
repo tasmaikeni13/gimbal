@@ -174,9 +174,8 @@ def tuning() -> None:
 
 
 def main_runs() -> None:
-    res = load(ROOT / "analysis" / "results" / "phase08.json")
-    if not res:
-        return
+    res = load(ROOT / "analysis" / "results" / "phase08.json") or {
+        "runs": {}, "paired": {}, "decision": {}, "pooled_within_run_se": None}
     for opt, name in (("adamw", "Adamw"), ("soap", "Soap"), ("gimbal", "Gimbal")):
         vals = [res["runs"].get(f"{opt}/seed{s}", {}).get("val_loss") for s in (2, 3)]
         ok = [v for v in vals if v is not None]
@@ -190,16 +189,60 @@ def main_runs() -> None:
         mac(f"Diff{name}", p["mean_diff"] if p else None, "{:+.4f}")
         mac(f"BeatsLoss{name}", ("yes" if p["beats_on_loss"] else "no") if p else None)
         mac(f"BeatsWall{name}", ("yes" if p["beats_on_wallclock"] else "no") if p else None)
-        if p:
-            mult = [e["token_multiplier"] for e in p["per_seed"].values()]
-            mac(f"Mult{name}", float(np.mean(mult)) if all(mult) else None, "{:.3f}")
+        mult = [e["token_multiplier"] for e in p["per_seed"].values()] if p else []
+        mac(f"Mult{name}", float(np.mean(mult)) if mult and all(mult) else None, "{:.3f}")
     dec = res.get("decision", {})
     mac("Headline", ("allowed" if dec.get("headline_claim_allowed") else "not allowed")
         if dec else None)
 
 
+def tex(s: str) -> str:
+    return (s.replace("\\", "\\textbackslash{}").replace("_", "\\_").replace("&", "\\&")
+            .replace("%", "\\%").replace("#", "\\#"))
+
+
+def lean_table() -> None:
+    """Theorem map of formal/README.md (statement, Lean names, file)."""
+    rows = []
+    for line in (ROOT / "formal" / "README.md").read_text().splitlines():
+        m = re.match(r"\| (.+?) \| (.+?) \| `(.+?)` \| (.+?) \|$", line)
+        if m and m.group(1) != "Theory item":
+            item, names, file, _ = m.groups()
+            names = ", ".join("\\texttt{" + tex(n.strip(" `")) + "}" for n in names.split(","))
+            rows.append(f"{tex(item)} & {names} & \\texttt{{{tex(file)}}} \\\\")
+    (GEN / "lean_table.tex").write_text(
+        "\\begin{tabular}{p{2.6cm}p{8.6cm}p{2.6cm}}\n\\toprule\nstatement & Lean names & file "
+        "\\\\\n\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
+    mac("LeanCount", str(sum(1 for line in (ROOT / "formal" / "audit" / "axioms_output.txt")
+                             .read_text().splitlines() if "depends on axioms" in line)))
+
+
+def tuning_table() -> None:
+    """Every Phase 06 trial (from runs/tuning/*/final.json)."""
+    rows = []
+    pat = re.compile(r"^(adamw|soap|gimbal)_lr([0-9.e-]+)(?:_(b2|shampoo_beta|rot_rate)"
+                     r"([0-9.]+))?_s(\d+)$")
+    runs = ROOT / "runs" / "tuning"
+    if runs.exists():
+        for d in sorted(runs.iterdir()):
+            m = pat.match(d.name)
+            if not m or not (d / "final.json").exists():
+                continue
+            fin = json.loads((d / "final.json").read_text())
+            opt, lr, key, val, seed = m.groups()
+            loss = "diverged" if fin.get("diverged") else f"{fin.get('val_loss', float('nan')):.4f}"
+            knob = f"{tex(key)}={val}" if key else "default"
+            rows.append(f"{opt} & {float(lr):.4g} & {knob} & {seed} & {loss} \\\\")
+    (GEN / "tuning_table.tex").write_text(
+        "\\begin{tabular}{lcccc}\n\\toprule\noptimizer & peak lr & secondary & seed & "
+        "final validation loss \\\\\n\\midrule\n" + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n")
+
+
 def main() -> None:
     GEN.mkdir(parents=True, exist_ok=True)
+    lean_table()
+    tuning_table()
     phase02()
     phase03()
     phase04_05()

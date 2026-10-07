@@ -1,0 +1,43 @@
+\section{Introduction}
+\label{sec:intro}
+
+SOAP~\citep{vyas2024soap} preconditions each weight matrix by running Adam in a rotated frame
+$(Q_L,Q_R)$, the eigenbasis of Shampoo's Kronecker factors, and it is one of the strongest
+optimizers for language-model pre-training at moderate scale~\citep{wen2025fantastic,
+semenov2025benchmarking}. Inside SOAP two estimators answer to two different models. Adam's
+second moment is the maximum-likelihood estimate of a free array of variances in the frame; the
+frame comes from pooled factors $\E[GG^\top]$, $\E[G^\top G]$, the maximum-likelihood recipe for a
+Kronecker-\emph{product} covariance whose variance array is separable. The two coincide only when
+the variances are separable and the factors' eigenvalues are distinct.
+
+This paper asks what the frame should be under SOAP's own model, and whether the answer helps. The
+answer to the first question is a classical object: the frame that maximizes the likelihood of the
+free-diagonal model makes the rotated second moment as diagonal as possible in the log-determinant
+sense, a joint-diagonalization problem from statistics and blind source separation. We derive its
+score and Fisher information, and an online estimator, \emph{Gimbal}, that follows it with one damped
+natural-gradient step on $O(m)\times O(n)$ per block of steps, using only matrix products after a
+short warm start.
+
+\paragraph{Contributions.}
+\begin{itemize}[nosep,leftmargin=1.2em]
+\item The objective behind SOAP's preconditioner family (the profile KL of
+\cref{prop:J}) and an identifiability and efficiency theory for frame estimators: the likelihood
+identifies every pair of rows whose variance profiles differ, where pooled factors need the profile
+\emph{sums} to differ, and every single-factor estimator, SOAP's and KL-Shampoo's included, loses
+statistical efficiency except in special cases (\cref{sec:theory}); \LeanCount{} statements are
+machine-checked in Lean.
+\item Gimbal (\cref{sec:method}): a likelihood frame flow with empirical-Bayes variance shrinkage
+toward the separable fit, an innovation-centred statistic, a pooled warm start and adaptive
+amortization; matrix products only after step 50.
+\item Evidence at three levels, including where it is negative: Monte Carlo on gradient streams
+with known truth (\cref{sec:montecarlo}), where Gimbal's frame is several times more accurate than
+SOAP's and KL-SOAP's; a small language model (\cref{sec:smalllm}), where the premise that real
+gradient variances are non-separable fails, Gimbal beats SOAP narrowly and KL-SOAP beats Gimbal; and
+a 125M-parameter, 2.5B-token comparison with AdamW and SOAP on a TPU v4-32 under equal tuning budgets
+(\cref{sec:setup,sec:results}).
+\end{itemize}
+
+At 125M parameters the predeclared decision rule gives: Gimbal beats AdamW on loss:
+\BeatsLossAdamw; beats SOAP on loss: \BeatsLossSoap; the headline claim (beats both on loss and is no
+slower than SOAP per step) is \Headline. Gimbal's step is \StepGimbalOverSoap\% slower than SOAP's
+on the TPU.

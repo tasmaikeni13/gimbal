@@ -1,0 +1,81 @@
+\section{Proofs}
+\label{app:proofs}
+
+Complete proofs, the proof audit (quantifiers, divisions, degenerate cases) and the history of every
+revised statement are in \texttt{theory/gimbal\_theory.md}; the main steps are as follows.
+
+\emph{Proposition~\ref{prop:J}.} With $C=(Q_L\otimes Q_R)\diag(\mathrm{vec}D)(Q_L\otimes Q_R)^\top$,
+$\mathrm{KL}=\frac12[\tr(C^{-1}S)-mn+\log\det C-\log\det S]$ separates over coordinates, each
+minimized at $D_{ij}=(d_U)_{ij}$; non-negativity of the remainder is Hadamard's inequality applied
+to the rotated $S$, whose diagonal is $d_U$.
+
+\emph{Lemma~\ref{lem:score} and Theorem~\ref{thm:fisher}.} Under $Q_L\mapsto Q_L(I+\Omega)$,
+$Z\mapsto(I-\Omega)Z$ to first order, which gives the score. Its second moment at the true frame
+keeps only the terms $\E[Z_{ij}^2Z_{kj}^2]=D_{ij}D_{kj}$, giving $F^L_{ik}$; products of scores of
+different pairs, or with a variance score, contain an odd power of an entry and vanish. Each
+summand of $F^L_{ik}$ vanishes iff $D_{ij}=D_{kj}$.
+
+\emph{Theorem~\ref{thm:efficiency}.} Item 1 is the delta method for the eigenvector perturbation of
+$\hat L_w$ (the off-diagonal entry over the eigen-gap). Item 2 is Cauchy--Schwarz with
+$r_j=w_j(D_{ij}-D_{kj})$, $r_j^2=f_jg_j$. Item 3 follows by fixing one row; item 4 by a $3\times2$
+array whose two row pairs demand incompatible weights.
+
+\emph{Theorem~\ref{thm:flow}.} The expected score vanishes when cross moments vanish; near the
+optimum it equals the Fisher information times the displacement, and the natural-gradient step
+divides it out; item 3 is the AR(1) recursion.
+
+\emph{Proposition~\ref{prop:shrink} and \ref{prop:center}.} Both risk identities are
+$(c-1)^2S+c^2\nu$, minimized at $S/(S+\nu)$; for the innovation, $E[W(W\had A)^\top]$ is diagonal for
+noise $W$ with independent entries, so only the mean's rank-one term survives in the skew part.
+
+\emph{Theorems~\ref{thm:retraction}--\ref{thm:descent}} are algebraic identities, checked in Lean.
+
+\section{Machine-checked statements}
+\label{app:lean}
+
+Lean~4~\citep{demoura2021lean4} with Mathlib~\citep{mathlib2020}; \texttt{lake build} in
+\texttt{formal/}; the audit prints the axioms of every listed theorem (all \LeanCount{} use only
+\texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound}; no \texttt{sorry}). Statement
+labels follow the numbering of the theory document.
+
+\begin{center}\scriptsize
+\input{generated/lean_table}
+\end{center}
+
+Not formalized: the delta-method asymptotics (Theorem~\ref{thm:efficiency}.1), the Fisher identity
+at a displaced parameter (Theorem~\ref{thm:flow}.2), Hadamard's inequality (cited), the
+second-order expansion of Lemma~\ref{lem:profile}, the statistical properties of the split-sample
+noise estimate, and the conjecture; these are proved on paper or checked by Monte Carlo.
+
+\section{Optimizers and hyper-parameters}
+\label{app:optimizers}
+
+Exact update rules, defaults and sources of AdamW~\citep{loshchilov2019adamw}, SOAP and Gimbal, and
+of the PyTorch-only peers of \cref{sec:smalllm} (SOAP real-time, KL-SOAP, Muon, NorMuon, SPlus,
+ARO), are in \texttt{docs/optimizers.md}. Gimbal's defaults: $\beta=(0.9,0.95)$,
+$\epsilon=10^{-8}$, $\alpha=0.05$, $\delta=0.003$, relative floor $10^{-8}$, $\theta_{\max}=0.25$, spectral
+cap 1, $K=4$ (adaptive), $T_w=50$. SOAP: $\beta=(0.95,0.95)$, factor memory $\beta_s=\beta_2$,
+$f=10$. AdamW: $\beta=(0.9,0.95)$. Weight decay 0.1 on hidden matrices for all three.
+
+\section{Tuning runs}
+\label{app:tuning}
+
+Every Phase~06 trial (2{,}500 steps, 614M tokens; final loss on the full validation split):
+
+\begin{center}\scriptsize
+\input{generated/tuning_table}
+\end{center}
+
+\section{Novelty check}
+\label{app:novelty}
+
+Searches of arXiv, OpenReview and conference proceedings (2026-10-06; the queries and hits are
+listed in \texttt{research/literature/frontier.md}) for optimizers that estimate a Kronecker frame
+by joint diagonalization, common principal components, EASI-type relative gradients or
+Pham--Cardoso non-stationary source separation; for empirical-Bayes shrinkage of second moments
+toward Kronecker-separable structure in optimizers; and for centred frame statistics. No overlapping
+method was found; closest are KL-Shampoo/KL-SOAP~\citep{lin2025klshampoo} (Kronecker-product
+likelihood), TurboSoap (a blog post tracking the factors' eigenvectors by matrix products), core
+shrinkage~\citep{hoff2023core} (statistics, not optimization) and Stein-rule gradient shrinkage.
+Patents and non-English venues were not searched; ``apparently distinct'' is the strongest
+statement this supports.

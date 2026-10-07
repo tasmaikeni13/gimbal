@@ -1,0 +1,16 @@
+\section{Reproducibility statement}
+\label{sec:repro}
+
+Code, configurations, raw logs and the scripts that generate every number and figure of this paper
+are in the repository (\texttt{README.md}). The Lean development builds with
+\texttt{cd formal \&\& lake build}. The Monte Carlo study re-runs with the scripts under
+\texttt{experiments/phase2} and regenerates its report with \texttt{make\_report.py}; the small
+language model with \texttt{experiments/phase3}; the TPU benchmarks with \texttt{benchmarks/tpu}
+(\texttt{docs/performance.md}); tuning and confirmatory runs with \texttt{scripts/tpu/tune.py} and
+\texttt{scripts/tpu/main\_runs.py} from frozen code snapshots (each run records its commit);
+the analysis with \texttt{python analysis/phase08.py}; and this paper with \texttt{make -C paper}.
+Data: FineWeb-Edu \texttt{sample-10BT} at a pinned revision, tokenized by
+\texttt{scripts/data/prepare\_fineweb\_edu.py} (SHA-256 of every split in
+\texttt{data/tokens\_manifest.json}). Every failure, refuted statement and design change is recorded
+with its mechanism in \texttt{research/ledger/}. The project was carried out by an AI agent (Claude,
+Anthropic) following the written protocol in \texttt{phases/}, under the author's direction.

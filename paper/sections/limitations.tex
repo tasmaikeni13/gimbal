@@ -1,0 +1,21 @@
+\section{Limitations}
+\label{sec:limitations}
+
+\begin{itemize}[nosep,leftmargin=1.2em]
+\item \emph{Scale and seeds.} One model size (125M), one data set, one token budget (about one
+Chinchilla), two seeds per optimizer in the confirmatory runs; the decision rule is built for that
+design, and differences below the seed-to-seed spread cannot be resolved.
+\item \emph{Competitors.} The TPU study compares AdamW, SOAP and Gimbal only (compute constraint).
+On the small model KL-SOAP beat Gimbal and SOAP real-time tied it; neither was run at 125M, nor were
+Muon and the other peers.
+\item \emph{Horizon.} Learning rates and secondary knobs were tuned at a quarter of the confirmatory
+horizon for every optimizer alike; optimal values can drift with the horizon.
+\item \emph{Premise.} The likelihood frame is most valuable when the rotated variances are
+non-separable. On real gradients of the small model they were almost exactly separable, and the
+diagnostics of the 125M runs (\cref{sec:results}) show where the larger model stands.
+\item \emph{Cost.} On the TPU v4 Gimbal's float32 frame moves make its step slower than SOAP's; the
+comparison of step times is specific to this hardware, its software stack and our implementation
+of both optimizers.
+\item \emph{Theory.} The efficiency and rate results are local or asymptotic (\lab{L3}) and the
+global convergence of the flow is a conjecture.
+\end{itemize}
