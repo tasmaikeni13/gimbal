@@ -52,6 +52,9 @@ def load(root: pathlib.Path) -> dict:
                 "probe": json.loads((d / "frame_probe.json").read_text())
                 if (d / "frame_probe.json").exists()
                 else None,
+                "probe_mid": json.loads((d / "frame_probe_step1000.json").read_text())
+                if (d / "frame_probe_step1000.json").exists()
+                else None,
             }
     return runs
 
@@ -134,11 +137,13 @@ def mechanism(r: dict) -> dict:
             ]
             if vals:
                 out[f"{b}/orth_defect_{side}/max"] = max(vals)
-    if r["probe"]:
-        for label, m in r["probe"]["matrices"].items():
-            out[f"probe/{label}/own_minus_pooled"] = m["L_own_frame"] - m["L_pooled_fit_frame"]
-            out[f"probe/{label}/own_minus_identity"] = m["L_own_frame"] - m["L_identity"]
-            out[f"probe/{label}/kappa_pooled_frame"] = m["kappa_pooled_frame"]
+    for key, probe in (("probe", r["probe"]), ("probe_step1000", r.get("probe_mid"))):
+        if not probe:
+            continue
+        for label, m in probe["matrices"].items():
+            out[f"{key}/{label}/own_minus_pooled"] = m["L_own_frame"] - m["L_pooled_fit_frame"]
+            out[f"{key}/{label}/own_minus_identity"] = m["L_own_frame"] - m["L_identity"]
+            out[f"{key}/{label}/kappa_pooled_frame"] = m["kappa_pooled_frame"]
     return out
 
 

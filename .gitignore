@@ -32,6 +32,7 @@ experiments/phase3/results/lm/snap_*.npz
 # TPU runs: compilation cache, checkpoints, traces, optimized HLO, raw host logs, scratch runs
 .jax_cache/
 runs/**/ckpt/
+runs/**/ckpt_keep/
 runs/profiles/
 runs/hlo/
 # raw per-host logs; the driver logs (tune.log, main_runs.log, diag/*.log) feed the compute budget

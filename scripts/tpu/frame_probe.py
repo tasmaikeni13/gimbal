@@ -10,11 +10,14 @@ with exact eigenvectors), and the identity (AdamW). Also the non-separability in
 variances in the pooled frame. Writes ``runs/main/<optimizer>/seed<k>/frame_probe.json``.
 
 Run on all hosts after the main runs: scripts/tpu/launch.sh <logdir> python
-scripts/tpu/frame_probe.py
+scripts/tpu/frame_probe.py. With ``--step 1000 --seeds 2`` it probes the mid-training checkpoints
+kept by ``scripts/tpu/keep_checkpoint.sh`` (``ckpt_keep/``) and writes
+``frame_probe_step1000.json``.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import pathlib
@@ -45,6 +48,13 @@ def eigh_desc(s: np.ndarray) -> np.ndarray:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--step", type=int, default=None, help="kept mid-training checkpoint")
+    parser.add_argument("--seeds", default="2,3")
+    args = parser.parse_args()
+    seeds = tuple(int(s) for s in args.seeds.split(","))
+    sub = "ckpt" if args.step is None else "ckpt_keep"
+    name = "frame_probe.json" if args.step is None else f"frame_probe_step{args.step}.json"
     jax.config.update("jax_compilation_cache_dir", str(ROOT / ".jax_cache"))
     jax.distributed.initialize()
     from jax.experimental import multihost_utils
@@ -59,14 +69,14 @@ def main() -> None:
     writer = os.environ.get("GIMBAL_WORKER", "0") == "0"
     val = TokenFile(ROOT / "data" / "tokens" / "val.bin")
     for opt in ("soap", "gimbal"):
-        for seed in (2, 3):
+        for seed in seeds:
             run = ROOT / "runs" / "main" / opt / f"seed{seed}"
             cfg = json.loads((run / "config.json").read_text())["config"]
             frozen = yaml.safe_load((ROOT / "configs" / "frozen" / f"{opt}.yaml").read_text())
             cfg["optimizers"][opt].update(frozen["optimizer"])
             trainer = Trainer(cfg, opt)
-            step = checkpoint.latest(run / "ckpt")
-            params, state = checkpoint.restore(run / "ckpt", step, trainer, seed)
+            step = checkpoint.latest(run / sub, args.step)
+            params, state = checkpoint.restore(run / sub, step, trainer, seed)
             grads = {label: [] for _, _, label in PROBES}
             batch = cfg["train"]["batch"]
             for k in range(SAMPLES):
@@ -99,7 +109,7 @@ def main() -> None:
                     ),
                 }
             if writer:
-                (run / "frame_probe.json").write_text(json.dumps(out, indent=1))
+                (run / name).write_text(json.dumps(out, indent=1))
                 print(opt, seed, json.dumps(out), flush=True)
 
 
