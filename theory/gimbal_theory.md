@@ -194,7 +194,8 @@ $(2-\alpha)/\alpha$ gradients, which equals the effective sample size $(1+\beta_
 Adam's average (39 for $\beta_2=0.95$); SOAP's default `shampoo_beta` $=\beta_2$ is the same
 convention for its factors. In every comparison Adam's momentum coefficient is matched across the
 frame-based methods, so that only the frame estimator differs: the Monte Carlo study and the small
-language model use $\beta_1=0.9$ for every method, and the 125M study uses SOAP's official
+language model use $\beta_1=0.9$ for AdamW, every SOAP variant and Gimbal, and the 125M study uses
+SOAP's official
 $\beta_1=0.95$ for SOAP and Gimbal (change C-019; with $\beta_1=0.9$ against SOAP's $0.95$, Gimbal was
 unstable early at high learning rates, F-032). One step of the left flow:
 $$\Omega_L=-\alpha_t\,\frac{S_L-S_L^\top}{F_L+\delta n},\qquad
@@ -638,7 +639,7 @@ Failures found while auditing (all in the checking code, none in a theorem) are 
   gains the window-matching remark (§5); no Lean statement is affected.
 * 2026-10-07 — v0.10 (Phase 06, C-019): in the 125M study Gimbal uses SOAP's momentum
   $\beta_1=0.95$ (it had Adam's $0.9$ while SOAP had its official $0.95$); the library default and
-  every earlier experiment, which set $\beta_1=0.9$ for all methods, are unchanged. Reason: in the
+  the earlier experiments, which set $\beta_1=0.9$ for every Adam-based method, are unchanged. Reason: in the
   tuning runs Gimbal was unstable around the end of the warm-up for peak learning rates
   $\ge1.5\cdot10^{-3}$ (gradient norm up to 20, loss rising for about 40 steps) and finished behind
   SOAP; on TPU diagnostics the instability disappeared with $\beta_1=0.95$ alone, and with a frozen
