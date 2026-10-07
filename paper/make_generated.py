@@ -11,6 +11,7 @@ Usage: python paper/make_generated.py
 
 from __future__ import annotations
 
+import argparse
 import gzip
 import json
 import math
@@ -173,27 +174,123 @@ def tuning() -> None:
         mac(f"Knob{name}", s[knob[opt]] if s else None, "{:g}")
 
 
-def main_runs() -> None:
-    res = load(ROOT / "analysis" / "results" / "phase08.json") or {
+SEED_WORD = {2: "Two", 3: "Three"}
+NAMES = {"adamw": "Adamw", "soap": "Soap", "gimbal": "Gimbal"}
+
+
+def _mean(vals):
+    return float(np.mean(vals)) if vals and all(v is not None for v in vals) else None
+
+
+def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
+    """Confirmatory runs: macros and tables from ``phase08.json``, ``compute.json`` and the
+    one-time test evaluations (``runs/main/<optimizer>/seed<k>/test.json``)."""
+    res = load(results / "phase08.json") or {
         "runs": {}, "paired": {}, "decision": {}, "pooled_within_run_se": None}
-    for opt, name in (("adamw", "Adamw"), ("soap", "Soap"), ("gimbal", "Gimbal")):
-        vals = [res["runs"].get(f"{opt}/seed{s}", {}).get("val_loss") for s in (2, 3)]
-        ok = [v for v in vals if v is not None]
-        mac(f"Val{name}", float(np.mean(ok)) if len(ok) == 2 else None)
-        mac(f"Ppl{name}", float(np.exp(np.mean(ok))) if len(ok) == 2 else None, "{:.2f}")
-        steps = [res["runs"].get(f"{opt}/seed{s}", {}).get("steady_state_step_s") for s in (2, 3)]
-        mac(f"MainStep{name}", 1e3 * float(np.mean(steps)) if all(steps) else None, "{:.1f}")
+    comp = load(results / "compute.json") or {}
+    seeds = (2, 3)
+    rows = []
+    for opt, name in NAMES.items():
+        runs = [res["runs"].get(f"{opt}/seed{s}", {}) for s in seeds]
+        tests = [load(main_dir / opt / f"seed{s}" / "test.json") for s in seeds]
+        vals = [r.get("val_loss") for r in runs]
+        mac(f"Val{name}", _mean(vals))
+        mac(f"Ppl{name}", math.exp(_mean(vals)) if _mean(vals) else None, "{:.2f}")
+        for s, v in zip(seeds, vals, strict=True):
+            mac(f"Val{name}Seed{SEED_WORD[s]}", v)
+        tl = [t["test_loss"] if t else None for t in tests]
+        mac(f"Test{name}", _mean(tl))
+        mac(f"TestPpl{name}", math.exp(_mean(tl)) if _mean(tl) else None, "{:.2f}")
+        steps = [r.get("steady_state_step_s") for r in runs]
+        mac(f"MainStep{name}", 1e3 * _mean(steps) if _mean(steps) else None, "{:.1f}")
+        mac(f"Spikes{name}", sum(r.get("spikes", 0) or 0 for r in runs) if all(runs) else None,
+            "{:d}")
+        mac(f"ChipHours{name}", comp.get("total_chip_hours", {}).get(opt), "{:.0f}")
+        mac(f"TuneChipHours{name}", comp.get("stages", {}).get("tuning", {}).get(opt, {})
+            .get("chip_hours"), "{:.0f}")
+        mac(f"MainChipHours{name}", comp.get("stages", {}).get("main", {}).get(opt, {})
+            .get("chip_hours"), "{:.0f}")
+        for s, r, t in zip(seeds, runs, tests, strict=True):
+            if not r:
+                continue
+            vl = "diverged" if r.get("diverged") else f"{r['val_loss']:.4f}"
+            se = f"{r['bootstrap_se']:.4f}" if r.get("bootstrap_se") else "--"
+            ppl = f"{r['val_ppl']:.2f}" if r.get("val_ppl") else "--"
+            tst = f"{t['test_loss']:.4f}" if t else "--"
+            st = f"{1e3 * r['steady_state_step_s']:.1f}" if r.get("steady_state_step_s") else "--"
+            gn = f"{r['max_grad_norm_after_500']:.2f}" if r.get("max_grad_norm_after_500") \
+                else "--"
+            rows.append(f"{opt} & {s} & {vl} & {se} & {ppl} & {tst} & {st} & "
+                        f"{r.get('spikes', '--')} & {gn} \\\\")
+    (GEN / "main_table.tex").write_text(
+        "\\begin{tabular}{lcccccccc}\n\\toprule\noptimizer & seed & val.\\ loss & SE & "
+        "val.\\ ppl & test loss & step (ms) & spikes & max $\\|g\\|$ \\\\\n\\midrule\n"
+        + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
     mac("PooledSe", res.get("pooled_within_run_se"), "{:.4f}")
+    mac("TwoPooledSe", 2 * res["pooled_within_run_se"] if res.get("pooled_within_run_se")
+        else None, "{:.4f}")
+    mac("PooledSeedSd", res.get("pooled_seed_sd"), "{:.4f}")
+    prow = []
     for c, name in (("adamw", "Adamw"), ("soap", "Soap")):
         p = res["paired"].get(c)
+        per = p["per_seed"] if p else {}
         mac(f"Diff{name}", p["mean_diff"] if p else None, "{:+.4f}")
+        for s in seeds:
+            e = per.get(str(s)) or per.get(s)
+            mac(f"Diff{name}Seed{SEED_WORD[s]}", e["gimbal_minus"] if e else None, "{:+.4f}")
+        pse = [e.get("paired_bootstrap_se") for e in per.values()]
+        mac(f"PairedSe{name}", _mean(pse) if pse else None, "{:.4f}")
         mac(f"BeatsLoss{name}", ("yes" if p["beats_on_loss"] else "no") if p else None)
         mac(f"BeatsWall{name}", ("yes" if p["beats_on_wallclock"] else "no") if p else None)
-        mult = [e["token_multiplier"] for e in p["per_seed"].values()] if p else []
-        mac(f"Mult{name}", float(np.mean(mult)) if mult and all(mult) else None, "{:.3f}")
+        mult = [e["token_multiplier"] for e in per.values()]
+        mac(f"Mult{name}", _mean(mult) if mult else None, "{:.3f}")
+        tok = [e["gimbal_tokens_to_target"] for e in per.values()]
+        mac(f"TokensTo{name}", _mean(tok) / 1e9 if mult and _mean(tok) else None, "{:.2f}")
+        wall = [e["gimbal_wallclock_to_target_s"] for e in per.values()]
+        cw = [e["competitor_wallclock_s"] for e in per.values()]
+        mac(f"WallTo{name}", _mean(wall) / 60 if wall and _mean(wall) else None, "{:.1f}")
+        mac(f"CompWall{name}", _mean(cw) / 60 if cw and _mean(cw) else None, "{:.1f}")
+        for s in seeds:
+            e = per.get(str(s)) or per.get(s)
+            if not e:
+                continue
+            tk = f"{e['gimbal_tokens_to_target'] / 1e9:.2f}" if e["gimbal_tokens_to_target"] \
+                else "not reached"
+            mu = f"{e['token_multiplier']:.3f}" if e["token_multiplier"] else "--"
+            wl = f"{e['gimbal_wallclock_to_target_s'] / 60:.1f}" \
+                if e["gimbal_wallclock_to_target_s"] else "--"
+            ps = f"{e['paired_bootstrap_se']:.4f}" if e.get("paired_bootstrap_se") else "--"
+            prow.append(f"{c} & {s} & {e['gimbal_minus']:+.4f} & {ps} & {tk} & {mu} & {wl} & "
+                        f"{e['competitor_wallclock_s'] / 60:.1f} \\\\")
+    (GEN / "paired_table.tex").write_text(
+        "\\begin{tabular}{lccccccc}\n\\toprule\n$c$ & seed & Gimbal $-$ $c$ & paired SE & "
+        "tokens to $c$'s loss (B) & multiplier & Gimbal min & $c$ min \\\\\n\\midrule\n"
+        + "\n".join(prow) + "\n\\bottomrule\n\\end{tabular}\n")
     dec = res.get("decision", {})
     mac("Headline", ("allowed" if dec.get("headline_claim_allowed") else "not allowed")
         if dec else None)
+    mac("NoSlowerThanSoap", ("yes" if dec.get("no_slower_than_soap") else "no") if dec else None)
+    gs = [res["runs"].get(f"gimbal/seed{s}", {}).get("steady_state_step_s") for s in seeds]
+    ss = [res["runs"].get(f"soap/seed{s}", {}).get("steady_state_step_s") for s in seeds]
+    mac("MainStepGimbalOverSoap", 100 * (_mean(gs) / _mean(ss) - 1)
+        if _mean(gs) and _mean(ss) else None, "{:.1f}")
+    # Mechanism diagnostics (D-005 item 8), medians over Gimbal's two runs.
+    for b, bn in (("mlp", "Mlp"), ("attn", "Attn")):
+        for key, mn, fmt in (("kappa_noise_corrected_median", "KappaMain", "{:.4f}"),
+                             ("kappa_raw_median", "KappaRawMain", "{:.4f}"),
+                             ("shrink_c_median", "ShrinkMain", "{:.2f}")):
+            vals = [res["runs"].get(f"gimbal/seed{s}", {}).get("mechanism", {})
+                    .get(f"{b}/{key}/final") for s in seeds]
+            mac(f"{mn}{bn}", _mean(vals), fmt)
+    for opt, name in (("soap", "Soap"), ("gimbal", "Gimbal")):
+        own = [v for s in seeds for k, v in res["runs"].get(f"{opt}/seed{s}", {})
+               .get("mechanism", {}).items() if k.endswith("/own_minus_pooled")]
+        mac(f"ProbeOwnMinusPooled{name}", float(np.median(own)) if own else None, "{:,.0f}")
+        mac(f"ProbeOwnBetter{name}", f"{sum(v < 0 for v in own)}/{len(own)}" if own else None)
+    kp = [v for s in seeds for o in ("soap", "gimbal") for k, v in res["runs"]
+          .get(f"{o}/seed{s}", {}).get("mechanism", {}).items()
+          if k.endswith("/kappa_pooled_frame")]
+    mac("ProbeKappa", float(np.median(kp)) if kp else None, "{:.4f}")
 
 
 def tex(s: str) -> str:
@@ -242,6 +339,13 @@ def tuning_table() -> None:
 
 
 def main() -> None:
+    global GEN
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--results", default=str(ROOT / "analysis" / "results"))
+    parser.add_argument("--main-runs", default=str(ROOT / "runs" / "main"))
+    parser.add_argument("--out", default=str(GEN), help="output directory (dry runs)")
+    args = parser.parse_args()
+    GEN = pathlib.Path(args.out)
     GEN.mkdir(parents=True, exist_ok=True)
     lean_table()
     tuning_table()
@@ -249,7 +353,7 @@ def main() -> None:
     phase03()
     phase04_05()
     tuning()
-    main_runs()
+    main_runs(pathlib.Path(args.results), pathlib.Path(args.main_runs))
     lines = ["% generated by paper/make_generated.py; do not edit",
              "\\providecommand{\\pending}{\\textbf{[pending]}}"]
     lines += [f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in sorted(macros.items())]
