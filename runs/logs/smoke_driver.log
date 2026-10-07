@@ -1,0 +1,8 @@
+overfit exit=0
+zero_lr exit=0
+adamw_200a exit=0
+adamw_200b exit=0
+resume_adamw exit=0
+resume_adamw exit=0
+resume_gimbal exit=0
+resume_gimbal exit=0

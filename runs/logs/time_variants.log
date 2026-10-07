@@ -1,0 +1,14 @@
+adamw exit=0
+soap exit=0
+gimbal_k4_a02 exit=0
+gimbal_k4_a05 exit=0
+gimbal_adapt_a05 exit=0
+gimbal_k2_a05 exit=0
+gimbal_k1_a05 exit=0
+adamw 162.02 ms
+soap 166.96 ms
+gimbal_k4_a02 170.24 ms
+gimbal_k4_a05 170.17 ms
+gimbal_adapt_a05 170.18 ms
+gimbal_k2_a05 175.25 ms
+gimbal_k1_a05 185.34 ms

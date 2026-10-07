@@ -1,0 +1,9 @@
+02:51:01 start d1_frozen_frame
+02:56:38 end d1_frozen_frame exit=0
+02:56:38 start d2_b1_095
+03:05:47 end d2_b1_095 exit=0
+03:05:47 start d3_maxrot_01
+03:11:36 end d3_maxrot_01 exit=0
+03:11:36 start d4_every_step
+03:13:50 end d4_every_step exit=0
+all done

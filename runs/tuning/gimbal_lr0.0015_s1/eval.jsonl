@@ -1,0 +1,10 @@
+{"step": 250, "val_loss_subset": 4.355515956878662, "eval_seconds": 2.2068270430900156, "tokens": 61440000}
+{"step": 500, "val_loss_subset": 3.869797468185425, "eval_seconds": 0.8848533048294485, "tokens": 122880000}
+{"step": 750, "val_loss_subset": 3.695965528488159, "eval_seconds": 0.8847064450383186, "tokens": 184320000}
+{"step": 1000, "val_loss_subset": 3.5862910747528076, "eval_seconds": 0.8861038049217314, "tokens": 245760000}
+{"step": 1250, "val_loss_subset": 3.5047767162323, "eval_seconds": 0.8867570359725505, "tokens": 307200000}
+{"step": 1500, "val_loss_subset": 3.438688278198242, "eval_seconds": 0.8848175050225109, "tokens": 368640000}
+{"step": 1750, "val_loss_subset": 3.3850274085998535, "eval_seconds": 0.8860158058814704, "tokens": 430080000}
+{"step": 2000, "val_loss_subset": 3.342975616455078, "eval_seconds": 0.8851469811052084, "tokens": 491520000}
+{"step": 2250, "val_loss_subset": 3.31463885307312, "eval_seconds": 0.8844227320514619, "tokens": 552960000}
+{"step": 2500, "val_loss_subset": 3.2973504066467285, "eval_seconds": 0.8852010511327535, "tokens": 614400000}

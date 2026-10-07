@@ -1,0 +1,125 @@
+{
+ "optimizer": "gimbal",
+ "peak_lr": 0.0015,
+ "seed": 0,
+ "steps": 2500,
+ "warmup": 125,
+ "tokens_per_step": 245760,
+ "matrix_config": {
+  "b1": 0.95,
+  "b2": 0.95,
+  "eps": 1e-08,
+  "weight_decay": 0.1,
+  "rot_rate": 0.05,
+  "rot_rate_max": 0.5,
+  "damping": 0.003,
+  "floor": 1e-08,
+  "max_angle": 0.25,
+  "max_rotation": 1.0,
+  "frame_every": 4,
+  "frame_schedule": "adaptive",
+  "warm_start_steps": 50,
+  "polish_max_iters": 4,
+  "transport": false
+ },
+ "other_config": {
+  "b1": 0.9,
+  "b2": 0.95,
+  "eps": 1e-08,
+  "weight_decay": 0.0
+ },
+ "config": {
+  "model": {
+   "vocab": 50304,
+   "d_model": 768,
+   "n_layers": 12,
+   "n_heads": 12,
+   "d_ff": 2048,
+   "seq_len": 1024,
+   "rope_theta": 10000.0,
+   "norm_eps": 1e-06,
+   "init_std": 0.02,
+   "attention": "flash",
+   "flash_block_q": 512,
+   "flash_block_k": 512,
+   "flash_block_b": 1
+  },
+  "data": {
+   "train": "data/tokens/train.bin",
+   "val": "data/tokens/val.bin"
+  },
+  "train": {
+   "batch": 240,
+   "steps": 2500,
+   "warmup_frac": 0.05,
+   "final_lr_frac": 0.1,
+   "clip": 1.0,
+   "weight_decay": 0.1
+  },
+  "eval": {
+   "every": 250,
+   "subset_seqs": 5120,
+   "batch": 512
+  },
+  "log": {
+   "diag_every": 100,
+   "ckpt_every": 0
+  },
+  "optimizers": {
+   "adamw": {
+    "lr": 0.001,
+    "b1": 0.9,
+    "b2": 0.95,
+    "eps": 1e-08
+   },
+   "soap": {
+    "lr": 0.003,
+    "b1": 0.95,
+    "b2": 0.95,
+    "shampoo_beta": -1.0,
+    "eps": 1e-08,
+    "precondition_frequency": 10
+   },
+   "gimbal": {
+    "lr": 0.0015,
+    "b1": 0.95,
+    "b2": 0.95,
+    "eps": 1e-08,
+    "rot_rate": 0.05,
+    "rot_rate_max": 0.5,
+    "damping": 0.003,
+    "floor": 1e-08,
+    "max_angle": 0.25,
+    "max_rotation": 1.0,
+    "frame_every": 4,
+    "frame_schedule": "adaptive",
+    "warm_start_steps": 50
+   }
+  },
+  "other": {
+   "b1": 0.9,
+   "b2": 0.95,
+   "eps": 1e-08
+  }
+ },
+ "n_params": 123587328,
+ "n_devices": 16,
+ "jax": "0.6.2",
+ "git": "31b18336bcd4b88a0530e6708c96eeaba05bc917",
+ "git_dirty": false,
+ "snapshot": "/home/tasma/gimbal_snapshots/tuning_c019",
+ "argv": {
+  "config": "/home/tasma/gimbal_snapshots/tuning_c019/configs/base_125m.yaml",
+  "optimizer": "gimbal",
+  "lr": 0.0015,
+  "seed": 0,
+  "steps": 2500,
+  "run_dir": "runs/tuning/gimbal_lr0.0015_s0",
+  "set": [],
+  "resume": false,
+  "resume_before": null,
+  "full_eval": true,
+  "eval_at_start": false,
+  "stop_after": null
+ }
+}

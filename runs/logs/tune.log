@@ -1,0 +1,82 @@
+snapshot /home/tasma/gimbal_snapshots/tuning
+23:30:27 adamw_lr0.000125_s0 exit=0 attempt=0 490s {'steps_done': 2500, 'diverged': False, 'train_seconds': 467.2850032169372, 'val_loss': 3.9959919452667236, 'val_tokens': 19999744}
+23:42:26 soap_lr0.000375_s0 exit=0 attempt=0 719s {'steps_done': 2500, 'diverged': False, 'train_seconds': 700.8202481339686, 'val_loss': 3.5110044479370117, 'val_tokens': 19999744}
+23:58:47 gimbal_lr0.000375_s0 exit=0 attempt=0 981s {'steps_done': 2500, 'diverged': False, 'train_seconds': 962.2961126400623, 'val_loss': 3.5049045085906982, 'val_tokens': 19999744}
+00:06:49 adamw_lr0.000125_s1 exit=0 attempt=0 482s {'steps_done': 2500, 'diverged': False, 'train_seconds': 466.572581442073, 'val_loss': 4.005799293518066, 'val_tokens': 19999744}
+00:18:35 soap_lr0.000375_s1 exit=0 attempt=0 705s {'steps_done': 2500, 'diverged': False, 'train_seconds': 687.7538034711033, 'val_loss': 3.5166854858398438, 'val_tokens': 19999744}
+00:27:12 gimbal_lr0.000375_s1 exit=0 attempt=0 517s {'steps_done': 2500, 'diverged': False, 'train_seconds': 502.64893162902445, 'val_loss': 3.5129194259643555, 'val_tokens': 19999744}
+00:34:25 adamw_lr0.00025_s0 exit=0 attempt=0 433s {'steps_done': 2500, 'diverged': False, 'train_seconds': 420.16517510218546, 'val_loss': 3.7017626762390137, 'val_tokens': 19999744}
+00:42:21 soap_lr0.00075_s0 exit=0 attempt=0 476s {'steps_done': 2500, 'diverged': False, 'train_seconds': 461.0969947890844, 'val_loss': 3.362556219100952, 'val_tokens': 19999744}
+00:50:58 gimbal_lr0.00075_s0 exit=0 attempt=0 517s {'steps_done': 2500, 'diverged': False, 'train_seconds': 501.5571370860562, 'val_loss': 3.380563735961914, 'val_tokens': 19999744}
+00:58:11 adamw_lr0.00025_s1 exit=0 attempt=0 433s {'steps_done': 2500, 'diverged': False, 'train_seconds': 420.1230291740503, 'val_loss': 3.7076330184936523, 'val_tokens': 19999744}
+01:06:06 soap_lr0.00075_s1 exit=0 attempt=0 475s {'steps_done': 2500, 'diverged': False, 'train_seconds': 462.4195773759857, 'val_loss': 3.365264654159546, 'val_tokens': 19999744}
+01:14:45 gimbal_lr0.00075_s1 exit=0 attempt=0 519s {'steps_done': 2500, 'diverged': False, 'train_seconds': 503.9568671020679, 'val_loss': 3.3796768188476562, 'val_tokens': 19999744}
+01:21:58 adamw_lr0.0005_s0 exit=0 attempt=0 433s {'steps_done': 2500, 'diverged': False, 'train_seconds': 420.034028243972, 'val_loss': 3.514033794403076, 'val_tokens': 19999744}
+01:29:53 soap_lr0.0015_s0 exit=0 attempt=0 475s {'steps_done': 2500, 'diverged': False, 'train_seconds': 460.5970144029707, 'val_loss': 3.2925171852111816, 'val_tokens': 19999744}
+01:38:22 gimbal_lr0.0015_s0 exit=0 attempt=0 509s {'steps_done': 2500, 'diverged': False, 'train_seconds': 494.37324545299634, 'val_loss': 3.3229782581329346, 'val_tokens': 19999744}
+01:45:37 adamw_lr0.0005_s1 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.2940976379905, 'val_loss': 3.522493839263916, 'val_tokens': 19999744}
+01:53:35 soap_lr0.0015_s1 exit=0 attempt=0 477s {'steps_done': 2500, 'diverged': False, 'train_seconds': 463.2737655150704, 'val_loss': 3.2907309532165527, 'val_tokens': 19999744}
+02:02:12 gimbal_lr0.0015_s1 exit=0 attempt=0 518s {'steps_done': 2500, 'diverged': False, 'train_seconds': 502.6814312429633, 'val_loss': 3.320918560028076, 'val_tokens': 19999744}
+02:09:27 adamw_lr0.001_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 421.2816129580606, 'val_loss': 3.404102325439453, 'val_tokens': 19999744}
+02:17:23 soap_lr0.003_s0 exit=0 attempt=0 477s {'steps_done': 2500, 'diverged': False, 'train_seconds': 462.58494317904115, 'val_loss': 3.264098882675171, 'val_tokens': 19999744}
+02:26:01 gimbal_lr0.003_s0 exit=0 attempt=0 518s {'steps_done': 2500, 'diverged': False, 'train_seconds': 503.0335212920327, 'val_loss': 3.2928638458251953, 'val_tokens': 19999744}
+02:33:15 adamw_lr0.001_s1 exit=0 attempt=0 434s {'steps_done': 2500, 'diverged': False, 'train_seconds': 421.73263374203816, 'val_loss': 3.414400815963745, 'val_tokens': 19999744}
+02:41:10 soap_lr0.003_s1 exit=0 attempt=0 475s {'steps_done': 2500, 'diverged': False, 'train_seconds': 461.5728011969477, 'val_loss': 3.266918659210205, 'val_tokens': 19999744}
+02:49:48 gimbal_lr0.003_s1 exit=0 attempt=0 517s {'steps_done': 2500, 'diverged': False, 'train_seconds': 502.6413855140563, 'val_loss': 3.2897469997406006, 'val_tokens': 19999744}
+03:37:07 resumed after the F-032 diagnosis: C-019 (Gimbal beta1 = 0.95), snapshot /home/tasma/gimbal_snapshots/tuning_c019; pre-repair Gimbal runs in runs/tuning/pre_c019/
+snapshot /home/tasma/gimbal_snapshots/tuning_c019
+03:54:20 gimbal_lr0.000375_s0 exit=0 attempt=0 1033s {'steps_done': 2500, 'diverged': False, 'train_seconds': 1006.3101536289323, 'val_loss': 3.504098415374756, 'val_tokens': 19999744}
+04:02:43 gimbal_lr0.000375_s1 exit=0 attempt=0 502s {'steps_done': 2500, 'diverged': False, 'train_seconds': 488.171300457092, 'val_loss': 3.5166218280792236, 'val_tokens': 19999744}
+04:11:05 gimbal_lr0.00075_s0 exit=0 attempt=0 503s {'steps_done': 2500, 'diverged': False, 'train_seconds': 488.21506309183314, 'val_loss': 3.3697478771209717, 'val_tokens': 19999744}
+04:19:28 gimbal_lr0.00075_s1 exit=0 attempt=0 503s {'steps_done': 2500, 'diverged': False, 'train_seconds': 488.23564854310825, 'val_loss': 3.3745687007904053, 'val_tokens': 19999744}
+04:27:50 gimbal_lr0.0015_s0 exit=0 attempt=0 502s {'steps_done': 2500, 'diverged': False, 'train_seconds': 488.03628099989146, 'val_loss': 3.3016037940979004, 'val_tokens': 19999744}
+04:36:13 gimbal_lr0.0015_s1 exit=0 attempt=0 503s {'steps_done': 2500, 'diverged': False, 'train_seconds': 488.4643635919783, 'val_loss': 3.3006787300109863, 'val_tokens': 19999744}
+04:44:36 gimbal_lr0.003_s0 exit=0 attempt=0 503s {'steps_done': 2500, 'diverged': False, 'train_seconds': 488.6933161520865, 'val_loss': 3.283604145050049, 'val_tokens': 19999744}
+04:53:00 gimbal_lr0.003_s1 exit=0 attempt=0 503s {'steps_done': 2500, 'diverged': False, 'train_seconds': 488.8578201229684, 'val_loss': 3.28971004486084, 'val_tokens': 19999744}
+05:00:14 adamw_lr0.002_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.0152460578829, 'val_loss': 3.3617498874664307, 'val_tokens': 19999744}
+05:11:15 soap_lr0.006_s0 exit=0 attempt=0 660s {'steps_done': 2500, 'diverged': False, 'train_seconds': 644.7056643499527, 'val_loss': 3.264721393585205, 'val_tokens': 19999744}
+05:19:54 gimbal_lr0.006_s0 exit=0 attempt=0 519s {'steps_done': 2500, 'diverged': False, 'train_seconds': 504.5650229190942, 'val_loss': 3.2817323207855225, 'val_tokens': 19999744}
+05:27:09 adamw_lr0.002_s1 exit=0 attempt=0 436s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.51911099720746, 'val_loss': 3.3627474308013916, 'val_tokens': 19999744}
+05:35:07 soap_lr0.006_s1 exit=0 attempt=0 477s {'steps_done': 2500, 'diverged': False, 'train_seconds': 462.98924338887446, 'val_loss': 3.266629695892334, 'val_tokens': 19999744}
+05:43:47 gimbal_lr0.006_s1 exit=0 attempt=0 521s {'steps_done': 2500, 'diverged': False, 'train_seconds': 506.10136944800615, 'val_loss': 3.2788660526275635, 'val_tokens': 19999744}
+05:51:03 adamw_lr0.004_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.1700331629254, 'val_loss': 3.597247362136841, 'val_tokens': 19999744}
+05:58:57 soap_lr0.012_s0 exit=0 attempt=0 475s {'steps_done': 2500, 'diverged': False, 'train_seconds': 460.5179311311804, 'val_loss': 3.2484312057495117, 'val_tokens': 19999744}
+06:07:36 gimbal_lr0.012_s0 exit=0 attempt=0 519s {'steps_done': 2500, 'diverged': False, 'train_seconds': 504.3509230380878, 'val_loss': 3.3595597743988037, 'val_tokens': 19999744}
+06:14:50 adamw_lr0.004_s1 exit=0 attempt=0 434s {'steps_done': 2500, 'diverged': False, 'train_seconds': 421.26275073201396, 'val_loss': 3.597250461578369, 'val_tokens': 19999744}
+06:22:46 soap_lr0.012_s1 exit=0 attempt=0 476s {'steps_done': 2500, 'diverged': False, 'train_seconds': 462.1919768839143, 'val_loss': 3.2491936683654785, 'val_tokens': 19999744}
+06:31:29 gimbal_lr0.012_s1 exit=0 attempt=0 522s {'steps_done': 2500, 'diverged': False, 'train_seconds': 506.72534072818235, 'val_loss': 3.3253061771392822, 'val_tokens': 19999744}
+06:38:44 adamw_lr0.008_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.0235417902004, 'val_loss': 5.984632968902588, 'val_tokens': 19999744}
+06:46:40 soap_lr0.024_s0 exit=0 attempt=0 476s {'steps_done': 2500, 'diverged': False, 'train_seconds': 462.2263812071178, 'val_loss': 4.778483867645264, 'val_tokens': 19999744}
+06:55:22 gimbal_lr0.024_s0 exit=0 attempt=0 522s {'steps_done': 2500, 'diverged': False, 'train_seconds': 506.6443580221385, 'val_loss': 4.738290309906006, 'val_tokens': 19999744}
+07:02:38 adamw_lr0.008_s1 exit=0 attempt=0 436s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.5052641900256, 'val_loss': 6.0234222412109375, 'val_tokens': 19999744}
+07:10:33 soap_lr0.024_s1 exit=0 attempt=0 475s {'steps_done': 2500, 'diverged': False, 'train_seconds': 462.28445066092536, 'val_loss': 4.760164737701416, 'val_tokens': 19999744}
+07:19:11 gimbal_lr0.024_s1 exit=0 attempt=0 518s {'steps_done': 2500, 'diverged': False, 'train_seconds': 503.55142360413447, 'val_loss': 4.760410785675049, 'val_tokens': 19999744}
+stage A selected {'adamw': 0.002, 'soap': 0.012, 'gimbal': 0.006}
+07:26:27 adamw_lr0.002_b20.95_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.1559190619737, 'val_loss': 3.3617498874664307, 'val_tokens': 19999744}
+07:37:36 soap_lr0.012_shampoo_beta0.9_s0 exit=0 attempt=0 669s {'steps_done': 2500, 'diverged': False, 'train_seconds': 653.9569577260409, 'val_loss': 3.2469077110290527, 'val_tokens': 19999744}
+07:37:52 restarted with the Stage C fix (non-default knob values; AdamW b2 0.98 had been skipped and the default re-run)
+snapshot /home/tasma/gimbal_snapshots/tuning_c019
+stage A selected {'adamw': 0.002, 'soap': 0.012, 'gimbal': 0.006}
+07:45:07 adamw_lr0.002_b20.98_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.2119443558622, 'val_loss': 3.3642513751983643, 'val_tokens': 19999744}
+08:00:49 gimbal_lr0.006_rot_rate0.025_s0 exit=0 attempt=0 942s {'steps_done': 2500, 'diverged': False, 'train_seconds': 924.947208344005, 'val_loss': 3.280498504638672, 'val_tokens': 19999744}
+08:08:05 adamw_lr0.002_b20.999_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.04553108406253, 'val_loss': 3.4008636474609375, 'val_tokens': 19999744}
+08:19:11 soap_lr0.012_shampoo_beta0.99_s0 exit=0 attempt=0 666s {'steps_done': 2500, 'diverged': False, 'train_seconds': 650.6430271088611, 'val_loss': 3.2641961574554443, 'val_tokens': 19999744}
+08:34:45 gimbal_lr0.006_rot_rate0.1_s0 exit=0 attempt=0 935s {'steps_done': 2500, 'diverged': False, 'train_seconds': 917.6761138869915, 'val_loss': 3.272437810897827, 'val_tokens': 19999744}
+08:41:58 adamw_lr0.002_b20.98_s1 exit=0 attempt=0 433s {'steps_done': 2500, 'diverged': False, 'train_seconds': 420.2987689131405, 'val_loss': 3.3602046966552734, 'val_tokens': 19999744}
+08:49:51 soap_lr0.012_shampoo_beta0.9_s1 exit=0 attempt=0 473s {'steps_done': 2500, 'diverged': False, 'train_seconds': 459.00103677110747, 'val_loss': 3.2453367710113525, 'val_tokens': 19999744}
+08:58:30 gimbal_lr0.006_rot_rate0.025_s1 exit=0 attempt=0 518s {'steps_done': 2500, 'diverged': False, 'train_seconds': 503.6007707468234, 'val_loss': 3.2887561321258545, 'val_tokens': 19999744}
+09:05:45 adamw_lr0.002_b20.999_s1 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 422.1003072189633, 'val_loss': 3.4151785373687744, 'val_tokens': 19999744}
+09:13:41 soap_lr0.012_shampoo_beta0.99_s1 exit=0 attempt=0 476s {'steps_done': 2500, 'diverged': False, 'train_seconds': 461.1575727718882, 'val_loss': 3.268460750579834, 'val_tokens': 19999744}
+09:22:21 gimbal_lr0.006_rot_rate0.1_s1 exit=0 attempt=0 520s {'steps_done': 2500, 'diverged': False, 'train_seconds': 504.9349523719866, 'val_loss': 3.267503499984741, 'val_tokens': 19999744}
+selection {"adamw": {"lr": 0.002, "b2": 0.95, "stage_c_scores": {"0.95": 3.362248659133911, "0.98": 3.362228035926819, "0.999": 3.408021092414856}, "stage_a_scores": {"0.000125": 4.000895619392395, "0.00025": 3.704697847366333, "0.0005": 3.518263816833496, "0.001": 3.409251570701599, "0.002": 3.362248659133911, "0.004": 3.597248911857605, "0.008": 6.004027605056763}}, "soap": {"lr": 0.012, "shampoo_beta": 0.9, "stage_c_scores": {"0.9": 3.2461222410202026, "0.95": 3.248812437057495, "0.99": 3.266328454017639}, "stage_a_scores": {"0.000375": 3.5138449668884277, "0.00075": 3.363910436630249, "0.0015": 3.291624069213867, "0.003": 3.265508770942688, "0.006": 3.2656755447387695, "0.012": 3.248812437057495, "0.024": 4.76932430267334}}, "gimbal": {"lr": 0.006, "rot_rate": 0.1, "stage_c_scores": {"0.025": 3.284627318382263, "0.05": 3.280299186706543, "0.1": 3.269970655441284}, "stage_a_scores": {"0.000375": 3.5103601217269897, "0.00075": 3.3721582889556885, "0.0015": 3.3011412620544434, "0.003": 3.2866570949554443, "0.006": 3.280299186706543, "0.012": 3.342432975769043, "0.024": 4.749350547790527}}}
+09:22:35 Stage C edge extension (D-010); the three-value selection is kept in runs/tuning/selection_3values.json
+snapshot /home/tasma/gimbal_snapshots/tuning_c019
+stage A selected {'adamw': 0.002, 'soap': 0.012, 'gimbal': 0.006}
+stage C extension {'adamw': [0.9], 'soap': [0.8], 'gimbal': [0.2]}
+09:29:50 adamw_lr0.002_b20.9_s0 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 421.9644818408415, 'val_loss': 3.3597326278686523, 'val_tokens': 19999744}
+09:40:54 soap_lr0.012_shampoo_beta0.8_s0 exit=0 attempt=0 663s {'steps_done': 2500, 'diverged': False, 'train_seconds': 648.3998412401415, 'val_loss': 3.2534406185150146, 'val_tokens': 19999744}
+09:56:16 gimbal_lr0.006_rot_rate0.2_s0 exit=0 attempt=0 923s {'steps_done': 2500, 'diverged': False, 'train_seconds': 905.7842055710498, 'val_loss': 3.263563632965088, 'val_tokens': 19999744}
+10:03:31 adamw_lr0.002_b20.9_s1 exit=0 attempt=0 435s {'steps_done': 2500, 'diverged': False, 'train_seconds': 421.8907455811277, 'val_loss': 3.365675926208496, 'val_tokens': 19999744}
+10:11:21 soap_lr0.012_shampoo_beta0.8_s1 exit=0 attempt=0 469s {'steps_done': 2500, 'diverged': False, 'train_seconds': 455.5034042049665, 'val_loss': 3.250159502029419, 'val_tokens': 19999744}
+10:20:00 gimbal_lr0.006_rot_rate0.2_s1 exit=0 attempt=0 519s {'steps_done': 2500, 'diverged': False, 'train_seconds': 503.9225085559301, 'val_loss': 3.265698194503784, 'val_tokens': 19999744}
+selection {"adamw": {"lr": 0.002, "b2": 0.95, "stage_c_scores": {"0.95": 3.362248659133911, "0.98": 3.362228035926819, "0.999": 3.408021092414856, "0.9": 3.362704277038574}, "stage_a_scores": {"0.000125": 4.000895619392395, "0.00025": 3.704697847366333, "0.0005": 3.518263816833496, "0.001": 3.409251570701599, "0.002": 3.362248659133911, "0.004": 3.597248911857605, "0.008": 6.004027605056763}}, "soap": {"lr": 0.012, "shampoo_beta": 0.9, "stage_c_scores": {"0.9": 3.2461222410202026, "0.95": 3.248812437057495, "0.99": 3.266328454017639, "0.8": 3.251800060272217}, "stage_a_scores": {"0.000375": 3.5138449668884277, "0.00075": 3.363910436630249, "0.0015": 3.291624069213867, "0.003": 3.265508770942688, "0.006": 3.2656755447387695, "0.012": 3.248812437057495, "0.024": 4.76932430267334}}, "gimbal": {"lr": 0.006, "rot_rate": 0.2, "stage_c_scores": {"0.025": 3.284627318382263, "0.05": 3.280299186706543, "0.1": 3.269970655441284, "0.2": 3.264630913734436}, "stage_a_scores": {"0.000375": 3.5103601217269897, "0.00075": 3.3721582889556885, "0.0015": 3.3011412620544434, "0.003": 3.2866570949554443, "0.006": 3.280299186706543, "0.012": 3.342432975769043, "0.024": 4.749350547790527}}}

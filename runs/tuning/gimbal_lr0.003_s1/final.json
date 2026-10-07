@@ -1,0 +1,7 @@
+{
+ "steps_done": 2500,
+ "diverged": false,
+ "train_seconds": 488.8578201229684,
+ "val_loss": 3.28971004486084,
+ "val_tokens": 19999744
+}

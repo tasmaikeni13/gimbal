@@ -1,0 +1,2 @@
+{"step": 250, "val_loss_subset": 4.298190116882324, "eval_seconds": 2.97296434501186, "tokens": 61440000}
+{"step": 300, "val_loss_subset": 4.155287265777588, "eval_seconds": 0.8904282068833709, "tokens": 73728000}
