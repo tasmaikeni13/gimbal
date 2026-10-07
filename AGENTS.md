@@ -22,6 +22,9 @@ its successors at 125M parameters / 2.5B FineWeb-Edu tokens.
 | `theory/gimbal_theory.md` | living theory: statements, proofs, evidence labels L1–L5, changelog |
 | `formal/` | Lean 4 + Mathlib proofs (`formal/README.md` maps theorems to Lean names) |
 | `experiments/phase1/`–`phase3/` | executable experiments; raw outputs in `results/` (large JSONL gzipped) |
+| `src/gimbal/jax/`, `src/gimbal/train/` | JAX optimizers (AdamW, SOAP, Gimbal), distributed step, 125M model and training loop for the TPU study |
+| `scripts/tpu/`, `runs/` | TPU launch, tuning and confirmatory-run drivers (`scripts/tpu/README.md`); logs of every TPU run |
+| `analysis/` | Phase 06–08 analysis; `analysis/decision.md` is the Phase 08 decision |
 | `research/` | literature frontier, hypotheses, ledgers (experiments, failures, decisions, claims), state |
 | `phases/` | protocol (`README.md`), phase files `01`–`10`, `STATUS.md`, `dependencies.md` |
 | `scripts/data/` | data download scripts; downloaded data goes to `data/raw/` (git-ignored) |
@@ -51,6 +54,15 @@ experiments/phase2/run_phase2_rest.sh             # E2.10-E2.12, E2.5, E2.9, E2.
 python experiments/phase2/make_report.py          # experiments/phase2/report.md and the gates
 python scripts/data/fetch_fineweb_edu_sample.py   # Phase 03: FineWeb-Edu sample for the small LM
 python experiments/phase3/run_e27_sweep.py --stage A   # Phase 03: small-LM sweep (E3.2)
+```
+
+TPU study (v4-32, four hosts; every run from a frozen code snapshot, see `scripts/tpu/README.md`):
+
+```bash
+python scripts/tpu/tune.py && python scripts/tpu/freeze_configs.py   # Phase 06
+python scripts/tpu/main_runs.py                                      # Phase 07
+python analysis/phase08.py && python analysis/write_decision.py      # Phase 08
+python analysis/compute_budget.py && python analysis/readme_results.py && make -C paper
 ```
 
 Set `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1` for any multi-process experiment; otherwise BLAS

@@ -8,7 +8,11 @@ are in the repository (\texttt{README.md}). The Lean development builds with
 language model with \texttt{experiments/phase3}; the TPU benchmarks with \texttt{benchmarks/tpu}
 (\texttt{docs/performance.md}); tuning and confirmatory runs with \texttt{scripts/tpu/tune.py} and
 \texttt{scripts/tpu/main\_runs.py} from frozen code snapshots (each run records its commit);
-the analysis with \texttt{python analysis/phase08.py}; and this paper with \texttt{make -C paper}.
+the analysis with \texttt{python analysis/phase08.py} (then \texttt{write\_decision.py} and
+\texttt{compute\_budget.py}); and this paper with \texttt{make -C paper}. From a fresh clone,
+these commands reproduce every table of the analysis byte for byte from the committed run logs,
+and a repeated training run on the TPU reproduced every loss bit for bit. The exact software of
+the TPU study is pinned in \texttt{requirements-tpu.txt}.
 Data: FineWeb-Edu \texttt{sample-10BT} at a pinned revision, tokenized by
 \texttt{scripts/data/prepare\_fineweb\_edu.py} (SHA-256 of every split in
 \texttt{data/tokens\_manifest.json}). Every failure, refuted statement and design change is recorded
