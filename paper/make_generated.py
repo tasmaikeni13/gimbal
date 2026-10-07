@@ -424,6 +424,35 @@ def tuning_table() -> None:
     )
 
 
+def diag_table() -> None:
+    """F-032 diagnostics: lr 3e-3, seed 0, first 300 of 2,500 tuning steps (``runs/diag``)."""
+    runs = [
+        ("Gimbal, $\\beta_1=0.9$ (before C-019)", "runs/tuning/pre_c019/gimbal_lr0.003_s0"),
+        ("SOAP, $\\beta_1=0.95$ (official)", "runs/tuning/soap_lr0.003_s0"),
+        ("Gimbal, warm-start frames only (no moves)", "runs/diag/d1_frozen_frame"),
+        ("Gimbal, $\\beta_1=0.95$", "runs/diag/d2_b1_095"),
+        ("Gimbal, rotation per move $\\le0.1$", "runs/diag/d3_maxrot_01"),
+        ("Gimbal, frame move every step", "runs/diag/d4_every_step"),
+        ("Gimbal, moments transported at moves", "runs/diag/d5_transport"),
+        ("SOAP, $\\beta_1=0.9$", "runs/diag/d6_soap_b1_09"),
+    ]
+    rows = []
+    for label, path in runs:
+        log = ROOT / path / "log.jsonl"
+        if not log.exists():
+            continue
+        recs = [json.loads(x) for x in log.read_text().splitlines() if x.strip()]
+        gn = max(r["grad_norm"] for r in recs if 80 <= r["step"] < 160)
+        late = float(np.mean([r["loss"] for r in recs if 280 <= r["step"] < 300]))
+        rows.append(f"{label} & {gn:.1f} & {late:.3f} \\\\")
+    (GEN / "diag_table.tex").write_text(
+        "\\begin{tabular}{lcc}\n\\toprule\nrun & max $\\|g\\|$, steps 80--159 & "
+        "training loss, steps 280--299 \\\\\n\\midrule\n"
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n"
+    )
+
+
 def main() -> None:
     global GEN
     parser = argparse.ArgumentParser()
@@ -435,6 +464,7 @@ def main() -> None:
     GEN.mkdir(parents=True, exist_ok=True)
     lean_table()
     tuning_table()
+    diag_table()
     phase02()
     phase03()
     phase04_05()

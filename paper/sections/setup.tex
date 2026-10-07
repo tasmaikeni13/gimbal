@@ -44,6 +44,12 @@ rates on a factor-two grid around its reference default (AdamW $10^{-3}$, SOAP a
 $3\cdot10^{-3}$), two seeds each, at the 614M-token horizon, followed by its most sensitive
 secondary knob at the selected rate (AdamW $\beta_2\in\{0.95,0.98,0.999\}$, SOAP's factor memory
 $\beta_s\in\{0.9,0.95,0.99\}$, Gimbal's rate $\alpha\in\{0.025,0.05,0.1\}$), two seeds each.
-Selection used the full validation split; the test split was not read. Selected values:
+Selection used the full validation split; the test split was not read. Gimbal runs with SOAP's
+momentum $\beta_1=0.95$, so that the two differ only in the frame. Its first tuning trials used
+Adam's $\beta_1=0.9$ and were unstable around the end of the warm-up at learning rates
+$\ge1.5\cdot10^{-3}$; short diagnostic runs showed that SOAP is unstable with $\beta_1=0.9$ as well,
+and that neither moment transport nor per-step frame moves remove the instability
+(\cref{app:diag}). Those trials are reported but were not used: Gimbal was re-tuned with the full
+budget. Selected values:
 AdamW learning rate \LrAdamw{} with $\beta_2=\KnobAdamw$; SOAP \LrSoap{} with $\beta_s=\KnobSoap$;
 Gimbal \LrGimbal{} with $\alpha=\KnobGimbal$ (\cref{app:tuning}).

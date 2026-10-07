@@ -1,0 +1,14 @@
+\begin{tabular}{lcc}
+\toprule
+run & max $\|g\|$, steps 80--159 & training loss, steps 280--299 \\
+\midrule
+Gimbal, $\beta_1=0.9$ (before C-019) & 20.1 & 4.318 \\
+SOAP, $\beta_1=0.95$ (official) & 1.5 & 4.141 \\
+Gimbal, warm-start frames only (no moves) & 1.8 & 4.760 \\
+Gimbal, $\beta_1=0.95$ & 2.1 & 4.193 \\
+Gimbal, rotation per move $\le0.1$ & 1.8 & 4.630 \\
+Gimbal, frame move every step & 15.8 & 4.207 \\
+Gimbal, moments transported at moves & 22.5 & 4.330 \\
+SOAP, $\beta_1=0.9$ & 74.4 & 4.392 \\
+\bottomrule
+\end{tabular}

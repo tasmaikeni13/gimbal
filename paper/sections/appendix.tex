@@ -66,6 +66,27 @@ Every Phase~06 trial (2{,}500 steps, 614M tokens; final loss on the full validat
 \input{generated/tuning_table}
 \end{center}
 
+\section{Diagnosis of an early instability}
+\label{app:diag}
+
+In the first tuning trials Gimbal used Adam's momentum $\beta_1=0.9$ while SOAP used its official
+$0.95$. At peak learning rates $\ge1.5\cdot10^{-3}$ Gimbal's gradient norm rose to 5--20 and its loss
+increased for about 40 steps around the end of the warm-up; the runs recovered but finished about
+0.03 nats behind SOAP. Before any configuration was frozen, the tuning sweep was paused and the
+following runs were made at learning rate $3\cdot10^{-3}$, seed 0, for the first 300 of the 2{,}500
+tuning steps (same schedule), changing one setting at a time; the repair (SOAP's $\beta_1$ for
+Gimbal) was fixed before the last three were seen (decision D-008 in the repository).
+
+\begin{center}\small
+\input{generated/diag_table}
+\end{center}
+
+The instability needs the lower momentum: it disappears with $\beta_1=0.95$, and SOAP is unstable
+with $\beta_1=0.9$ too. Freezing or slowing the frame also removes it, but trains much more slowly.
+Transporting the second moments to the new frame at every move (\cref{thm:transport}) does not
+remove it, so stale second moments are not the cause. A float64 comparison of the distributed
+training step with a per-matrix loop rules out an implementation error.
+
 \section{Novelty check}
 \label{app:novelty}
 
