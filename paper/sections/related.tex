@@ -12,7 +12,11 @@ adapts the refresh frequency; the NVIDIA study~\citep{nvidia2026soapmuon} shows 
 causes instabilities at large batch and refreshes it every step with the current gradient
 included; COSMOS~\citep{liu2025cosmos} applies SOAP on a leading subspace and Muon elsewhere; ARO
 \citep{gong2026aro} chooses a one-sided rotation by a norm-informed Procrustes policy;
-SPlus~\citep{frans2025splus} uses the sign of the momentum in a stale Shampoo frame. Everett and Qiu
+SPlus~\citep{frans2025splus} uses the sign of the momentum in a stale Shampoo frame; DyKAF
+\citep{yudin2025dykaf} computes the Kronecker factors of the Fisher information with
+projector-splitting integrators; and EVON~\citep{minut2026soapbubbles} runs a diagonal variational
+method in SOAP's eigenspace. Apart from ARO, all of these take their frame from Kronecker-product
+statistics. Everett and Qiu
 \citep{everett2026memory} find that the optimal optimizer memory grows with the training horizon,
 which is consistent with the shorter frame memory our small model preferred.
 
@@ -36,5 +40,5 @@ matrix-variate covariance toward its separable (Kronecker) part by an empirical-
 core shrinkage of \citet{hoff2023core}; centring a second moment on the gradient's running mean is
 centred RMSProp~\citep{graves2013generating} and AdaBelief~\citep{zhuang2020adabelief}, here applied
 only to the frame's statistic and with a James--Stein factor~\citep{james1961estimation}. A search of
-the literature through 2026-10-06 found no optimizer that estimates its frame by this likelihood
+the literature through 2026-10-07 found no optimizer that estimates its frame by this likelihood
 (\cref{app:novelty}).
