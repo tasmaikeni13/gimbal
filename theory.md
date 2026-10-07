@@ -23,11 +23,12 @@ entries are uncorrelated, with arbitrary variances $D_{ij}$.* We call it the **K
 $$C(U,D) = (Q_L\otimes Q_R)\,\mathrm{diag}(\mathrm{vec}\,D)\,(Q_L\otimes Q_R)^\top .$$
 
 SOAP estimates $D$ under this model (Adam's second moment), but it picks the frame from the
-eigenvectors of the pooled Kronecker factors $E[GG^\top]$ and $E[G^\top G]$. Those factors are the
-maximum-likelihood statistics of a different model: the separable one, $D=\lambda\mu^\top$
-(Shampoo's Kronecker *product* covariance). The frame and the variances come from two different
-models. When the gradient really is separable SOAP is fine, but then Shampoo would be enough. SOAP
-helps exactly when $D$ is *not* separable, and that is where its frame estimator is weakest.
+eigenvectors of the pooled Kronecker factors $E[GG^\top]$ and $E[G^\top G]$. Those factors are
+statistics of a different model: the separable one, $D=\lambda\mu^\top$ (Shampoo's Kronecker
+*product* covariance, whose two-sided maximum-likelihood rule is KL-Shampoo's). The frame and the
+variances come from two different models. When the gradient really is separable the two models
+agree, but then Shampoo's own preconditioner would be enough. SOAP helps exactly when $D$ is *not*
+separable, and that is where its frame estimator is weakest.
 
 Gimbal estimates the frame under the same model as the variances.
 
