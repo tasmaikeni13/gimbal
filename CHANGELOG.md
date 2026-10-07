@@ -8,8 +8,10 @@ the re-verification; failures that triggered a change are in `research/ledger/fa
 
 Release of the completed research program (phases 01–10): theory with machine-checked
 statements, Monte Carlo study, PyTorch and JAX implementations, the 125M-parameter / 2.5B-token
-comparison of AdamW, SOAP and Gimbal on a TPU v4-32, the analysis and the paper. Results are in
-`README.md`, `analysis/results/` and `paper/`.
+comparison of AdamW, SOAP and Gimbal on a TPU v4-32, the analysis and the paper. Outcome: Gimbal
+beats AdamW and matches SOAP within seed noise with a slightly slower step, so the headline claim
+is not supported (`analysis/decision.md`); results in `README.md`, `analysis/results/` and
+`paper/`.
 
 ### Method and defaults
 
@@ -42,3 +44,7 @@ comparison of AdamW, SOAP and Gimbal on a TPU v4-32, the analysis and the paper.
 * D-006 — the 125M comparison proceeds although H1's kill criterion was met at small scale.
 * D-007 — MIT license.
 * D-008 — repair rule for F-032, written before the last diagnostics were seen.
+* D-009 — mid-training frame probe, declared before the confirmatory runs.
+* D-010 — Stage C edge extension, written before the second Stage C seed was seen.
+* D-011 — no further repair cycle after the Phase 08 decision; the negative result is reported.
+* D-012 — humanize pass with a faithfulness audit.

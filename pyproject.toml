@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gimbal"
-version = "0.1.0"
+version = "1.0.0"
 description = "Gimbal: matrix-preconditioned optimization with a self-consistent, online maximum-likelihood eigenbasis"
 readme = "README.md"
 license = {text = "MIT"}
