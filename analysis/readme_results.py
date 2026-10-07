@@ -36,7 +36,7 @@ def block() -> str:
     sel = load(ROOT / "runs" / "tuning" / "selection.json") or {}
     lines = [
         "| optimizer | tuned peak lr (secondary knob) | validation loss, seeds 2 / 3 | mean "
-        "(perplexity) | test loss, mean | step time (ms) | TPU v4 chip-hours (tuning + main) |",
+        "(perplexity) | test loss, mean | step time (ms) | TPU v4 chip-hours (all stages) |",
         "|---|---|---|---|---|---|---|",
     ]
     for opt in OPTS:
@@ -76,11 +76,9 @@ def block() -> str:
     for c, p in res.get("paired", {}).items():
         diffs = ", ".join(f"{e['gimbal_minus']:+.4f}" for e in p["per_seed"].values())
         mult = [e["token_multiplier"] for e in p["per_seed"].values()]
-        mtxt = (
-            f"; token multiplier {sum(mult) / len(mult):.3f} (full budget / tokens Gimbal needs "
-            f"to reach {NAMES[c]}'s final loss)"
-            if mult and all(mult)
-            else f"; Gimbal does not reach {NAMES[c]}'s final loss"
+        mtxt = "; token multiplier by seed (full budget / tokens Gimbal needs to reach " + (
+            f"{NAMES[c]}'s final loss): "
+            + ", ".join(f"{m:.3f}" if m else "not reached" for m in mult)
         )
         lines.append(
             f"* Gimbal − {NAMES[c]} (paired by seed): {diffs} "
