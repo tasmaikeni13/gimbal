@@ -27,7 +27,7 @@ RUNS = ROOT / "runs" / "tuning"
 STEPS = 2500
 SEEDS = (0, 1)
 CENTRE = {"adamw": 1e-3, "soap": 3e-3, "gimbal": 3e-3}  # reference implementations' defaults
-SECONDARY = {  # (config key, values; the middle one is the default)
+SECONDARY = {  # (config key, three values including the default)
     "adamw": ("b2", (0.95, 0.98, 0.999)),
     "soap": ("shampoo_beta", (0.9, 0.95, 0.99)),
     "gimbal": ("rot_rate", (0.025, 0.05, 0.1)),
@@ -189,12 +189,13 @@ def main() -> None:
     for opt in CENTRE:
         grids[f"{opt}_best"] = [best[opt]]
     print("stage A selected", best, flush=True)
-    # Stage C at the selected rate.
+    # Stage C at the selected rate: the two values other than the default (whose run is Stage A's
+    # at the selected rate). AdamW's default b2 = 0.95 is the lowest of its three values.
     for s in SEEDS:
-        for idx in (0, 2):
+        for idx in (0, 1):
             for opt in CENTRE:
                 key, values = SECONDARY[opt]
-                v = values[idx]
+                v = [x for x in values if x != DEFAULT_SECONDARY[opt]][idx]
                 launch(
                     snapshot,
                     opt,
