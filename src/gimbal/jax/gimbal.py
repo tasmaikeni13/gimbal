@@ -19,7 +19,7 @@ checks agreement):
 Only the defaults of the reference are implemented (``frame_schedule`` both ways,
 ``rot_schedule="bias_corrected"``,
 ``flow_beta="tied"``, ``flow_shrink=True``, ``flow_center="adaptive"``, ``init="pooled"``,
-``transport=False``, ``polish_every=1``); both sides must be preconditioned.
+``polish_every=1``; ``transport`` both ways); both sides must be preconditioned.
 """
 
 from __future__ import annotations
@@ -60,6 +60,7 @@ class GimbalConfig:
     frame_schedule: str = "adaptive"  # k_t = clamp(round(K·α/α_t), 1, K); "fixed": K (C-018)
     warm_start_steps: int = 50
     polish_max_iters: int = 4
+    transport: bool = False  # transport V, VF, VF_odd at every frame move (Theorem 7)
 
 
 class Kind(NamedTuple):
@@ -350,11 +351,21 @@ def step(
         return state, delta
     rate = 1.0 - state["keep"]
     k = state["count"]  # scores in this block (frame_every, or k_t when adaptive)
-    new_q = {}
+    new_q, moves = {}, {}
     for key, side, acc in (("QL", "left", acc_l), ("QR", "right", acc_r)):
         fisher, groups = _fisher(d, a, side)
         omega = _generator(acc / k, fisher, groups, rate, cfg)
-        new_q[key] = polish_until_orthogonal(mm(state[key], expm2(omega)), cfg.polish_max_iters)
+        moves[key] = expm2(omega)
+        new_q[key] = polish_until_orthogonal(mm(state[key], moves[key]), cfg.polish_max_iters)
+    if cfg.transport:
+        # Theorem 7: under the KRD model the rotated coordinates have variances (P∘P)ᵀ D (P∘P).
+        # Rows of P∘P sum to one for an orthogonal P; renormalizing them keeps the total second
+        # moment exact despite the retraction's small defect (as the reference does).
+        sq_l, sq_r = moves["QL"] * moves["QL"], moves["QR"] * moves["QR"]
+        sq_l = sq_l / jnp.sum(sq_l, axis=1, keepdims=True)
+        sq_r = sq_r / jnp.sum(sq_r, axis=1, keepdims=True)
+        for buf in ("V", "VF", "VF_odd"):
+            state[buf] = mm(mm(sq_l.T, state[buf]), sq_r)
     # Re-express the momentum in the new frame (it is a parameter-space quantity).
     state["M"] = rotate(unrotate(state["M"], ql, qr), new_q["QL"], new_q["QR"])
     state["QL"], state["QR"] = new_q["QL"], new_q["QR"]

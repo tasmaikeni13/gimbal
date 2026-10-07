@@ -129,12 +129,13 @@ def test_adamw_matches_torch():
 
 ADAPTIVE = dict(frame_schedule="adaptive", rot_rate=0.05)  # the default since C-018
 FIXED = dict(frame_schedule="fixed", rot_rate=0.02)  # the default before C-018
+TRANSPORT = dict(ADAPTIVE, transport=True)  # moments transported at every move (Theorem 7)
 
 
 @cpu_only
 @pytest.mark.parametrize("shape", [(8, 8), (16, 16)])
 @pytest.mark.parametrize("kind", ["identified", "random"])
-@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE])
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE, TRANSPORT])
 def test_gimbal_golden_float64(shape, kind, variant):
     grads = stream(shape, 70, seed=11, kind=kind)
     p0 = initial_params(shape, 11)
@@ -150,7 +151,7 @@ def test_gimbal_golden_float64(shape, kind, variant):
 
 
 @cpu_only
-@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE])
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE, TRANSPORT])
 def test_gimbal_float64_single_steps(variant):
     """Every step, started from the reference's own state, agrees to rounding (float64)."""
     shape = (10, 6)
