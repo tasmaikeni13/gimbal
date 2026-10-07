@@ -80,7 +80,7 @@ def write_manifest() -> None:
     with (RUNS / "manifest.csv").open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["optimizer", "seed", "run_dir", "status", "val_loss", "train_seconds",
-                    "config_commit"])
+                    "config_commit", "final_checkpoint"])
         for seed in SEEDS:
             for opt in OPTIMIZERS:
                 name = f"{opt}/seed{seed}"
@@ -89,9 +89,12 @@ def write_manifest() -> None:
                 commit = json.loads(cfg.read_text()).get("git", "") if cfg.exists() else ""
                 status = ("planned" if r is None else "diverged" if r.get("diverged")
                           else "done" if "val_loss" in r else "running")
+                # one shard file per host (process_<k>/shards.npz on worker k's local disk)
+                ckpt = RUNS / name / "ckpt" / f"step_{STEPS:06d}"
                 w.writerow([opt, seed, f"runs/main/{name}", status,
                             "" if r is None else r.get("val_loss", ""),
-                            "" if r is None else round(r.get("train_seconds", 0)), commit])
+                            "" if r is None else round(r.get("train_seconds", 0)), commit,
+                            str(ckpt.relative_to(ROOT)) if ckpt.exists() else ""])
 
 
 def main() -> None:
