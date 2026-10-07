@@ -50,7 +50,7 @@ def main() -> None:
         cfg["model"]["attention"] = attn
         tr = Trainer(cfg, "adamw")
         params, state = tr.init(0)
-        batch = global_batch(data, order[:cfg["train"]["batch"]], tr.batch_sharding)
+        batch = global_batch(data, order[: cfg["train"]["batch"]], tr.batch_sharding)
         try:
             t = timeit(tr._grad_fn, params, batch)
             results[f"grad_step_{attn}_s"] = t
@@ -60,19 +60,20 @@ def main() -> None:
         cfg["model"]["attention"] = "xla"
         tr = Trainer(cfg, name)
         params, state = tr.init(0)
-        batch = global_batch(data, order[:cfg["train"]["batch"]], tr.batch_sharding)
+        batch = global_batch(data, order[: cfg["train"]["batch"]], tr.batch_sharding)
         loss, grads, gnorm = tr._grad_fn(params, batch)
         # Bring the state to its steady-state layout and contents first.
         warm = {"adamw": 1, "soap": 12, "gimbal": 56}[name]
         for t in range(1, warm + 1):
-            state, params = tr.update(state, jax.tree.map(jnp.copy, grads), params, gnorm,
-                                      1e-4, t)
+            state, params = tr.update(state, jax.tree.map(jnp.copy, grads), params, gnorm, 1e-4, t)
         kinds = {}
         for t in range(warm + 1, warm + 21):
             kinds.setdefault(str(tr.spec.kind(t)), t)
         for kind, t in kinds.items():
+
             def run(state, params, t=t, tr=tr, grads=grads, gnorm=gnorm):
                 return tr.update(state, jax.tree.map(jnp.copy, grads), params, gnorm, 1e-4, t)
+
             # donation consumes the inputs, so time with fresh copies each repetition
             times = []
             for i in range(8):

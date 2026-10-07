@@ -31,8 +31,11 @@ def load(path: pathlib.Path):
     if not path.exists():
         return None
     if path.suffix == ".gz":
-        return [json.loads(x) for x in gzip.decompress(path.read_bytes()).decode().splitlines()
-                if x.strip()]
+        return [
+            json.loads(x)
+            for x in gzip.decompress(path.read_bytes()).decode().splitlines()
+            if x.strip()
+        ]
     return json.loads(path.read_text())
 
 
@@ -61,15 +64,19 @@ def phase02() -> None:
         for key, c in e25["configs"].items():
             g = re.match(r"gamma=([\d.]+),noise=([\d.]+)", key)
             vs = c["vs_peer"]
-            rows.append(f"{g.group(1)} & {g.group(2)} & {c['mean']:.4f} & "
-                        f"{vs['adamw']['geo_ratio']:.3f} & {vs['soap']['geo_ratio']:.3f} & "
-                        f"{vs['soap_rt']['geo_ratio']:.3f} & {vs['klsoap']['geo_ratio']:.3f} & "
-                        f"{vs['muon']['geo_ratio']:.3f} & {'yes' if c['pass'] else 'no'} \\\\")
+            rows.append(
+                f"{g.group(1)} & {g.group(2)} & {c['mean']:.4f} & "
+                f"{vs['adamw']['geo_ratio']:.3f} & {vs['soap']['geo_ratio']:.3f} & "
+                f"{vs['soap_rt']['geo_ratio']:.3f} & {vs['klsoap']['geo_ratio']:.3f} & "
+                f"{vs['muon']['geo_ratio']:.3f} & {'yes' if c['pass'] else 'no'} \\\\"
+            )
         mac("GtwoFourPass", "passes" if e25.get("G2.4") else "fails")
     (GEN / "e25_table.tex").write_text(
         "\\begin{tabular}{ccccccccc}\n\\toprule\n$\\gamma$ & $\\sigma$ & Gimbal loss & "
         "/AdamW & /SOAP & /SOAP-rt & /KL-SOAP & /Muon & lowest \\\\\n\\midrule\n"
-        + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n"
+    )
     e211 = (P2 / "e211_report.md").read_text() if (P2 / "e211_report.md").exists() else ""
     starts = glob_min = 0
     for line in e211.splitlines():
@@ -95,11 +102,14 @@ def phase03() -> None:
     for line in report.splitlines():
         m = re.match(r"\| (\w+) \| ([\d.e-]+) \| 3 \| ([\d.]+) \| ([\d., ]+) \|", line)
         if m:
-            rows.append(f"{m.group(1).replace('_', '-')} & {float(m.group(2)):g} & "
-                        f"{m.group(3)} & {m.group(4)} \\\\")
+            rows.append(
+                f"{m.group(1).replace('_', '-')} & {float(m.group(2)):g} & "
+                f"{m.group(3)} & {m.group(4)} \\\\"
+            )
     (GEN / "e32_table.tex").write_text(
         "\\begin{tabular}{lccc}\n\\toprule\noptimizer & lr & mean & seeds 0, 1, 2 \\\\\n"
-        "\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
+        "\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n"
+    )
     g35 = load(P3 / "g35_c018.json")
     if g35:
         for opt, name in (("gimbal", "Gimbal"), ("soap", "Soap"), ("adamw", "Adamw")):
@@ -130,8 +140,9 @@ def phase03() -> None:
     del gate
     e25j = load(P3 / "e25_jax_gate.json")
     if e25j:
-        worst = max(abs(c["mean_diff"]) / c["seed_sd"] for c in e25j["checks"].values()
-                    if c["seed_sd"] > 0)
+        worst = max(
+            abs(c["mean_diff"]) / c["seed_sd"] for c in e25j["checks"].values() if c["seed_sd"] > 0
+        )
         mac("JaxEtwoFiveWorst", worst, "{:.3f}")
 
 
@@ -147,12 +158,21 @@ def phase04_05() -> None:
     mac("StepGimbalKtwo", ms("gimbal_k2_a05"), "{:.1f}")
     mac("StepGimbalKone", ms("gimbal_k1_a05"), "{:.1f}")
     if "soap" in st and "gimbal_adapt_a05" in st:
-        mac("StepGimbalOverSoap", 100 * (st["gimbal_adapt_a05"]["steady_state_s"]
-                                         / st["soap"]["steady_state_s"] - 1), "{:.1f}")
-        mac("StepKoneOverSoap", 100 * (st["gimbal_k1_a05"]["steady_state_s"]
-                                       / st["soap"]["steady_state_s"] - 1), "{:.1f}")
-        mac("StepKtwoOverSoap", 100 * (st["gimbal_k2_a05"]["steady_state_s"]
-                                       / st["soap"]["steady_state_s"] - 1), "{:.1f}")
+        mac(
+            "StepGimbalOverSoap",
+            100 * (st["gimbal_adapt_a05"]["steady_state_s"] / st["soap"]["steady_state_s"] - 1),
+            "{:.1f}",
+        )
+        mac(
+            "StepKoneOverSoap",
+            100 * (st["gimbal_k1_a05"]["steady_state_s"] / st["soap"]["steady_state_s"] - 1),
+            "{:.1f}",
+        )
+        mac(
+            "StepKtwoOverSoap",
+            100 * (st["gimbal_k2_a05"]["steady_state_s"] / st["soap"]["steady_state_s"] - 1),
+            "{:.1f}",
+        )
     att = load(ROOT / "benchmarks" / "tpu" / "results" / "attention.json") or {}
     mac("AttnXla", att.get("xla_q0_k0_b1"), "{:.3f}")
     mac("AttnFlashDefault", att.get("flash_q0_k0_b1"), "{:.3f}")
@@ -186,7 +206,11 @@ def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
     """Confirmatory runs: macros and tables from ``phase08.json``, ``compute.json`` and the
     one-time test evaluations (``runs/main/<optimizer>/seed<k>/test.json``)."""
     res = load(results / "phase08.json") or {
-        "runs": {}, "paired": {}, "decision": {}, "pooled_within_run_se": None}
+        "runs": {},
+        "paired": {},
+        "decision": {},
+        "pooled_within_run_se": None,
+    }
     comp = load(results / "compute.json") or {}
     seeds = (2, 3)
     rows = []
@@ -203,13 +227,22 @@ def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
         mac(f"TestPpl{name}", math.exp(_mean(tl)) if _mean(tl) else None, "{:.2f}")
         steps = [r.get("steady_state_step_s") for r in runs]
         mac(f"MainStep{name}", 1e3 * _mean(steps) if _mean(steps) else None, "{:.1f}")
-        mac(f"Spikes{name}", sum(r.get("spikes", 0) or 0 for r in runs) if all(runs) else None,
-            "{:d}")
+        mac(
+            f"Spikes{name}",
+            sum(r.get("spikes", 0) or 0 for r in runs) if all(runs) else None,
+            "{:d}",
+        )
         mac(f"ChipHours{name}", comp.get("total_chip_hours", {}).get(opt), "{:.0f}")
-        mac(f"TuneChipHours{name}", comp.get("stages", {}).get("tuning", {}).get(opt, {})
-            .get("chip_hours"), "{:.0f}")
-        mac(f"MainChipHours{name}", comp.get("stages", {}).get("main", {}).get(opt, {})
-            .get("chip_hours"), "{:.0f}")
+        mac(
+            f"TuneChipHours{name}",
+            comp.get("stages", {}).get("tuning", {}).get(opt, {}).get("chip_hours"),
+            "{:.0f}",
+        )
+        mac(
+            f"MainChipHours{name}",
+            comp.get("stages", {}).get("main", {}).get(opt, {}).get("chip_hours"),
+            "{:.0f}",
+        )
         for s, r, t in zip(seeds, runs, tests, strict=True):
             if not r:
                 continue
@@ -218,17 +251,23 @@ def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
             ppl = f"{r['val_ppl']:.2f}" if r.get("val_ppl") else "--"
             tst = f"{t['test_loss']:.4f}" if t else "--"
             st = f"{1e3 * r['steady_state_step_s']:.1f}" if r.get("steady_state_step_s") else "--"
-            gn = f"{r['max_grad_norm_after_500']:.2f}" if r.get("max_grad_norm_after_500") \
-                else "--"
-            rows.append(f"{opt} & {s} & {vl} & {se} & {ppl} & {tst} & {st} & "
-                        f"{r.get('spikes', '--')} & {gn} \\\\")
+            gn = f"{r['max_grad_norm_after_500']:.2f}" if r.get("max_grad_norm_after_500") else "--"
+            rows.append(
+                f"{opt} & {s} & {vl} & {se} & {ppl} & {tst} & {st} & "
+                f"{r.get('spikes', '--')} & {gn} \\\\"
+            )
     (GEN / "main_table.tex").write_text(
         "\\begin{tabular}{lcccccccc}\n\\toprule\noptimizer & seed & val.\\ loss & SE & "
         "val.\\ ppl & test loss & step (ms) & spikes & max $\\|g\\|$ \\\\\n\\midrule\n"
-        + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n"
+    )
     mac("PooledSe", res.get("pooled_within_run_se"), "{:.4f}")
-    mac("TwoPooledSe", 2 * res["pooled_within_run_se"] if res.get("pooled_within_run_se")
-        else None, "{:.4f}")
+    mac(
+        "TwoPooledSe",
+        2 * res["pooled_within_run_se"] if res.get("pooled_within_run_se") else None,
+        "{:.4f}",
+    )
     mac("PooledSeedSd", res.get("pooled_seed_sd"), "{:.4f}")
     prow = []
     for c, name in (("adamw", "Adamw"), ("soap", "Soap")):
@@ -254,48 +293,80 @@ def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
             e = per.get(str(s)) or per.get(s)
             if not e:
                 continue
-            tk = f"{e['gimbal_tokens_to_target'] / 1e9:.2f}" if e["gimbal_tokens_to_target"] \
+            tk = (
+                f"{e['gimbal_tokens_to_target'] / 1e9:.2f}"
+                if e["gimbal_tokens_to_target"]
                 else "not reached"
+            )
             mu = f"{e['token_multiplier']:.3f}" if e["token_multiplier"] else "--"
-            wl = f"{e['gimbal_wallclock_to_target_s'] / 60:.1f}" \
-                if e["gimbal_wallclock_to_target_s"] else "--"
+            wl = (
+                f"{e['gimbal_wallclock_to_target_s'] / 60:.1f}"
+                if e["gimbal_wallclock_to_target_s"]
+                else "--"
+            )
             ps = f"{e['paired_bootstrap_se']:.4f}" if e.get("paired_bootstrap_se") else "--"
-            prow.append(f"{c} & {s} & {e['gimbal_minus']:+.4f} & {ps} & {tk} & {mu} & {wl} & "
-                        f"{e['competitor_wallclock_s'] / 60:.1f} \\\\")
+            prow.append(
+                f"{c} & {s} & {e['gimbal_minus']:+.4f} & {ps} & {tk} & {mu} & {wl} & "
+                f"{e['competitor_wallclock_s'] / 60:.1f} \\\\"
+            )
     (GEN / "paired_table.tex").write_text(
         "\\begin{tabular}{lccccccc}\n\\toprule\n$c$ & seed & Gimbal $-$ $c$ & paired SE & "
         "tokens to $c$'s loss (B) & multiplier & Gimbal min & $c$ min \\\\\n\\midrule\n"
-        + "\n".join(prow) + "\n\\bottomrule\n\\end{tabular}\n")
+        + "\n".join(prow)
+        + "\n\\bottomrule\n\\end{tabular}\n"
+    )
     dec = res.get("decision", {})
-    mac("Headline", ("allowed" if dec.get("headline_claim_allowed") else "not allowed")
-        if dec else None)
+    mac(
+        "Headline",
+        ("allowed" if dec.get("headline_claim_allowed") else "not allowed") if dec else None,
+    )
     mac("NoSlowerThanSoap", ("yes" if dec.get("no_slower_than_soap") else "no") if dec else None)
     gs = [res["runs"].get(f"gimbal/seed{s}", {}).get("steady_state_step_s") for s in seeds]
     ss = [res["runs"].get(f"soap/seed{s}", {}).get("steady_state_step_s") for s in seeds]
-    mac("MainStepGimbalOverSoap", 100 * (_mean(gs) / _mean(ss) - 1)
-        if _mean(gs) and _mean(ss) else None, "{:.1f}")
+    mac(
+        "MainStepGimbalOverSoap",
+        100 * (_mean(gs) / _mean(ss) - 1) if _mean(gs) and _mean(ss) else None,
+        "{:.1f}",
+    )
     # Mechanism diagnostics (D-005 item 8), medians over Gimbal's two runs.
     for b, bn in (("mlp", "Mlp"), ("attn", "Attn")):
-        for key, mn, fmt in (("kappa_noise_corrected_median", "KappaMain", "{:.4f}"),
-                             ("kappa_raw_median", "KappaRawMain", "{:.4f}"),
-                             ("shrink_c_median", "ShrinkMain", "{:.2f}")):
-            vals = [res["runs"].get(f"gimbal/seed{s}", {}).get("mechanism", {})
-                    .get(f"{b}/{key}/final") for s in seeds]
+        for key, mn, fmt in (
+            ("kappa_noise_corrected_median", "KappaMain", "{:.4f}"),
+            ("kappa_raw_median", "KappaRawMain", "{:.4f}"),
+            ("shrink_c_median", "ShrinkMain", "{:.2f}"),
+        ):
+            vals = [
+                res["runs"].get(f"gimbal/seed{s}", {}).get("mechanism", {}).get(f"{b}/{key}/final")
+                for s in seeds
+            ]
             mac(f"{mn}{bn}", _mean(vals), fmt)
     for opt, name in (("soap", "Soap"), ("gimbal", "Gimbal")):
-        own = [v for s in seeds for k, v in res["runs"].get(f"{opt}/seed{s}", {})
-               .get("mechanism", {}).items() if k.endswith("/own_minus_pooled")]
+        own = [
+            v
+            for s in seeds
+            for k, v in res["runs"].get(f"{opt}/seed{s}", {}).get("mechanism", {}).items()
+            if k.endswith("/own_minus_pooled")
+        ]
         mac(f"ProbeOwnMinusPooled{name}", float(np.median(own)) if own else None, "{:,.0f}")
         mac(f"ProbeOwnBetter{name}", f"{sum(v < 0 for v in own)}/{len(own)}" if own else None)
-    kp = [v for s in seeds for o in ("soap", "gimbal") for k, v in res["runs"]
-          .get(f"{o}/seed{s}", {}).get("mechanism", {}).items()
-          if k.endswith("/kappa_pooled_frame")]
+    kp = [
+        v
+        for s in seeds
+        for o in ("soap", "gimbal")
+        for k, v in res["runs"].get(f"{o}/seed{s}", {}).get("mechanism", {}).items()
+        if k.endswith("/kappa_pooled_frame")
+    ]
     mac("ProbeKappa", float(np.median(kp)) if kp else None, "{:.4f}")
 
 
 def tex(s: str) -> str:
-    return (s.replace("\\", "\\textbackslash{}").replace("_", "\\_").replace("&", "\\&")
-            .replace("%", "\\%").replace("#", "\\#"))
+    return (
+        s.replace("\\", "\\textbackslash{}")
+        .replace("_", "\\_")
+        .replace("&", "\\&")
+        .replace("%", "\\%")
+        .replace("#", "\\#")
+    )
 
 
 def lean_table() -> None:
@@ -311,16 +382,29 @@ def lean_table() -> None:
         "\\begin{tabular}{>{\\raggedright\\arraybackslash}p{2.6cm}"
         ">{\\raggedright\\arraybackslash}p{9.0cm}>{\\raggedright\\arraybackslash}p{3.2cm}}"
         "\n\\toprule\nstatement & Lean names & file "
-        "\\\\\n\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
-    mac("LeanCount", str(sum(1 for line in (ROOT / "formal" / "audit" / "axioms_output.txt")
-                             .read_text().splitlines() if "depends on axioms" in line)))
+        "\\\\\n\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n"
+    )
+    mac(
+        "LeanCount",
+        str(
+            sum(
+                1
+                for line in (ROOT / "formal" / "audit" / "axioms_output.txt")
+                .read_text()
+                .splitlines()
+                if "depends on axioms" in line
+            )
+        ),
+    )
 
 
 def tuning_table() -> None:
     """Every Phase 06 trial (from runs/tuning/*/final.json)."""
     rows = []
-    pat = re.compile(r"^(adamw|soap|gimbal)_lr([0-9.e-]+)(?:_(b2|shampoo_beta|rot_rate)"
-                     r"([0-9.]+))?_s(\d+)$")
+    pat = re.compile(
+        r"^(adamw|soap|gimbal)_lr([0-9.e-]+)(?:_(b2|shampoo_beta|rot_rate)"
+        r"([0-9.]+))?_s(\d+)$"
+    )
     runs = ROOT / "runs" / "tuning"
     if runs.exists():
         for d in sorted(runs.iterdir()):
@@ -334,8 +418,10 @@ def tuning_table() -> None:
             rows.append(f"{opt} & {float(lr):.4g} & {knob} & {seed} & {loss} \\\\")
     (GEN / "tuning_table.tex").write_text(
         "\\begin{tabular}{lcccc}\n\\toprule\noptimizer & peak lr & secondary & seed & "
-        "final validation loss \\\\\n\\midrule\n" + "\n".join(rows)
-        + "\n\\bottomrule\n\\end{tabular}\n")
+        "final validation loss \\\\\n\\midrule\n"
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n"
+    )
 
 
 def main() -> None:
@@ -354,8 +440,10 @@ def main() -> None:
     phase04_05()
     tuning()
     main_runs(pathlib.Path(args.results), pathlib.Path(args.main_runs))
-    lines = ["% generated by paper/make_generated.py; do not edit",
-             "\\providecommand{\\pending}{\\textbf{[pending]}}"]
+    lines = [
+        "% generated by paper/make_generated.py; do not edit",
+        "\\providecommand{\\pending}{\\textbf{[pending]}}",
+    ]
     lines += [f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in sorted(macros.items())]
     (GEN / "macros.tex").write_text("\n".join(lines) + "\n")
     print(f"{len(macros)} macros")

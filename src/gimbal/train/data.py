@@ -29,7 +29,7 @@ class TokenFile:
         out = np.empty((len(idx), self.seq_len + 1), dtype=np.int32)
         for r, i in enumerate(idx):
             start = int(i) * self.seq_len
-            out[r] = self.tokens[start:start + self.seq_len + 1]
+            out[r] = self.tokens[start : start + self.seq_len + 1]
         return out
 
 
@@ -48,17 +48,25 @@ def global_batch(data: TokenFile, idx: np.ndarray, sharding: NamedSharding) -> j
     return jax.make_array_from_callback(shape, sharding, callback)
 
 
-def train_batches(data: TokenFile, order: np.ndarray, batch: int, start_step: int,
-                  steps: int, sharding: NamedSharding, prefetch: int = 2) -> Iterator[jax.Array]:
+def train_batches(
+    data: TokenFile,
+    order: np.ndarray,
+    batch: int,
+    start_step: int,
+    steps: int,
+    sharding: NamedSharding,
+    prefetch: int = 2,
+) -> Iterator[jax.Array]:
     """Batches for steps ``start_step .. steps - 1``, prepared by a background thread."""
     if steps * batch > len(order):
-        raise ValueError(f"{steps} steps of {batch} need {steps * batch} sequences, "
-                         f"have {len(order)}")
+        raise ValueError(
+            f"{steps} steps of {batch} need {steps * batch} sequences, have {len(order)}"
+        )
     queue: Queue = Queue(maxsize=prefetch)
 
     def worker():
         for s in range(start_step, steps):
-            queue.put(global_batch(data, order[s * batch:(s + 1) * batch], sharding))
+            queue.put(global_batch(data, order[s * batch : (s + 1) * batch], sharding))
         queue.put(None)
 
     threading.Thread(target=worker, daemon=True).start()
@@ -66,8 +74,9 @@ def train_batches(data: TokenFile, order: np.ndarray, batch: int, start_step: in
         yield item
 
 
-def eval_batches(data: TokenFile, n_seq: int, batch: int,
-                 sharding: NamedSharding) -> Iterator[tuple[jax.Array, int]]:
+def eval_batches(
+    data: TokenFile, n_seq: int, batch: int, sharding: NamedSharding
+) -> Iterator[tuple[jax.Array, int]]:
     """The first ``n_seq`` sequences in order; the last batch is padded (count of real rows)."""
     for start in range(0, n_seq, batch):
         real = min(batch, n_seq - start)

@@ -46,16 +46,26 @@ def optimizer_costs(m: int, n: int) -> dict[str, dict]:
     eigh = 9 * (m**3 + n**3)  # rough MACs of a symmetric eigendecomposition
     costs = {
         "adamw": dict(matmul=0, nonmatmul=0, state=2 * m * n),
-        "soap": dict(matmul=5 * unit(m, n) + 3 * cube(m, n) / 10, nonmatmul=qr_macs(m, n) / 10,
-                     state=2 * (m * m + n * n) + 2 * m * n),
-        "soap_rt": dict(matmul=4 * unit(m, n) + 3 * cube(m, n), nonmatmul=qr_macs(m, n),
-                        state=2 * (m * m + n * n) + 2 * m * n),
-        "klsoap": dict(matmul=5 * unit(m, n) + 4 * cube(m, n), nonmatmul=qr_macs(m, n),
-                       state=2 * (m * m + n * n) + 2 * m * n + m + n),
+        "soap": dict(
+            matmul=5 * unit(m, n) + 3 * cube(m, n) / 10,
+            nonmatmul=qr_macs(m, n) / 10,
+            state=2 * (m * m + n * n) + 2 * m * n,
+        ),
+        "soap_rt": dict(
+            matmul=4 * unit(m, n) + 3 * cube(m, n),
+            nonmatmul=qr_macs(m, n),
+            state=2 * (m * m + n * n) + 2 * m * n,
+        ),
+        "klsoap": dict(
+            matmul=5 * unit(m, n) + 4 * cube(m, n),
+            nonmatmul=qr_macs(m, n),
+            state=2 * (m * m + n * n) + 2 * m * n + m + n,
+        ),
         "muon": dict(matmul=5 * (2 * a * a * b + a**3), nonmatmul=0, state=m * n),
         "normuon": dict(matmul=5 * (2 * a * a * b + a**3), nonmatmul=0, state=m * n + m),
-        "splus": dict(matmul=3 * unit(m, n), nonmatmul=eigh / 100,
-                      state=2 * (m * m + n * n) + 2 * m * n),
+        "splus": dict(
+            matmul=3 * unit(m, n), nonmatmul=eigh / 100, state=2 * (m * m + n * n) + 2 * m * n
+        ),
         "aro": dict(matmul=4 * m * m * n, nonmatmul=(4 / 3) * m**3, state=m * m + m * n),
     }
     for k in (1, 4, 10):
@@ -65,8 +75,11 @@ def optimizer_costs(m: int, n: int) -> dict[str, dict]:
         # the flow's variance averages (full and odd-step, Proposition 5.5); score accumulators for
         # k > 1. The 50-step warm start adds m² + n² temporarily and two eigh in total (ignored).
         acc_state = (m * m + n * n) if k > 1 else 0
-        costs[f"gimbal_k{k}"] = dict(matmul=4 * unit(m, n) + (unit(m, n) + 4 * cube(m, n)) / k,
-                                     nonmatmul=0, state=(m * m + n * n) + 4 * m * n + acc_state)
+        costs[f"gimbal_k{k}"] = dict(
+            matmul=4 * unit(m, n) + (unit(m, n) + 4 * cube(m, n)) / k,
+            nonmatmul=0,
+            state=(m * m + n * n) + 4 * m * n + acc_state,
+        )
     return costs
 
 
@@ -142,12 +155,16 @@ def main() -> None:
     (RESULTS / f"e28_cost_model{args.tag}.json").write_text(json.dumps(result, indent=1))
     a = result["analytic"]
     print(f"model forward+backward: {a['model_GMAC_per_step']:.0f} GMAC/step")
-    print(f"{'optimizer':12s} {'matmul GMAC':>12s} {'QR/eigh GMAC':>13s} {'%model c=1':>11s} "
-          f"{'%model c=10':>12s} {'state Mfl':>10s}")
+    print(
+        f"{'optimizer':12s} {'matmul GMAC':>12s} {'QR/eigh GMAC':>13s} {'%model c=1':>11s} "
+        f"{'%model c=10':>12s} {'state Mfl':>10s}"
+    )
     for name, r in a["optimizers"].items():
-        print(f"{name:12s} {r['matmul_GMAC']:12.1f} {r['nonmatmul_GMAC']:13.2f} "
-              f"{r['pct_of_model_c1']:11.2f} {r['pct_of_model_c10']:12.2f} "
-              f"{r['state_Mfloats']:10.1f}")
+        print(
+            f"{name:12s} {r['matmul_GMAC']:12.1f} {r['nonmatmul_GMAC']:13.2f} "
+            f"{r['pct_of_model_c1']:11.2f} {r['pct_of_model_c10']:12.2f} "
+            f"{r['state_Mfloats']:10.1f}"
+        )
 
 
 if __name__ == "__main__":

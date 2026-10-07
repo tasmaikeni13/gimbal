@@ -34,11 +34,15 @@ RESULTS = pathlib.Path(__file__).parent / "results"
 
 # name -> (constructor, LR grid centre)
 METHODS = {
-    "adamw": (lambda p, lr: torch.optim.AdamW([p], lr=lr, betas=(0.9, 0.95), weight_decay=0.0),
-              3e-2),
+    "adamw": (
+        lambda p, lr: torch.optim.AdamW([p], lr=lr, betas=(0.9, 0.95), weight_decay=0.0),
+        3e-2,
+    ),
     "soap": (lambda p, lr: SOAP([p], lr=lr, betas=(0.9, 0.95), weight_decay=0.0), 3e-2),
-    "soap_rt": (lambda p, lr: SOAP([p], lr=lr, betas=(0.9, 0.95), weight_decay=0.0,
-                                   realtime=True), 3e-2),
+    "soap_rt": (
+        lambda p, lr: SOAP([p], lr=lr, betas=(0.9, 0.95), weight_decay=0.0, realtime=True),
+        3e-2,
+    ),
     "klsoap": (lambda p, lr: KLSOAP([p], lr=lr, betas=(0.9, 0.95)), 3e-2),
     "muon": (lambda p, lr: Muon([p], lr=lr), 0.1),
     "normuon": (lambda p, lr: NorMuon([p], lr=lr), 3e-2),
@@ -49,17 +53,25 @@ METHODS = {
     "gimbal_k4": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4), 3e-2),
     # Ablations of ours (not peers): no variance shrinkage; frame statistics on the raw gradient
     # (the default before C-013) and on the fully centered innovation (c = 1).
-    "gimbal_noshrink": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), flow_shrink=False,
-                                             frame_every=1), 3e-2),
-    "gimbal_k4_nocenter": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4,
-                                                flow_center=False), 3e-2),
-    "gimbal_k4_center": (lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4,
-                                              flow_center=True), 3e-2),
+    "gimbal_noshrink": (
+        lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), flow_shrink=False, frame_every=1),
+        3e-2,
+    ),
+    "gimbal_k4_nocenter": (
+        lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4, flow_center=False),
+        3e-2,
+    ),
+    "gimbal_k4_center": (
+        lambda p, lr: Gimbal([p], lr=lr, betas=(0.9, 0.95), frame_every=4, flow_center=True),
+        3e-2,
+    ),
 }
 ORACLE = "oracle"  # Adam in the true frame: the ceiling for "Adam in a Kronecker frame" methods
 
-CONFIGS = [dict(gamma=g, noise=s, shape=(32, 48), slope=1.0)
-           for g, s in itertools.product([0.0, 1.0, 2.0], [0.1, 1.0])]
+CONFIGS = [
+    dict(gamma=g, noise=s, shape=(32, 48), slope=1.0)
+    for g, s in itertools.product([0.0, 1.0, 2.0], [0.1, 1.0])
+]
 
 
 def lr_grid(centre: float) -> list[float]:
@@ -91,8 +103,13 @@ def run(method: str, lr: float, cfg: dict, seed: int, steps: int) -> dict:
         opt = SOAP([w], lr=lr, betas=(0.9, 0.95), weight_decay=0.0, precondition_frequency=10**9)
         # Freeze SOAP's frame at the truth: initialise state with the true frame.
         st = opt.state[w]
-        st.update(step=0, exp_avg=torch.zeros_like(w), exp_avg_sq=torch.zeros_like(w),
-                  GG=[None, None], Q=[QL.clone(), QR.clone()])
+        st.update(
+            step=0,
+            exp_avg=torch.zeros_like(w),
+            exp_avg_sq=torch.zeros_like(w),
+            GG=[None, None],
+            Q=[QL.clone(), QR.clone()],
+        )
     else:
         opt = METHODS[method][0](w, lr)
     losses = []
@@ -109,10 +126,15 @@ def run(method: str, lr: float, cfg: dict, seed: int, steps: int) -> dict:
         if not math.isfinite(losses[-1]) or losses[-1] > 1e8:
             losses += [float("inf")] * (steps - t - 1)
             break
-    tail = np.asarray(losses[-max(1, steps // 20):])
-    return {"method": method, "lr": lr, "seed": seed, **{k: (list(v) if isinstance(v, tuple)
-            else v) for k, v in cfg.items()}, "final_loss": float(tail.mean()),
-            "initial_loss": losses[0]}
+    tail = np.asarray(losses[-max(1, steps // 20) :])
+    return {
+        "method": method,
+        "lr": lr,
+        "seed": seed,
+        **{k: (list(v) if isinstance(v, tuple) else v) for k, v in cfg.items()},
+        "final_loss": float(tail.mean()),
+        "initial_loss": losses[0],
+    }
 
 
 def _job(args):
@@ -124,8 +146,12 @@ def main() -> None:
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("--steps", type=int, default=400)
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--eval-offset", type=int, default=300,
-                        help="first evaluation seed (100 for the F-020 run, 300 since C-013)")
+    parser.add_argument(
+        "--eval-offset",
+        type=int,
+        default=300,
+        help="first evaluation seed (100 for the F-020 run, 300 since C-013)",
+    )
     parser.add_argument("--tag", default="", help="suffix of the output files")
     args = parser.parse_args()
     steps = 150 if args.quick else args.steps
@@ -136,15 +162,23 @@ def main() -> None:
     RESULTS.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     # Stage 1: tuning
-    jobs = [(mth, lr, cfg, s, steps) for cfg in CONFIGS for mth in methods
-            for lr in lr_grid(centres[mth]) for s in tune_seeds]
+    jobs = [
+        (mth, lr, cfg, s, steps)
+        for cfg in CONFIGS
+        for mth in methods
+        for lr in lr_grid(centres[mth])
+        for s in tune_seeds
+    ]
     with mp.Pool(args.workers) as pool:
         tune = pool.map(_job, jobs, chunksize=8)
     best = {}
     for cfg_i, cfg in enumerate(CONFIGS):
         for mth in methods:
-            rows = [r for r in tune if r["method"] == mth and r["gamma"] == cfg["gamma"]
-                    and r["noise"] == cfg["noise"]]
+            rows = [
+                r
+                for r in tune
+                if r["method"] == mth and r["gamma"] == cfg["gamma"] and r["noise"] == cfg["noise"]
+            ]
             by_lr = {}
             for r in rows:
                 by_lr.setdefault(r["lr"], []).append(r["final_loss"])
@@ -153,16 +187,29 @@ def main() -> None:
             best[(cfg_i, mth)] = (lr_best, lr_best in (grid[0], grid[-1]))
     print(f"tuning done in {time.time() - t0:.0f}s", flush=True)
     # Stage 2: evaluation on fresh seeds
-    jobs = [(mth, best[(ci, mth)][0], cfg, s, steps) for ci, cfg in enumerate(CONFIGS)
-            for mth in methods for s in eval_seeds]
+    jobs = [
+        (mth, best[(ci, mth)][0], cfg, s, steps)
+        for ci, cfg in enumerate(CONFIGS)
+        for mth in methods
+        for s in eval_seeds
+    ]
     with mp.Pool(args.workers) as pool:
         evals = pool.map(_job, jobs, chunksize=8)
     tag = ("quick" if args.quick else "full") + args.tag
     (RESULTS / f"e25_tune_{tag}.jsonl").write_text("\n".join(json.dumps(r) for r in tune))
     (RESULTS / f"e25_eval_{tag}.jsonl").write_text("\n".join(json.dumps(r) for r in evals))
-    (RESULTS / f"e25_selected_lr_{tag}.json").write_text(json.dumps(
-        {f"{CONFIGS[ci]['gamma']}|{CONFIGS[ci]['noise']}|{m}": {"lr": v[0], "at_grid_edge": v[1]}
-         for (ci, m), v in best.items()}, indent=1))
+    (RESULTS / f"e25_selected_lr_{tag}.json").write_text(
+        json.dumps(
+            {
+                f"{CONFIGS[ci]['gamma']}|{CONFIGS[ci]['noise']}|{m}": {
+                    "lr": v[0],
+                    "at_grid_edge": v[1],
+                }
+                for (ci, m), v in best.items()
+            },
+            indent=1,
+        )
+    )
     print(f"done in {time.time() - t0:.0f}s", flush=True)
 
 

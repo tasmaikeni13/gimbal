@@ -61,7 +61,7 @@ import torch
 from gimbal.torch import build
 
 model = ...  # any model with 2-D hidden weight matrices
-hidden = [p for p in model.parameters() if p.ndim == 2]   # route embeddings/heads/norms to AdamW
+hidden = [p for p in model.parameters() if p.ndim == 2]  # route embeddings/heads/norms to AdamW
 other = [p for p in model.parameters() if p.ndim != 2]
 opt = build("gimbal", hidden, other, matrix_kwargs={"lr": 3e-3}, other_kwargs={"lr": 3e-3})
 ```

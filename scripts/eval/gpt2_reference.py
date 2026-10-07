@@ -33,7 +33,7 @@ REVISION = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
 def load_safetensors(path: str) -> dict[str, torch.Tensor]:
     raw = pathlib.Path(path).read_bytes()
     n = int.from_bytes(raw[:8], "little")
-    header = json.loads(raw[8:8 + n])
+    header = json.loads(raw[8 : 8 + n])
     base = 8 + n
     out = {}
     for name, info in header.items():
@@ -41,7 +41,7 @@ def load_safetensors(path: str) -> dict[str, torch.Tensor]:
             continue
         assert info["dtype"] == "F32", info["dtype"]
         lo, hi = info["data_offsets"]
-        arr = np.frombuffer(raw[base + lo:base + hi], dtype="<f4").reshape(info["shape"])
+        arr = np.frombuffer(raw[base + lo : base + hi], dtype="<f4").reshape(info["shape"])
         out[name] = torch.from_numpy(arr.copy())
     return out
 
@@ -67,8 +67,11 @@ def gpt2_loss(w: dict, tokens: torch.Tensor, n_layer: int = 12, n_head: int = 12
         x = x + h @ w[p + "mlp.c_proj.weight"] + w[p + "mlp.c_proj.bias"]
     x = F.layer_norm(x, (d,), w["ln_f.weight"], w["ln_f.bias"], 1e-5)
     logits = x @ w["wte.weight"].T
-    return F.cross_entropy(logits.reshape(-1, logits.shape[-1]), y.reshape(-1),
-                           reduction="none").view(b, t).sum(-1)
+    return (
+        F.cross_entropy(logits.reshape(-1, logits.shape[-1]), y.reshape(-1), reduction="none")
+        .view(b, t)
+        .sum(-1)
+    )
 
 
 def main() -> None:
@@ -85,16 +88,24 @@ def main() -> None:
     with torch.no_grad():
         for s in range(0, args.seqs, args.batch):
             idx = range(s, min(s + args.batch, args.seqs))
-            batch = torch.from_numpy(np.stack([val[i * 1024:i * 1024 + 1025] for i in idx])
-                                     .astype(np.int64))
+            batch = torch.from_numpy(
+                np.stack([val[i * 1024 : i * 1024 + 1025] for i in idx]).astype(np.int64)
+            )
             losses.append(gpt2_loss(w, batch))
     per_seq = torch.cat(losses).numpy()
     n_tokens = args.seqs * 1024
-    result = {"model": "gpt2 (OpenAI, 124M)", "revision": REVISION, "sequences": args.seqs,
-              "tokens": n_tokens, "val_loss": float(per_seq.sum() / n_tokens),
-              "published_reference": {"value": 3.2924, "source": "karpathy/build-nanogpt "
-                                      "play.ipynb (commit 6104ab1), FineWeb-Edu val shard"},
-              "seconds": time.time() - t0}
+    result = {
+        "model": "gpt2 (OpenAI, 124M)",
+        "revision": REVISION,
+        "sequences": args.seqs,
+        "tokens": n_tokens,
+        "val_loss": float(per_seq.sum() / n_tokens),
+        "published_reference": {
+            "value": 3.2924,
+            "source": "karpathy/build-nanogpt play.ipynb (commit 6104ab1), FineWeb-Edu val shard",
+        },
+        "seconds": time.time() - t0,
+    }
     out = ROOT / "runs" / "reference" / "gpt2_on_val.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=1))

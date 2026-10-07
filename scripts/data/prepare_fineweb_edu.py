@@ -59,7 +59,7 @@ def _encode(batch: tuple[list[str], list[str]]) -> tuple[np.ndarray, ...]:
     flat = np.empty(int(lengths.sum()), dtype=np.uint16)
     pos = 0
     for t in toks:
-        flat[pos:pos + len(t)] = t
+        flat[pos : pos + len(t)] = t
         flat[pos + len(t)] = EOT
         pos += len(t) + 1
     return split, order, lengths, flat
@@ -91,27 +91,35 @@ def main() -> None:
     parts = {"split": [], "order": [], "lengths": [], "tokens": []}
     with mp.Pool(args.workers) as pool:
         for shard in shards:
-            for split, order, lengths, flat in pool.imap(_encode, _batches(shard, args.batch),
-                                                         chunksize=1):
+            for split, order, lengths, flat in pool.imap(
+                _encode, _batches(shard, args.batch), chunksize=1
+            ):
                 parts["split"].append(split)
                 parts["order"].append(order)
                 parts["lengths"].append(lengths)
                 parts["tokens"].append(flat)
-            print(f"{shard.name}: {sum(len(x) for x in parts['split'])} docs, "
-                  f"{sum(len(x) for x in parts['tokens']) / 1e9:.3f}B tokens, "
-                  f"{time.time() - t0:.0f}s", flush=True)
+            print(
+                f"{shard.name}: {sum(len(x) for x in parts['split'])} docs, "
+                f"{sum(len(x) for x in parts['tokens']) / 1e9:.3f}B tokens, "
+                f"{time.time() - t0:.0f}s",
+                flush=True,
+            )
     split = np.concatenate(parts["split"])
     order = np.concatenate(parts["order"])
     lengths = np.concatenate(parts["lengths"])
     tokens = np.concatenate(parts["tokens"])
     starts = np.concatenate([[0], np.cumsum(lengths)[:-1]])
     manifest = {
-        "dataset": "HuggingFaceFW/fineweb-edu", "config": "sample-10BT", "revision": REVISION,
+        "dataset": "HuggingFaceFW/fineweb-edu",
+        "config": "sample-10BT",
+        "revision": REVISION,
         "tokenizer": f"tiktoken gpt2 ({tiktoken.__version__}), end-of-text {EOT} after each doc",
         "split_rule": "sha256(id) % 1000: 0-9 val, 10-19 test, else train",
         "order_rule": "sha256('order:' + id), ascending, within each split",
         "inputs": {s.name: sha256_file(s) for s in shards},
-        "corpus_docs": int(len(split)), "corpus_tokens": int(tokens.size), "splits": {},
+        "corpus_docs": int(len(split)),
+        "corpus_tokens": int(tokens.size),
+        "splits": {},
     }
     for code, name in ((0, "train"), (1, "val"), (2, "test")):
         idx = np.flatnonzero(split == code)
@@ -125,13 +133,16 @@ def main() -> None:
         pos = 0
         for d in idx[:n_docs]:
             take = min(int(lengths[d]), need - pos)
-            out[pos:pos + take] = tokens[starts[d]:starts[d] + take]
+            out[pos : pos + take] = tokens[starts[d] : starts[d] + take]
             pos += take
         path = OUT / f"{name}.bin"
         out.tofile(path)
         manifest["splits"][name] = {
-            "tokens": int(need), "docs_used": n_docs, "docs_available": int(idx.size),
-            "tokens_available": int(cum[-1]), "sha256": sha256_file(path),
+            "tokens": int(need),
+            "docs_used": n_docs,
+            "docs_available": int(idx.size),
+            "tokens_available": int(cum[-1]),
+            "sha256": sha256_file(path),
         }
         print(name, manifest["splits"][name], flush=True)
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

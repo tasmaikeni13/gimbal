@@ -12,6 +12,8 @@ import jax
 import jax.numpy as jnp
 
 HIGHEST = jax.lax.Precision.HIGHEST
+
+
 def tiny(dtype) -> float:
     """Smallest normal number of ``dtype`` (scale-free guard against log(0) and 0/0; F-014)."""
     return float(jnp.finfo(dtype).tiny)

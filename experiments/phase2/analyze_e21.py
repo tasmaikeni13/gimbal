@@ -31,8 +31,18 @@ from common import MATCHED_MEMORY, holm, paired_bootstrap_ci, wilcoxon_less
 
 RESULTS = pathlib.Path(__file__).parent / "results"
 PEERS = ["soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh"]
-METHODS = ["gimbal", "soap", "soap_rt", "klsoap", "pooled_eigh", "kl_eigh", "gimbal_k4",
-           "gimbal_k4_c012", "gimbal_noshrink", "gimbal_v03"]
+METHODS = [
+    "gimbal",
+    "soap",
+    "soap_rt",
+    "klsoap",
+    "pooled_eigh",
+    "kl_eigh",
+    "gimbal_k4",
+    "gimbal_k4_c012",
+    "gimbal_noshrink",
+    "gimbal_v03",
+]
 RERUN = ("gimbal", "gimbal_k4")  # re-run after C-013 and again after C-015
 # Optimizers a practitioner would run; the exact-eigenvector controls (pooled_eigh, kl_eigh)
 # recompute an eigendecomposition every step and are idealized references.
@@ -55,13 +65,18 @@ def load(suite: str) -> list[dict]:
     replace the rows of the same cell, seed, method and memory. After C-013 the re-run rows of
     ``RERUN`` replace the earlier ones, which are kept under ``<method>_c012``."""
     rows = {}
-    for name in (f"e21_{suite}.jsonl", f"e21_{suite}_ext.jsonl",
-                 f"e21_{suite}_peerfix.jsonl", f"e21_{suite}_ext_peerfix.jsonl"):
+    for name in (
+        f"e21_{suite}.jsonl",
+        f"e21_{suite}_ext.jsonl",
+        f"e21_{suite}_peerfix.jsonl",
+        f"e21_{suite}_ext_peerfix.jsonl",
+    ):
         for r in read_jsonl(RESULTS / name):
             rows[(cell_key(r), r["seed"], r["method"], r["memory"])] = r
     for change, previous in (("c013", "c012"), ("c015", "c013"), ("c018", "c015")):
-        rerun = (read_jsonl(RESULTS / f"e21_{suite}_{change}.jsonl")
-                 + read_jsonl(RESULTS / f"e21_{suite}_ext_{change}.jsonl"))
+        rerun = read_jsonl(RESULTS / f"e21_{suite}_{change}.jsonl") + read_jsonl(
+            RESULTS / f"e21_{suite}_ext_{change}.jsonl"
+        )
         if not rerun:
             continue
         for key in [k for k in rows if k[2] in RERUN]:
@@ -73,13 +88,20 @@ def load(suite: str) -> list[dict]:
     return list(rows.values())
 
 
-def centering_effect(rows: list[dict], summary: list[dict], after: str = "_c013",
-                     before: str = "_c012", change: str = "C-013") -> list[str]:
+def centering_effect(
+    rows: list[dict],
+    summary: list[dict],
+    after: str = "_c013",
+    before: str = "_c012",
+    change: str = "C-013",
+) -> list[str]:
     """Paired effect of a change on frame KL: ``<method><after>`` / ``<method><before>`` at each
     one's best memory (``after = ""`` is the current default). C-013's effect is measured on the
     rows before C-015, so that the two changes are not mixed."""
-    lines = [f"| cell | k = 4: with / before {change} | k = 1: with / before {change} |",
-             "|---|---|---|"]
+    lines = [
+        f"| cell | k = 4: with / before {change} | k = 1: with / before {change} |",
+        "|---|---|---|",
+    ]
     for cell in summary:
         cells = []
         for ours in RERUN[::-1]:
@@ -116,17 +138,34 @@ def summarize(rows: list[dict]) -> list[dict]:
         for method, mems in score.items():
             mem = min(mems, key=lambda m: np.mean([mems[m][s] for s in seeds]))
             best[method] = (mem, np.array([mems[mem][s] for s in seeds]))
-        matched = {m: np.array([score[m][MATCHED_MEMORY[m]][s] for s in seeds])
-                   for m in MATCHED_MEMORY if m in score}
-        row = {"gamma": key[0], "slope": key[1], "shape": key[2], "tie": key[3], "nu": key[4],
-               "drift": key[5], "kappa": float(np.mean([r["kappa"] for r in rs])),
-               "n_seeds": len(seeds),
-               # best memory on the edge of the grid actually run (more than one value)
-               "edge": sorted(m for m, (mem, _) in best.items()
-                              if len(score[m]) > 1 and mem in (min(score[m]), max(score[m]))),
-               "by_memory": {m: {str(mem): float(np.mean([v[s] for s in seeds]))
-                                 for mem, v in sorted(mems.items())}
-                             for m, mems in score.items()}}
+        matched = {
+            m: np.array([score[m][MATCHED_MEMORY[m]][s] for s in seeds])
+            for m in MATCHED_MEMORY
+            if m in score
+        }
+        row = {
+            "gamma": key[0],
+            "slope": key[1],
+            "shape": key[2],
+            "tie": key[3],
+            "nu": key[4],
+            "drift": key[5],
+            "kappa": float(np.mean([r["kappa"] for r in rs])),
+            "n_seeds": len(seeds),
+            # best memory on the edge of the grid actually run (more than one value)
+            "edge": sorted(
+                m
+                for m, (mem, _) in best.items()
+                if len(score[m]) > 1 and mem in (min(score[m]), max(score[m]))
+            ),
+            "by_memory": {
+                m: {
+                    str(mem): float(np.mean([v[s] for s in seeds]))
+                    for mem, v in sorted(mems.items())
+                }
+                for m, mems in score.items()
+            },
+        }
         for label, table in (("best", {m: v[1] for m, v in best.items()}), ("matched", matched)):
             row[label] = {
                 "mean_kl": {m: float(v.mean()) for m, v in table.items()},
@@ -145,14 +184,17 @@ def summarize(rows: list[dict]) -> list[dict]:
                     ratios[peer] = paired_bootstrap_ci(np.log(table[peer]) - np.log(g))
                 adj = holm(pvals)
                 suffix = "" if ours == "gimbal" else "_k4"
-                row[label].update({
-                    f"gimbal{suffix}_wins_all": bool(all(adj[p] < 0.05 for p in adj)),
-                    f"holm_p{suffix}": adj,
-                    # exp(mean log ratio): geometric-mean factor by which a peer's KL exceeds ours
-                    f"kl_factor_vs_gimbal{suffix}": {
-                        p: [float(np.exp(x)) for x in v] for p, v in ratios.items()
-                    },
-                })
+                row[label].update(
+                    {
+                        f"gimbal{suffix}_wins_all": bool(all(adj[p] < 0.05 for p in adj)),
+                        f"holm_p{suffix}": adj,
+                        # exp(mean log ratio): geometric-mean factor by which a peer's KL
+                        # exceeds ours
+                        f"kl_factor_vs_gimbal{suffix}": {
+                            p: [float(np.exp(x)) for x in v] for p, v in ratios.items()
+                        },
+                    }
+                )
         out.append(row)
     return out
 
@@ -161,8 +203,18 @@ def per_seed_best(rows: list[dict], cell: dict, method: str) -> dict:
     """Per-seed scores of a method at its best memory (lowest mean over seeds) in one cell."""
     by_mem = defaultdict(dict)
     for r in rows:
-        if (cell_key(r) == (cell["gamma"], cell["slope"], tuple(cell["shape"]), cell["tie"],
-                            cell["nu"], cell["drift"]) and r["method"] == method):
+        if (
+            cell_key(r)
+            == (
+                cell["gamma"],
+                cell["slope"],
+                tuple(cell["shape"]),
+                cell["tie"],
+                cell["nu"],
+                cell["drift"],
+            )
+            and r["method"] == method
+        ):
             by_mem[r["memory"]][r["seed"]] = r["kl_second_half"]
     best = min(by_mem, key=lambda mem: np.mean(list(by_mem[mem].values())))
     return by_mem[best]
@@ -199,9 +251,13 @@ def random_effects(summary: list[dict], suffix: str = "_k4") -> dict:
         w_re = 1 / (v + tau2)
         mu = np.sum(w_re * y) / np.sum(w_re)
         se_mu = np.sqrt(1 / np.sum(w_re))
-        out[peer] = {"factor": float(np.exp(mu)), "lo": float(np.exp(mu - 1.96 * se_mu)),
-                     "hi": float(np.exp(mu + 1.96 * se_mu)),
-                     "i2": float(max(0.0, (q - (k - 1)) / q)) if q > 0 else 0.0, "k": k}
+        out[peer] = {
+            "factor": float(np.exp(mu)),
+            "lo": float(np.exp(mu - 1.96 * se_mu)),
+            "hi": float(np.exp(mu + 1.96 * se_mu)),
+            "i2": float(max(0.0, (q - (k - 1)) / q)) if q > 0 else 0.0,
+            "k": k,
+        }
     return out
 
 
@@ -218,15 +274,21 @@ def fmt_cell(r: dict) -> str:
 
 def markdown(summary: list[dict], label: str) -> str:
     methods = [m for m in METHODS if label == "best" or m in MATCHED_MEMORY]
-    lines = ["| cell | κ | " + " | ".join(methods) + " | Gimbal better than all (Holm p<0.05) |"
-             + (" grid edge |" if label == "best" else ""),
-             "|---" * (len(methods) + 3 + (label == "best")) + "|"]
+    lines = [
+        "| cell | κ | "
+        + " | ".join(methods)
+        + " | Gimbal better than all (Holm p<0.05) |"
+        + (" grid edge |" if label == "best" else ""),
+        "|---" * (len(methods) + 3 + (label == "best")) + "|",
+    ]
     for r in summary:
         t = r[label]
         vals = " | ".join(f"{t['mean_kl'].get(m, float('nan')):.2f}" for m in methods)
         edge = f" {', '.join(r['edge']) or '—'} |" if label == "best" else ""
-        lines.append(f"| {fmt_cell(r)} | {r['kappa']:.2f} | {vals} | "
-                     f"{'yes' if t['gimbal_wins_all'] else 'no'} |{edge}")
+        lines.append(
+            f"| {fmt_cell(r)} | {r['kappa']:.2f} | {vals} | "
+            f"{'yes' if t['gimbal_wins_all'] else 'no'} |{edge}"
+        )
     return "\n".join(lines)
 
 
@@ -250,68 +312,102 @@ def main() -> None:
         if not rows:
             continue
         summary = summarize(rows)
-        (RESULTS / f"e21_{suite}_summary.json").write_text(json.dumps(summary, indent=1,
-                                                                       default=str))
+        (RESULTS / f"e21_{suite}_summary.json").write_text(
+            json.dumps(summary, indent=1, default=str)
+        )
         for label in ("best", "matched"):
-            report += [f"## Suite `{suite}` — {label} memory (mean frame KL, lower is better)", "",
-                       markdown(summary, label), ""]
+            report += [
+                f"## Suite `{suite}` — {label} memory (mean frame KL, lower is better)",
+                "",
+                markdown(summary, label),
+                "",
+            ]
         if any(r["method"].endswith("_c015") for r in rows):
-            report += [f"### Suite `{suite}`: effect of C-018 (adaptive amortization; the memory "
-                       "grid is unchanged, so the new default rate does not enter here)", "",
-                       "Same seeds and streams; geometric mean over seeds of the paired frame-KL "
-                       "ratio, current default / the same configuration before C-018, at each "
-                       "one's best memory, percentile-bootstrap 95% interval.", "",
-                       *centering_effect(rows, summary, after="", before="_c015",
-                                         change="C-018"), ""]
+            report += [
+                f"### Suite `{suite}`: effect of C-018 (adaptive amortization; the memory "
+                "grid is unchanged, so the new default rate does not enter here)",
+                "",
+                "Same seeds and streams; geometric mean over seeds of the paired frame-KL "
+                "ratio, current default / the same configuration before C-018, at each "
+                "one's best memory, percentile-bootstrap 95% interval.",
+                "",
+                *centering_effect(rows, summary, after="", before="_c015", change="C-018"),
+                "",
+            ]
         if any(r["method"].endswith("_c013") for r in rows):
-            report += [f"### Suite `{suite}`: effect of C-015 (sign-equivariant spectral-norm "
-                       "estimate)", "",
-                       "Same seeds and streams; geometric mean over seeds of the paired frame-KL "
-                       "ratio, the configuration after C-015 / before C-015, at each "
-                       "one's best memory, percentile-bootstrap 95% interval.", "",
-                       *centering_effect(rows, summary, after="_c015", before="_c013",
-                                         change="C-015"), ""]
+            report += [
+                f"### Suite `{suite}`: effect of C-015 (sign-equivariant spectral-norm estimate)",
+                "",
+                "Same seeds and streams; geometric mean over seeds of the paired frame-KL "
+                "ratio, the configuration after C-015 / before C-015, at each "
+                "one's best memory, percentile-bootstrap 95% interval.",
+                "",
+                *centering_effect(rows, summary, after="_c015", before="_c013", change="C-015"),
+                "",
+            ]
         if any(r["method"].endswith("_c012") for r in rows):
-            report += [f"### Suite `{suite}`: effect of C-013 (frame statistics on the "
-                       "empirical-Bayes innovation)", "",
-                       "Geometric mean over seeds of the paired frame-KL ratio at each "
-                       "configuration's best memory, percentile-bootstrap 95% interval; < 1 means "
-                       "the default with C-013 is better. These streams have zero-mean gradients, "
-                       "so the change should cost little here.", "",
-                       *centering_effect(rows, summary), ""]
-        gates[f"{suite}_k4_all_wins_best"] = all(r["best"].get("gimbal_k4_wins_all", False)
-                                                 for r in summary)
+            report += [
+                f"### Suite `{suite}`: effect of C-013 (frame statistics on the "
+                "empirical-Bayes innovation)",
+                "",
+                "Geometric mean over seeds of the paired frame-KL ratio at each "
+                "configuration's best memory, percentile-bootstrap 95% interval; < 1 means "
+                "the default with C-013 is better. These streams have zero-mean gradients, "
+                "so the change should cost little here.",
+                "",
+                *centering_effect(rows, summary),
+                "",
+            ]
+        gates[f"{suite}_k4_all_wins_best"] = all(
+            r["best"].get("gimbal_k4_wins_all", False) for r in summary
+        )
         # Holm-adjusted over all five peers, so conservative for this subset
-        beats = {fmt_cell(r): [q for q in PRACTICAL if r["best"]["holm_p_k4"].get(q, 1.0) >= 0.05]
-                 for r in summary}
+        beats = {
+            fmt_cell(r): [q for q in PRACTICAL if r["best"]["holm_p_k4"].get(q, 1.0) >= 0.05]
+            for r in summary
+        }
         gates[f"{suite}_k4_beats_practical_all"] = all(not v for v in beats.values())
-        lost = {fmt_cell(r): [q for q in PEERS if r["best"]["holm_p_k4"].get(q, 1.0) >= 0.05]
-                for r in summary}
-        report += [f"Default (frame_every = 4) below SOAP, SOAP real-time and KL-SOAP (Holm "
-                   f"p < 0.05) in every cell of suite `{suite}`: "
-                   f"**{gates[f'{suite}_k4_beats_practical_all']}**. Cells where some peer or "
-                   "exact-eigenvector control is not significantly worse: "
-                   + ("; ".join(f"{c} ({', '.join(v)})" for c, v in lost.items() if v)
-                      or "none") + ".", ""]
+        lost = {
+            fmt_cell(r): [q for q in PEERS if r["best"]["holm_p_k4"].get(q, 1.0) >= 0.05]
+            for r in summary
+        }
+        report += [
+            f"Default (frame_every = 4) below SOAP, SOAP real-time and KL-SOAP (Holm "
+            f"p < 0.05) in every cell of suite `{suite}`: "
+            f"**{gates[f'{suite}_k4_beats_practical_all']}**. Cells where some peer or "
+            "exact-eigenvector control is not significantly worse: "
+            + ("; ".join(f"{c} ({', '.join(v)})" for c, v in lost.items() if v) or "none")
+            + ".",
+            "",
+        ]
         if suite == "main":
             sep = [r for r in summary if r["gamma"] == 0.0]
             nonsep = [r for r in summary if r["gamma"] > 0.0]
             # the default configuration since C-012 is frame_every = 4 ("gimbal_k4")
             gates["G2.1_k4_nonseparable_all_wins_best"] = all(
-                r["best"]["gimbal_k4_wins_all"] for r in nonsep)
+                r["best"]["gimbal_k4_wins_all"] for r in nonsep
+            )
             gates["G2.1_k4_nonseparable_all_wins_matched"] = all(
-                r["matched"].get("gimbal_k4_wins_all", False) for r in nonsep)
-            worst_k4 = max(r["best"]["mean_kl"]["gimbal_k4"]
-                           / min(r["best"]["mean_kl"][p] for p in PEERS) for r in sep)
+                r["matched"].get("gimbal_k4_wins_all", False) for r in nonsep
+            )
+            worst_k4 = max(
+                r["best"]["mean_kl"]["gimbal_k4"] / min(r["best"]["mean_kl"][p] for p in PEERS)
+                for r in sep
+            )
             upper_k4 = max(separable_upper_ratio(rows, r, "gimbal_k4") for r in sep)
             gates["G2.1_k4_separable_worst_ratio_vs_best_peer"] = worst_k4
             gates["G2.1_k4_separable_worst_upper_ratio"] = upper_k4
-            gates["G2.1_k4_pass"] = bool(gates["G2.1_k4_nonseparable_all_wins_best"]
-                                         and worst_k4 <= 1.25 and upper_k4 <= 1.25)
-            gates["G2.1_nonseparable_all_wins_best"] = all(r["best"]["gimbal_wins_all"]
-                                                           for r in nonsep)
-            gates["G2.1_nonseparable_all_wins_matched"] = all(r["matched"]["gimbal_wins_all"]
-                                                              for r in nonsep)
+            gates["G2.1_k4_pass"] = bool(
+                gates["G2.1_k4_nonseparable_all_wins_best"]
+                and worst_k4 <= 1.25
+                and upper_k4 <= 1.25
+            )
+            gates["G2.1_nonseparable_all_wins_best"] = all(
+                r["best"]["gimbal_wins_all"] for r in nonsep
+            )
+            gates["G2.1_nonseparable_all_wins_matched"] = all(
+                r["matched"]["gimbal_wins_all"] for r in nonsep
+            )
             worst = max(
                 r["best"]["mean_kl"]["gimbal"] / min(r["best"]["mean_kl"][p] for p in PEERS)
                 for r in sep
@@ -323,24 +419,39 @@ def main() -> None:
             uppers = [separable_upper_ratio(rows, r) for r in sep]
             gates["G2.1_separable_worst_upper_ratio"] = max(uppers)
             gates["G2.1_separable_upper_within_25pct"] = bool(max(uppers) <= 1.25)
-            report += ["## Random-effects pooling across main-suite cells", "",
-                       "Paired log-ratio log(KL_peer / KL_Gimbal) per seed at best memories; "
-                       "DerSimonian–Laird pooling of the per-cell means (cells as studies).", ""]
+            report += [
+                "## Random-effects pooling across main-suite cells",
+                "",
+                "Paired log-ratio log(KL_peer / KL_Gimbal) per seed at best memories; "
+                "DerSimonian–Laird pooling of the per-cell means (cells as studies).",
+                "",
+            ]
             for suffix, title in (("_k4", "default (frame_every = 4)"), ("", "frame_every = 1")):
                 pooled = random_effects(summary, suffix)
-                report += [f"Gimbal {title}:", "", "| peer | pooled factor | 95% CI | I² | cells |",
-                           "|---|---|---|---|---|"]
+                report += [
+                    f"Gimbal {title}:",
+                    "",
+                    "| peer | pooled factor | 95% CI | I² | cells |",
+                    "|---|---|---|---|---|",
+                ]
                 for peer, v in pooled.items():
-                    report.append(f"| {peer} | {v['factor']:.2f} | [{v['lo']:.2f}, "
-                                  f"{v['hi']:.2f}] | {v['i2']:.2f} | {v['k']} |")
+                    report.append(
+                        f"| {peer} | {v['factor']:.2f} | [{v['lo']:.2f}, "
+                        f"{v['hi']:.2f}] | {v['i2']:.2f} | {v['k']} |"
+                    )
                 report.append("")
                 gates[f"random_effects_factor_vs_gimbal{suffix}"] = {
-                    k: v["factor"] for k, v in pooled.items()}
+                    k: v["factor"] for k, v in pooled.items()
+                }
         if suite == "tie":
             gates["G2.2_tie_all_wins"] = all(r["best"]["gimbal_wins_all"] for r in summary)
-            report += ["### Tie suite: mean frame KL by memory (longer memory to the right for "
-                       "EMA methods, to the left for Gimbal)", "",
-                       memory_table(summary, ["gimbal", "soap", "pooled_eigh", "klsoap"]), ""]
+            report += [
+                "### Tie suite: mean frame KL by memory (longer memory to the right for "
+                "EMA methods, to the left for Gimbal)",
+                "",
+                memory_table(summary, ["gimbal", "soap", "pooled_eigh", "klsoap"]),
+                "",
+            ]
         if suite == "drift":
             gates["G2.3_drift_all_wins"] = all(r["best"]["gimbal_wins_all"] for r in summary)
         if suite == "tails":

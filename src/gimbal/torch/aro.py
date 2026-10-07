@@ -25,8 +25,9 @@ class AROSinkhorn(Optimizer):
         sinkhorn_iters: int = 5,
         weight_decay: float = 0.0,
     ) -> None:
-        defaults = dict(lr=lr, momentum=momentum, sinkhorn_iters=sinkhorn_iters,
-                        weight_decay=weight_decay)
+        defaults = dict(
+            lr=lr, momentum=momentum, sinkhorn_iters=sinkhorn_iters, weight_decay=weight_decay
+        )
         super().__init__(params, defaults)
 
     @torch.no_grad()

@@ -42,8 +42,7 @@ MATRIX_KW = {
     # F-027 repair candidates (selection on seeds 10-12, then the gate on fresh seeds)
     "gimbal_adapt": dict(betas=(0.9, 0.95), frame_schedule="adaptive"),
     "gimbal_tw20": dict(betas=(0.9, 0.95), warm_start_steps=20),
-    "gimbal_adapt_tw20": dict(betas=(0.9, 0.95), frame_schedule="adaptive",
-                              warm_start_steps=20),
+    "gimbal_adapt_tw20": dict(betas=(0.9, 0.95), frame_schedule="adaptive", warm_start_steps=20),
     # F-027 diagnosis: is the frame memory (rot_rate 0.02, ~100 steps) too long for LM training?
     "gimbal_a04": dict(betas=(0.9, 0.95), rot_rate=0.04),
     "gimbal_a08": dict(betas=(0.9, 0.95), rot_rate=0.08),
@@ -53,8 +52,9 @@ MATRIX_KW = {
     "gimbal_adapt_a08": dict(betas=(0.9, 0.95), frame_schedule="adaptive", rot_rate=0.08),
     "gimbal_k1_a05": dict(betas=(0.9, 0.95), frame_every=1, rot_rate=0.05),
     "gimbal_k2_a05": dict(betas=(0.9, 0.95), frame_every=2, rot_rate=0.05),
-    "gimbal_adapt2_a05": dict(betas=(0.9, 0.95), frame_every=2, frame_schedule="adaptive",
-                              rot_rate=0.05),
+    "gimbal_adapt2_a05": dict(
+        betas=(0.9, 0.95), frame_every=2, frame_schedule="adaptive", rot_rate=0.05
+    ),
     # the same memory knob for SOAP (Phase 06 Stage C grid), for an equal selection budget
     "soap_sb090": dict(betas=(0.9, 0.95), weight_decay=0.0, shampoo_beta=0.9),
     "soap_sb099": dict(betas=(0.9, 0.95), weight_decay=0.0, shampoo_beta=0.99),
@@ -125,16 +125,26 @@ def main() -> None:
     args = parser.parse_args()
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
-    cfg = Config(d_model=args.d_model, n_layers=args.layers,
-                 mlp_hidden=int(round(8 * args.d_model / 3 / 32)) * 32)
+    cfg = Config(
+        d_model=args.d_model,
+        n_layers=args.layers,
+        mlp_hidden=int(round(8 * args.d_model / 3 / 32)) * 32,
+    )
     model = TinyLM(cfg)
     train, val = load_bytes("train"), load_bytes("val")
-    opt = build(ALIASES.get(args.method, args.method), model.hidden_matrices(),
-                model.other_parameters(),
-                matrix_kwargs=dict(lr=args.lr, **MATRIX_KW[args.method]), other_kwargs=OTHER_KW)
+    opt = build(
+        ALIASES.get(args.method, args.method),
+        model.hidden_matrices(),
+        model.other_parameters(),
+        matrix_kwargs=dict(lr=args.lr, **MATRIX_KW[args.method]),
+        other_kwargs=OTHER_KW,
+    )
     snapshots = {int(s) for s in args.snapshots.split(",") if s}
-    snap_names = [f"blocks.{i}.{w}.weight" for i in (0, cfg.n_layers - 1)
-                  for w in ("wq", "wo", "w_up", "w_down")]
+    snap_names = [
+        f"blocks.{i}.{w}.weight"
+        for i in (0, cfg.n_layers - 1)
+        for w in ("wq", "wo", "w_up", "w_down")
+    ]
     RESULTS.mkdir(parents=True, exist_ok=True)
     run_id = f"{args.method}_lr{args.lr:g}_s{args.seed}{args.tag}"
     log_path = RESULTS / f"{run_id}.jsonl"
@@ -162,15 +172,23 @@ def main() -> None:
             rec["wall"] = time.perf_counter() - t_start
             rec["opt_time"] = opt_time
         if step + 1 in snapshots:
-            snap = gradient_snapshot(model, train, args.snapshot_samples, args.batch,
-                                     seed=777 + step, names=snap_names)
+            snap = gradient_snapshot(
+                model, train, args.snapshot_samples, args.batch, seed=777 + step, names=snap_names
+            )
             np.savez_compressed(RESULTS / f"snap_{run_id}_step{step + 1}.npz", **snap)
         log.write(json.dumps(rec) + "\n")
         log.flush()
-    summary = {"run_id": run_id, "method": args.method, "lr": args.lr, "seed": args.seed,
-               "steps": args.steps, "final_val_loss": rec.get("val_loss", float("nan")),
-               "wall_seconds": time.perf_counter() - t_start, "optimizer_seconds": opt_time,
-               "diverged": bool(rec.get("diverged", False))}
+    summary = {
+        "run_id": run_id,
+        "method": args.method,
+        "lr": args.lr,
+        "seed": args.seed,
+        "steps": args.steps,
+        "final_val_loss": rec.get("val_loss", float("nan")),
+        "wall_seconds": time.perf_counter() - t_start,
+        "optimizer_seconds": opt_time,
+        "diverged": bool(rec.get("diverged", False)),
+    }
     (RESULTS / f"{run_id}.summary.json").write_text(json.dumps(summary))
     print(json.dumps(summary))
 

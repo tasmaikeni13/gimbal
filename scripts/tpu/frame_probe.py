@@ -26,8 +26,12 @@ import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 # (bucket, index in the bucket, label): bucket layouts of gimbal.train.model
-PROBES = (("attn", 0, "layer0_q"), ("attn", 44, "layer11_q"),
-          ("mlp", 1, "layer0_up"), ("mlp", 34, "layer11_up"))
+PROBES = (
+    ("attn", 0, "layer0_q"),
+    ("attn", 44, "layer11_q"),
+    ("mlp", 1, "layer0_up"),
+    ("mlp", 34, "layer11_up"),
+)
 SAMPLES = 32
 
 
@@ -74,12 +78,14 @@ def main() -> None:
             out = {"checkpoint_step": step, "samples": SAMPLES, "matrices": {}}
             for bucket, i, label in PROBES:
                 st = state["matrix"][bucket]
-                ql = np.asarray(multihost_utils.process_allgather(st["QL"], tiled=True)[i],
-                                np.float64)
-                qr = np.asarray(multihost_utils.process_allgather(st["QR"], tiled=True)[i],
-                                np.float64)
+                ql = np.asarray(
+                    multihost_utils.process_allgather(st["QL"], tiled=True)[i], np.float64
+                )
+                qr = np.asarray(
+                    multihost_utils.process_allgather(st["QR"], tiled=True)[i], np.float64
+                )
                 g = np.stack(grads[label])
-                fit, ev = g[: SAMPLES // 2], g[SAMPLES // 2:]
+                fit, ev = g[: SAMPLES // 2], g[SAMPLES // 2 :]
                 pl = eigh_desc(np.einsum("kij,klj->il", fit, fit, optimize=True))
                 pr = eigh_desc(np.einsum("kji,kjl->il", fit, fit, optimize=True))
                 z = np.einsum("ia,kij,jb->kab", pl, fit, pr, optimize=True)
@@ -88,8 +94,9 @@ def main() -> None:
                     "L_own_frame": heldout(ql, qr, ev),
                     "L_pooled_fit_frame": heldout(pl, pr, ev),
                     "L_identity": heldout(np.eye(g.shape[1]), np.eye(g.shape[2]), ev),
-                    "kappa_pooled_frame": nonseparability_index((z * z).mean(0) + 1e-300,
-                                                                SAMPLES // 2),
+                    "kappa_pooled_frame": nonseparability_index(
+                        (z * z).mean(0) + 1e-300, SAMPLES // 2
+                    ),
                 }
             if writer:
                 (run / "frame_probe.json").write_text(json.dumps(out, indent=1))

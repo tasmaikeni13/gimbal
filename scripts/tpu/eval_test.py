@@ -24,8 +24,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 def main() -> None:
     decision = ROOT / "analysis" / "decision.md"
     if not decision.exists() or "Decision rule outcome" not in decision.read_text():
-        raise SystemExit("analysis/decision.md does not record the decision: the test split "
-                         "stays closed")
+        raise SystemExit(
+            "analysis/decision.md does not record the decision: the test split stays closed"
+        )
     jax.config.update("jax_compilation_cache_dir", str(ROOT / ".jax_cache"))
     jax.distributed.initialize()
     from gimbal.train import checkpoint
@@ -47,8 +48,11 @@ def main() -> None:
             losses = trainer.evaluate(params, test, test.n_seq)
             if writer:
                 np.save(run / "test_seq_losses.npy", losses.astype(np.float32))
-                out = {"checkpoint_step": step, "test_loss": float(losses.sum() / (
-                    len(losses) * test.seq_len)), "test_tokens": int(len(losses) * test.seq_len)}
+                out = {
+                    "checkpoint_step": step,
+                    "test_loss": float(losses.sum() / (len(losses) * test.seq_len)),
+                    "test_tokens": int(len(losses) * test.seq_len),
+                }
                 out["test_ppl"] = float(np.exp(out["test_loss"]))
                 (run / "test.json").write_text(json.dumps(out, indent=1))
                 print(opt, seed, out, flush=True)

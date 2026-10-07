@@ -21,8 +21,12 @@ def main() -> None:
     devices = jax.devices()
     local = jax.local_devices()
     # One all-reduce across every chip proves the slice is wired up (ICI between hosts).
-    x = jax.device_put(jnp.ones((len(devices),)), jax.sharding.NamedSharding(
-        jax.sharding.Mesh(devices, ("d",)), jax.sharding.PartitionSpec("d")))
+    x = jax.device_put(
+        jnp.ones((len(devices),)),
+        jax.sharding.NamedSharding(
+            jax.sharding.Mesh(devices, ("d",)), jax.sharding.PartitionSpec("d")
+        ),
+    )
     total = float(jax.jit(jnp.sum)(x))
     info = {
         "process_index": jax.process_index(),
@@ -52,7 +56,8 @@ def main() -> None:
         info["tpu_env"] = None
     try:
         info["git_commit"] = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True).strip()
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip()
     except Exception:
         info["git_commit"] = None
     print(json.dumps(info), flush=True)

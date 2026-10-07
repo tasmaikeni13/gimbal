@@ -27,7 +27,10 @@ class Muon(Optimizer):
         weight_decay: float = 0.0,
     ) -> None:
         defaults = dict(
-            lr=lr, momentum=momentum, nesterov=nesterov, ns_steps=ns_steps,
+            lr=lr,
+            momentum=momentum,
+            nesterov=nesterov,
+            ns_steps=ns_steps,
             weight_decay=weight_decay,
         )
         super().__init__(params, defaults)

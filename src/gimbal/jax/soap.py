@@ -55,9 +55,14 @@ def schedule(call: int, cfg: SOAPConfig) -> Kind:
 def init_state(shape: tuple[int, int], dtype=jnp.float32) -> dict:
     m, n = shape
     z = jnp.zeros(shape, dtype)
-    return {"exp_avg": z, "exp_avg_sq": z,
-            "GG_L": jnp.zeros((m, m), dtype), "GG_R": jnp.zeros((n, n), dtype),
-            "QL": jnp.eye(m, dtype=dtype), "QR": jnp.eye(n, dtype=dtype)}
+    return {
+        "exp_avg": z,
+        "exp_avg_sq": z,
+        "GG_L": jnp.zeros((m, m), dtype),
+        "GG_R": jnp.zeros((n, n), dtype),
+        "QL": jnp.eye(m, dtype=dtype),
+        "QR": jnp.eye(n, dtype=dtype),
+    }
 
 
 def _refresh(gg: jax.Array, q: jax.Array, v: jax.Array, axis: int) -> tuple[jax.Array, jax.Array]:
@@ -68,8 +73,15 @@ def _refresh(gg: jax.Array, q: jax.Array, v: jax.Array, axis: int) -> tuple[jax.
     return qr_orth(mm(gg, q[:, order])), v
 
 
-def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
-         cfg: SOAPConfig, kind: Kind) -> tuple[dict, jax.Array]:
+def step(
+    state: dict,
+    g: jax.Array,
+    p: jax.Array,
+    lr: jax.Array,
+    t: jax.Array,
+    cfg: SOAPConfig,
+    kind: Kind,
+) -> tuple[dict, jax.Array]:
     """One SOAP call for one matrix; ``t`` is Adam's step counter after this call (traced).
 
     Returns the new state and the parameter increment ``Δp``.

@@ -36,7 +36,7 @@ def main() -> None:
     order = train_order(data.n_seq, 0)
     tr = Trainer(cfg, args.optimizer)
     params, state = tr.init(0)
-    batch = global_batch(data, order[:cfg["train"]["batch"]], tr.batch_sharding)
+    batch = global_batch(data, order[: cfg["train"]["batch"]], tr.batch_sharding)
     warm = {"adamw": 3, "soap": 12, "gimbal": 56}[args.optimizer]
     for t in range(1, warm + 1):
         loss, grads, gnorm = tr._grad_fn(params, batch)
@@ -56,11 +56,16 @@ def main() -> None:
     totals = device_op_times(path)
     modules = device_op_times(path, line_names=("XLA Modules",))
     total = sum(totals.values())
-    rows = [{"op": k, "ms_per_step": v / 1e6 / args.steps, "share": v / total}
-            for k, v in totals.most_common(args.top)]
-    out = {"optimizer": args.optimizer, "device_ms_per_step": total / 1e6 / args.steps,
-           "modules_ms_per_step": {k: v / 1e6 / args.steps for k, v in modules.most_common()},
-           "top": rows}
+    rows = [
+        {"op": k, "ms_per_step": v / 1e6 / args.steps, "share": v / total}
+        for k, v in totals.most_common(args.top)
+    ]
+    out = {
+        "optimizer": args.optimizer,
+        "device_ms_per_step": total / 1e6 / args.steps,
+        "modules_ms_per_step": {k: v / 1e6 / args.steps for k, v in modules.most_common()},
+        "top": rows,
+    }
     dest = ROOT / "benchmarks/tpu/results" / f"profile_{args.optimizer}.json"
     dest.write_text(json.dumps(out, indent=1))
     print(json.dumps(out, indent=1))

@@ -29,8 +29,14 @@ class SPlus(Optimizer):
         eps: float = 1e-30,
     ) -> None:
         defaults = dict(
-            lr=lr, b1=b1, b2=b2, ema_rate=ema_rate, inverse_every=inverse_every,
-            weight_decay=weight_decay, max_dim=max_dim, eps=eps,
+            lr=lr,
+            b1=b1,
+            b2=b2,
+            ema_rate=ema_rate,
+            inverse_every=inverse_every,
+            weight_decay=weight_decay,
+            max_dim=max_dim,
+            eps=eps,
         )
         super().__init__(params, defaults)
 
@@ -64,8 +70,9 @@ class SPlus(Optimizer):
                 state["step"] += 1
                 t = state["step"]
                 mom = state["mom"].mul_(group["b1"]).add_(g, alpha=1 - group["b1"])
-                upd = unrotate(torch.sign(rotate(mom, state["QL"], state["QR"])),
-                               state["QL"], state["QR"])
+                upd = unrotate(
+                    torch.sign(rotate(mom, state["QL"], state["QR"])), state["QL"], state["QR"]
+                )
                 b2 = group["b2"]
                 if state["L"] is not None:
                     state["L"].mul_(b2).add_(g @ g.T, alpha=1 - b2)

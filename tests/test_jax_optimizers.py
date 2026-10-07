@@ -65,8 +65,15 @@ def _jax_gimbal_run(cfg, p0, grads, dtype):
     state = jgimbal.init_state(p0.shape, cfg, dtype=dtype)
     p, incs = jnp.asarray(p0, dtype), []
     for t, g in enumerate(grads, start=1):
-        state, d = jgimbal.step(state, jnp.asarray(g, dtype), p, jnp.asarray(LR, dtype),
-                                jnp.int32(t), cfg, jgimbal.schedule(t, cfg))
+        state, d = jgimbal.step(
+            state,
+            jnp.asarray(g, dtype),
+            p,
+            jnp.asarray(LR, dtype),
+            jnp.int32(t),
+            cfg,
+            jgimbal.schedule(t, cfg),
+        )
         p = p + d
         incs.append(np.asarray(d))
     return incs, state
@@ -76,8 +83,15 @@ def _jax_soap_run(cfg, p0, grads, dtype, state=None, start_call=1):
     state = state if state is not None else jsoap.init_state(p0.shape, dtype)
     p, incs = jnp.asarray(p0, dtype), []
     for call, g in enumerate(grads, start=start_call):
-        state, d = jsoap.step(state, jnp.asarray(g, dtype), p, jnp.asarray(LR, dtype),
-                              jnp.int32(max(call - 1, 1)), cfg, jsoap.schedule(call, cfg))
+        state, d = jsoap.step(
+            state,
+            jnp.asarray(g, dtype),
+            p,
+            jnp.asarray(LR, dtype),
+            jnp.int32(max(call - 1, 1)),
+            cfg,
+            jsoap.schedule(call, cfg),
+        )
         p = p + d
         incs.append(np.asarray(d))
     return incs, state
@@ -91,17 +105,23 @@ def _max_rel(a_list, b_list, start=0) -> float:
 # Golden sequences
 # ----------------------------------------------------------------------------------------------
 
+
 def test_adamw_matches_torch():
     grads = stream((12, 20), 50, seed=3)
     p0 = initial_params((12, 20), 3)
-    ref, _, _ = _torch_run(torch.optim.AdamW, dict(lr=LR, betas=(0.9, 0.95), weight_decay=0.1),
-                           p0.astype(np.float32), [g.astype(np.float32) for g in grads])
+    ref, _, _ = _torch_run(
+        torch.optim.AdamW,
+        dict(lr=LR, betas=(0.9, 0.95), weight_decay=0.1),
+        p0.astype(np.float32),
+        [g.astype(np.float32) for g in grads],
+    )
     cfg = jadamw.AdamWConfig(weight_decay=0.1)
     p = jnp.asarray(p0, jnp.float32)
     state, incs = jadamw.init_state(p), []
     for t, g in enumerate(grads, start=1):
-        state, d = jadamw.step(state, jnp.asarray(g, jnp.float32), p, jnp.float32(LR),
-                               jnp.int32(t), cfg)
+        state, d = jadamw.step(
+            state, jnp.asarray(g, jnp.float32), p, jnp.float32(LR), jnp.int32(t), cfg
+        )
         p = p + d
         incs.append(d)
     assert _max_rel(incs, ref) < 1e-5 * TOL
@@ -120,8 +140,9 @@ def test_gimbal_golden_float64(shape, kind, variant):
     p0 = initial_params(shape, 11)
     ref, _, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads)
     with enable_x64():
-        incs, _ = _jax_gimbal_run(jgimbal.GimbalConfig(weight_decay=0.1, **variant), p0, grads,
-                                  jnp.float64)
+        incs, _ = _jax_gimbal_run(
+            jgimbal.GimbalConfig(weight_decay=0.1, **variant), p0, grads, jnp.float64
+        )
     # The adaptive schedule moves the frame at every early step, at bias-corrected rates up to
     # 0.5; those large moves amplify rounding differences over the sequence (to ~3e-6 here),
     # although every single step agrees to ~1e-14 (test_gimbal_float64_single_steps).
@@ -135,15 +156,22 @@ def test_gimbal_float64_single_steps(variant):
     shape = (10, 6)
     grads = stream(shape, 70, seed=14)
     p0 = initial_params(shape, 14)
-    ref, states, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads,
-                                keep_states=True)
+    ref, states, _ = _torch_run(
+        Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads, keep_states=True
+    )
     cfg = jgimbal.GimbalConfig(weight_decay=0.1, **variant)
     with enable_x64():
         for t in range(2, len(grads)):
             ts, p_before = states[t - 1]
-            st, d = jgimbal.step(_to_jax_gimbal_state(ts, jnp.float64), jnp.asarray(grads[t - 1]),
-                                 jnp.asarray(p_before), jnp.float64(LR), jnp.int32(t), cfg,
-                                 jgimbal.schedule(t, cfg))
+            st, d = jgimbal.step(
+                _to_jax_gimbal_state(ts, jnp.float64),
+                jnp.asarray(grads[t - 1]),
+                jnp.asarray(p_before),
+                jnp.float64(LR),
+                jnp.int32(t),
+                cfg,
+                jgimbal.schedule(t, cfg),
+            )
             assert _rel(d, ref[t - 1]) < 1e-12, t
             for key in ("QL", "QR"):
                 q = _sign_aligned(np.asarray(st[key]), states[t][0][key].numpy())
@@ -186,8 +214,9 @@ def test_gimbal_golden_float32_as_accurate_as_reference(shape, variant):
         ref64, _, _ = _torch_run(Gimbal, kw, p0, grads)
         g32 = [g.astype(np.float32) for g in grads]
         ref32, _, _ = _torch_run(Gimbal, kw, p0.astype(np.float32), g32)
-        incs, _ = _jax_gimbal_run(jgimbal.GimbalConfig(weight_decay=0.1, **variant), p0, g32,
-                                  jnp.float32)
+        incs, _ = _jax_gimbal_run(
+            jgimbal.GimbalConfig(weight_decay=0.1, **variant), p0, g32, jnp.float32
+        )
         # Step 1 is excluded: its off-diagonal entries are rounding noise in both runs (F-025).
         ours.append(_max_rel(incs, ref64, start=1))
         theirs.append(_max_rel(ref32, ref64, start=1))
@@ -199,12 +228,19 @@ def _to_jax_gimbal_state(ts: dict, dtype=jnp.float32) -> dict:
     """Reference state -> JAX layout (momentum in rotated coordinates)."""
     ql, qr = ts["QL"].double().numpy(), ts["QR"].double().numpy()
     acc = ts.get("flow_acc", {})
-    st = {"M": ql.T @ ts["M"].double().numpy() @ qr, "V": ts["V"].numpy(),
-          "VF": ts["VF"].numpy(), "VF_odd": ts["VF_odd"].numpy(), "w_odd": ts["w_odd"],
-          "QL": ql, "QR": qr,
-          "acc_L": acc["QL"].numpy() if "QL" in acc else np.zeros((ql.shape[0],) * 2),
-          "acc_R": acc["QR"].numpy() if "QR" in acc else np.zeros((qr.shape[0],) * 2),
-          "keep": acc.get("keep", 1.0), "count": acc.get("count", 0)}
+    st = {
+        "M": ql.T @ ts["M"].double().numpy() @ qr,
+        "V": ts["V"].numpy(),
+        "VF": ts["VF"].numpy(),
+        "VF_odd": ts["VF_odd"].numpy(),
+        "w_odd": ts["w_odd"],
+        "QL": ql,
+        "QR": qr,
+        "acc_L": acc["QL"].numpy() if "QL" in acc else np.zeros((ql.shape[0],) * 2),
+        "acc_R": acc["QR"].numpy() if "QR" in acc else np.zeros((qr.shape[0],) * 2),
+        "keep": acc.get("keep", 1.0),
+        "count": acc.get("count", 0),
+    }
     if "L_acc" in ts:
         st["L_acc"], st["R_acc"] = ts["L_acc"].numpy(), ts["R_acc"].numpy()
     return {k: jnp.asarray(v, dtype) for k, v in st.items()}
@@ -219,16 +255,23 @@ def _sign_aligned(q, ref):
 def test_gimbal_every_step_kind_from_reference_state(shape, variant):
     grads = [g.astype(np.float32) for g in stream(shape, 62, seed=14)]
     p0 = initial_params(shape, 14).astype(np.float32)
-    ref, states, _ = _torch_run(Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads,
-                                keep_states=True)
+    ref, states, _ = _torch_run(
+        Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads, keep_states=True
+    )
     cfg = jgimbal.GimbalConfig(weight_decay=0.1, **variant)
     seen = set()
     for t in range(2, len(grads) + 1):
         kind = jgimbal.schedule(t, cfg)
         ts, p_before = states[t - 1]
-        new_state, d = jgimbal.step(_to_jax_gimbal_state(ts), jnp.asarray(grads[t - 1]),
-                                    jnp.asarray(p_before), jnp.float32(LR), jnp.int32(t), cfg,
-                                    kind)
+        new_state, d = jgimbal.step(
+            _to_jax_gimbal_state(ts),
+            jnp.asarray(grads[t - 1]),
+            jnp.asarray(p_before),
+            jnp.float32(LR),
+            jnp.int32(t),
+            cfg,
+            kind,
+        )
         assert _rel(d, ref[t - 1]) < 2e-5, (t, kind)
         if t < len(grads):
             after = states[t][0]
@@ -249,20 +292,32 @@ def test_soap_rectangular_from_reference_frames(shape):
     null-space basis (F-015); starting both from the reference's initial frames removes that."""
     grads = [g.astype(np.float32) for g in stream(shape, 50, seed=15)]
     p0 = initial_params(shape, 15).astype(np.float32)
-    ref, states, final = _torch_run(SOAP, dict(lr=LR, weight_decay=0.1), p0, grads,
-                                    keep_states=True)
+    ref, states, final = _torch_run(
+        SOAP, dict(lr=LR, weight_decay=0.1), p0, grads, keep_states=True
+    )
     ts = states[1][0]  # after the initializing call
-    state = {"exp_avg": jnp.asarray(ts["exp_avg"].numpy()),
-             "exp_avg_sq": jnp.asarray(ts["exp_avg_sq"].numpy()),
-             "GG_L": jnp.asarray(ts["GG"][0].numpy()), "GG_R": jnp.asarray(ts["GG"][1].numpy()),
-             "QL": jnp.asarray(ts["Q"][0].numpy()), "QR": jnp.asarray(ts["Q"][1].numpy())}
-    incs, _ = _jax_soap_run(jsoap.SOAPConfig(weight_decay=0.1), states[1][1], grads[1:],
-                            jnp.float32, state=state, start_call=2)
+    state = {
+        "exp_avg": jnp.asarray(ts["exp_avg"].numpy()),
+        "exp_avg_sq": jnp.asarray(ts["exp_avg_sq"].numpy()),
+        "GG_L": jnp.asarray(ts["GG"][0].numpy()),
+        "GG_R": jnp.asarray(ts["GG"][1].numpy()),
+        "QL": jnp.asarray(ts["Q"][0].numpy()),
+        "QR": jnp.asarray(ts["Q"][1].numpy()),
+    }
+    incs, _ = _jax_soap_run(
+        jsoap.SOAPConfig(weight_decay=0.1),
+        states[1][1],
+        grads[1:],
+        jnp.float32,
+        state=state,
+        start_call=2,
+    )
     assert _max_rel(incs, ref[1:]) < 2e-5
 
 
-@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE, dict(frame_schedule="adaptive",
-                                                            rot_rate=0.02)])
+@pytest.mark.parametrize(
+    "variant", [FIXED, ADAPTIVE, dict(frame_schedule="adaptive", rot_rate=0.02)]
+)
 def test_gimbal_schedule_matches_reference_counters(variant):
     cfg = jgimbal.GimbalConfig(**variant)
     grads = stream((6, 6), 160, seed=16)
@@ -281,6 +336,7 @@ def test_gimbal_schedule_matches_reference_counters(variant):
 # Invariants (Phase 01 theorems) on the JAX implementation
 # ----------------------------------------------------------------------------------------------
 
+
 def _jit_step(cfg, kind):
     return jax.jit(lambda s, g, p, t: jgimbal.step(s, g, p, jnp.float32(LR), t, cfg, kind))
 
@@ -293,8 +349,9 @@ def test_gimbal_frames_stay_orthogonal():
     state = jgimbal.init_state(shape, cfg)
     key = jax.random.PRNGKey(0)
     g0 = jax.random.normal(key, shape)
-    state, _ = jgimbal.step(state, g0, jnp.zeros(shape), jnp.float32(LR), jnp.int32(1), cfg,
-                            jgimbal.schedule(1, cfg))
+    state, _ = jgimbal.step(
+        state, g0, jnp.zeros(shape), jnp.float32(LR), jnp.int32(1), cfg, jgimbal.schedule(1, cfg)
+    )
 
     def body(i, carry):
         st, k = carry
@@ -314,8 +371,9 @@ def _warm_state(shape, cfg, steps, seed):
     state = jgimbal.init_state(shape, cfg, dtype=jnp.float64)
     p = jnp.zeros(shape, jnp.float64)
     for t, g in enumerate(grads, start=1):
-        state, d = jgimbal.step(state, jnp.asarray(g), p, jnp.float64(LR), jnp.int32(t), cfg,
-                                jgimbal.schedule(t, cfg))
+        state, d = jgimbal.step(
+            state, jnp.asarray(g), p, jnp.float64(LR), jnp.int32(t), cfg, jgimbal.schedule(t, cfg)
+        )
         p = p + d
     return state, p
 
@@ -335,8 +393,9 @@ def test_gimbal_step_is_equivariant(move):
         kind = jgimbal.Kind(False, False, False, move)
         s1, d1 = jgimbal.step(state, g, p, jnp.float64(LR), jnp.int32(58), cfg, kind)
         moved = dict(state, QL=P @ state["QL"], QR=R @ state["QR"])
-        s2, d2 = jgimbal.step(moved, P @ g @ R.T, P @ p @ R.T, jnp.float64(LR), jnp.int32(58),
-                              cfg, kind)
+        s2, d2 = jgimbal.step(
+            moved, P @ g @ R.T, P @ p @ R.T, jnp.float64(LR), jnp.int32(58), cfg, kind
+        )
         assert _rel(d2, P @ d1 @ R.T) < 1e-10
         assert _rel(s2["QL"], P @ s1["QL"]) < 1e-10 and _rel(s2["QR"], R @ s1["QR"]) < 1e-10
         for key in ("M", "V", "VF"):
@@ -384,14 +443,16 @@ def test_gimbal_descent_with_no_momentum():
     p = jnp.zeros(shape)
     for t, g in enumerate(stream(shape, 60, seed=20), start=1):
         g = jnp.asarray(g, jnp.float32)
-        state, d = jgimbal.step(state, g, p, jnp.float32(LR), jnp.int32(t), cfg,
-                                jgimbal.schedule(t, cfg))
+        state, d = jgimbal.step(
+            state, g, p, jnp.float32(LR), jnp.int32(t), cfg, jgimbal.schedule(t, cfg)
+        )
         assert float(jnp.sum(g * d)) < 0.0, t
 
 
 # ----------------------------------------------------------------------------------------------
 # Optax wrappers, toy problems, edge cases
 # ----------------------------------------------------------------------------------------------
+
 
 @cpu_only
 def test_optax_wrappers_match_the_step_functions():
@@ -408,8 +469,9 @@ def test_optax_wrappers_match_the_step_functions():
         for tx, ref in ((optax_api.gimbal(LR, cfg_g), ref_g), (optax_api.soap(LR, cfg_s), ref_s)):
             params = {"w": p0}
             state = tx.init(params)
-            state = jax.tree.map(lambda x: x.astype(jnp.float64)
-                                 if x.dtype == jnp.float32 else x, state)
+            state = jax.tree.map(
+                lambda x: x.astype(jnp.float64) if x.dtype == jnp.float32 else x, state
+            )
             update = jax.jit(tx.update)
             for g, r in zip(grads, ref, strict=True):
                 upd, state = update({"w": g}, state, params)
@@ -418,9 +480,11 @@ def test_optax_wrappers_match_the_step_functions():
 
 
 def _optimizers():
-    return {"adamw": optax_api.adamw(3e-2),
-            "soap": optax_api.soap(3e-2, jsoap.SOAPConfig(weight_decay=0.0)),
-            "gimbal": optax_api.gimbal(3e-2, jgimbal.GimbalConfig())}
+    return {
+        "adamw": optax_api.adamw(3e-2),
+        "soap": optax_api.soap(3e-2, jsoap.SOAPConfig(weight_decay=0.0)),
+        "gimbal": optax_api.gimbal(3e-2, jgimbal.GimbalConfig()),
+    }
 
 
 @pytest.mark.parametrize("name", ["adamw", "soap", "gimbal"])
@@ -445,8 +509,14 @@ def test_toy_quadratic_and_tiny_mlp(name):
 
     for loss, params, steps in (
         (quad, {"w": jnp.zeros((10, 12), jnp.float32)}, 400),
-        (mlp, {"w1": jnp.asarray(rng.standard_normal((8, 32)) / 3, jnp.float32),
-               "w2": jnp.asarray(rng.standard_normal((32, 4)) / 6, jnp.float32)}, 600),
+        (
+            mlp,
+            {
+                "w1": jnp.asarray(rng.standard_normal((8, 32)) / 3, jnp.float32),
+                "w2": jnp.asarray(rng.standard_normal((32, 4)) / 6, jnp.float32),
+            },
+            600,
+        ),
     ):
         tx = _optimizers()[name]
         state = tx.init(params)

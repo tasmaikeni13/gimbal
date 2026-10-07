@@ -75,6 +75,7 @@ class OptimizerSpec:
 # State layout
 # ---------------------------------------------------------------------------------------------
 
+
 def _matrix_state(spec: OptimizerSpec, bucket: Bucket, k: int, warm: bool = True) -> dict:
     """State of ``k`` matrices of one bucket (leading axis ``k``)."""
     m, n = bucket.shape
@@ -102,26 +103,30 @@ def state_specs(state: dict) -> dict:
     replicated."""
     return {
         "matrix": jax.tree.map(lambda x: P(AXIS), state["matrix"]),
-        "other": {k: jax.tree.map(lambda x, k=k: P(AXIS) if k == "embed" else P(), v)
-                  for k, v in state["other"].items()},
+        "other": {
+            k: jax.tree.map(lambda x, k=k: P(AXIS) if k == "embed" else P(), v)
+            for k, v in state["other"].items()
+        },
     }
 
 
 def drop_gimbal_warm_buffers(state: dict) -> dict:
-    return {**state, "matrix": {k: _gimbal.drop_warm_start_buffers(v)
-                                for k, v in state["matrix"].items()}}
+    return {
+        **state,
+        "matrix": {k: _gimbal.drop_warm_start_buffers(v) for k, v in state["matrix"].items()},
+    }
 
 
 # ---------------------------------------------------------------------------------------------
 # Inside shard_map
 # ---------------------------------------------------------------------------------------------
 
+
 def _bucket_view(x: jax.Array, bucket: Bucket) -> jax.Array:
     """``[..., m, n]`` stack -> ``[padded, m, n]`` (zero padding)."""
     x = x.reshape((bucket.count,) + bucket.shape)
     if bucket.padded > bucket.count:
-        x = jnp.concatenate(
-            [x, jnp.zeros((bucket.padded - bucket.count,) + bucket.shape, x.dtype)])
+        x = jnp.concatenate([x, jnp.zeros((bucket.padded - bucket.count,) + bucket.shape, x.dtype)])
     return x
 
 
@@ -131,8 +136,12 @@ def reduce_gradients(grads: dict, buckets: tuple[Bucket, ...], n_dev: int) -> di
     for b in buckets:
         g = _bucket_view(grads[b.key].astype(jnp.float32), b)
         out[b.key] = jax.lax.psum_scatter(g, AXIS, scatter_dimension=0, tiled=True) / n_dev
-    out["embed"] = jax.lax.psum_scatter(grads["embed"].astype(jnp.float32), AXIS,
-                                        scatter_dimension=0, tiled=True) / n_dev
+    out["embed"] = (
+        jax.lax.psum_scatter(
+            grads["embed"].astype(jnp.float32), AXIS, scatter_dimension=0, tiled=True
+        )
+        / n_dev
+    )
     for k in OTHER_KEYS[1:]:
         out[k] = jax.lax.psum(grads[k].astype(jnp.float32), AXIS) / n_dev
     return out
@@ -150,9 +159,17 @@ def _local_slice(x: jax.Array, size: int) -> jax.Array:
     return jax.lax.dynamic_slice_in_dim(x, idx * size, size, axis=0)
 
 
-def optimizer_update(spec: OptimizerSpec, kind, state: dict, grads: dict, params: dict,
-                     buckets: tuple[Bucket, ...], n_dev: int, lr: jax.Array,
-                     t: jax.Array) -> tuple:
+def optimizer_update(
+    spec: OptimizerSpec,
+    kind,
+    state: dict,
+    grads: dict,
+    params: dict,
+    buckets: tuple[Bucket, ...],
+    n_dev: int,
+    lr: jax.Array,
+    t: jax.Array,
+) -> tuple:
     """One optimizer step on the local shards; returns the new local state and new params."""
     new_state = {"matrix": {}, "other": {}}
     new_params = dict(params)
@@ -163,14 +180,13 @@ def optimizer_update(spec: OptimizerSpec, kind, state: dict, grads: dict, params
             st, delta = _adamw.step(st, g, p_local, lr, t, spec.matrix)
         elif spec.name == "soap":
             # Adam's counter lags the call count: the first call only initializes (official).
-            step = partial(_soap.step, lr=lr, t=jnp.maximum(t - 1, 1), cfg=spec.matrix,
-                           kind=kind)
+            step = partial(_soap.step, lr=lr, t=jnp.maximum(t - 1, 1), cfg=spec.matrix, kind=kind)
             st, delta = jax.vmap(step)(st, g, p_local)
         else:
             step = partial(_gimbal.step, lr=lr, t=t, cfg=spec.matrix, kind=kind)
             st, delta = jax.vmap(step)(st, g, p_local)
         new_state["matrix"][b.key] = st
-        full = jax.lax.all_gather(delta, AXIS, axis=0, tiled=True)[:b.count]
+        full = jax.lax.all_gather(delta, AXIS, axis=0, tiled=True)[: b.count]
         new_params[b.key] = params[b.key] + full.reshape(params[b.key].shape)
     for k in OTHER_KEYS:
         p_k = _local_slice(params[k], params[k].shape[0] // n_dev) if k == "embed" else params[k]

@@ -46,8 +46,15 @@ def fisher(du: np.ndarray, a: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return np.clip(f_l + f_l.T - 2 * n, 0, None), np.clip(f_r + f_r.T - 2 * m, 0, None)
 
 
-def generator(score: np.ndarray, fis: np.ndarray, groups: int, alpha: float, damping: float,
-              max_angle: float = 0.25, max_rotation: float = 1.0) -> np.ndarray:
+def generator(
+    score: np.ndarray,
+    fis: np.ndarray,
+    groups: int,
+    alpha: float,
+    damping: float,
+    max_angle: float = 0.25,
+    max_rotation: float = 1.0,
+) -> np.ndarray:
     """Same rule as ``Gimbal._generator``: damped natural gradient with the trust-region caps."""
     om = -alpha * score / (fis + damping * groups)
     np.fill_diagonal(om, 0.0)
@@ -72,8 +79,15 @@ def polish(q: np.ndarray, tol: float = 1e-14, max_iter: int = 6) -> np.ndarray:
     return q
 
 
-def population_step(ql: np.ndarray, qr: np.ndarray, d: np.ndarray, alpha: float, damping: float,
-                    max_angle: float = 0.25, max_rotation: float = 1.0):
+def population_step(
+    ql: np.ndarray,
+    qr: np.ndarray,
+    d: np.ndarray,
+    alpha: float,
+    damping: float,
+    max_angle: float = 0.25,
+    max_rotation: float = 1.0,
+):
     """One step of the noise-free flow; returns the new frame and the scores at the old one."""
     e_l, e_r, du, a = expected_scores(ql, qr, d)
     f_l, f_r = fisher(du, a)

@@ -98,8 +98,14 @@ def _xla_attention(q: jax.Array, k: jax.Array, v: jax.Array, scale: float) -> ja
     return jnp.einsum("bhqk,bhkd->bhqd", p, v)
 
 
-def attention(q: jax.Array, k: jax.Array, v: jax.Array, kind: str, scale: float,
-              blocks: tuple[int, int, int] = (0, 0, 1)) -> jax.Array:
+def attention(
+    q: jax.Array,
+    k: jax.Array,
+    v: jax.Array,
+    kind: str,
+    scale: float,
+    blocks: tuple[int, int, int] = (0, 0, 1),
+) -> jax.Array:
     """Causal attention on ``[B, H, T, Dh]`` with the chosen implementation."""
     if kind == "xla":
         return _xla_attention(q, k, v, scale)
@@ -109,10 +115,19 @@ def attention(q: jax.Array, k: jax.Array, v: jax.Array, kind: str, scale: float,
         bq, bk, bb = blocks
         sizes = None
         if bq:
-            sizes = BlockSizes(block_q=bq, block_k_major=bk, block_k=bk, block_b=bb,
-                               block_q_major_dkv=bq, block_k_major_dkv=bk, block_k_dkv=bk,
-                               block_q_dkv=bq, block_k_major_dq=bk, block_k_dq=bk,
-                               block_q_dq=bq)
+            sizes = BlockSizes(
+                block_q=bq,
+                block_k_major=bk,
+                block_k=bk,
+                block_b=bb,
+                block_q_major_dkv=bq,
+                block_k_major_dkv=bk,
+                block_k_dkv=bk,
+                block_q_dkv=bq,
+                block_k_major_dq=bk,
+                block_k_dq=bk,
+                block_q_dq=bq,
+            )
         return flash_attention(q, k, v, causal=True, sm_scale=scale, block_sizes=sizes)
     if kind == "splash":
         from jax.experimental.pallas.ops.tpu.splash_attention import (
@@ -132,8 +147,9 @@ def attention(q: jax.Array, k: jax.Array, v: jax.Array, kind: str, scale: float,
 def forward(params: dict, tokens: jax.Array, cfg: ModelConfig) -> jax.Array:
     """Logits (float32) for ``tokens`` of shape ``[B, T]``."""
     x = forward_hidden(params, tokens, cfg)
-    return jnp.einsum("btd,vd->btv", x, params["embed"].astype(COMPUTE),
-                      preferred_element_type=jnp.float32)
+    return jnp.einsum(
+        "btd,vd->btv", x, params["embed"].astype(COMPUTE), preferred_element_type=jnp.float32
+    )
 
 
 def forward_hidden(params: dict, tokens: jax.Array, cfg: ModelConfig) -> jax.Array:
@@ -152,8 +168,9 @@ def forward_hidden(params: dict, tokens: jax.Array, cfg: ModelConfig) -> jax.Arr
         q, k, v = (jnp.einsum("btd,de->bte", y, a[i]) for i in range(3))
         q, k, v = (z.reshape(b, t, h, dh).transpose(0, 2, 1, 3) for z in (q, k, v))
         q, k = _rope(q, cos, sin), _rope(k, cos, sin)
-        o = attention(q, k, v, cfg.attention, scale,
-                      (cfg.flash_block_q, cfg.flash_block_k, cfg.flash_block_b))
+        o = attention(
+            q, k, v, cfg.attention, scale, (cfg.flash_block_q, cfg.flash_block_k, cfg.flash_block_b)
+        )
         o = o.transpose(0, 2, 1, 3).reshape(b, t, h * dh)
         x = x + jnp.einsum("btd,de->bte", o, a[3])
         m = mlp_w.astype(COMPUTE)

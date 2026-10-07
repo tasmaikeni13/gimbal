@@ -46,8 +46,14 @@ def main() -> None:
         jax.block_until_ready(state)
         trace = ROOT / "runs" / "profiles" / f"update_{name}_{t}_w{worker}"
         shutil.rmtree(trace, ignore_errors=True)
-        copies = [(jax.tree.map(jnp.copy, state), jax.tree.map(jnp.copy, grads),
-                   jax.tree.map(jnp.copy, params)) for _ in range(reps)]
+        copies = [
+            (
+                jax.tree.map(jnp.copy, state),
+                jax.tree.map(jnp.copy, grads),
+                jax.tree.map(jnp.copy, params),
+            )
+            for _ in range(reps)
+        ]
         jax.block_until_ready(copies)
         jax.profiler.start_trace(str(trace))
         for s_in, g_in, p_in in copies:
@@ -60,7 +66,8 @@ def main() -> None:
             total = sum(ops.values())
             results[str(kind)] = {
                 "ms_per_call": total / 1e6 / reps,
-                "ops_ms": {k: round(v / 1e6 / reps, 3) for k, v in ops.most_common(25)}}
+                "ops_ms": {k: round(v / 1e6 / reps, 3) for k, v in ops.most_common(25)},
+            }
     if worker == "0":
         dest = ROOT / "benchmarks/tpu/results" / f"profile_update_{name}.json"
         dest.write_text(json.dumps(results, indent=1))

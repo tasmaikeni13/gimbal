@@ -31,8 +31,9 @@ def rand_orth(n: int, rng: np.random.Generator) -> np.ndarray:
     return q * np.sign(np.diag(r))
 
 
-def make_variances(m: int, n: int, gamma: float, slope: float, rng: np.random.Generator,
-                   tie: bool = False) -> np.ndarray:
+def make_variances(
+    m: int, n: int, gamma: float, slope: float, rng: np.random.Generator, tie: bool = False
+) -> np.ndarray:
     """Variance array with log D = a_i + b_j + gamma * c_ij (power-law margins, slope s).
 
     gamma = 0 is the separable (Kronecker-product) case. With ``tie=True`` rows come in pairs that
@@ -106,8 +107,13 @@ class KRDStream:
 # ---------------------------------------------------------------------------------------------
 
 
-def frame_kl(ql_hat: np.ndarray | None, qr_hat: np.ndarray | None, ql: np.ndarray,
-             qr: np.ndarray, d: np.ndarray) -> float:
+def frame_kl(
+    ql_hat: np.ndarray | None,
+    qr_hat: np.ndarray | None,
+    ql: np.ndarray,
+    qr: np.ndarray,
+    d: np.ndarray,
+) -> float:
     """J(U_hat) = 1/2 sum(log D_tilde - log D), D_tilde = (P_L o P_L) D (P_R o P_R)^T."""
     pl = (ql_hat.T @ ql) if ql_hat is not None else ql
     pr = (qr_hat.T @ qr) if qr_hat is not None else qr
@@ -120,8 +126,9 @@ def frame_kl(ql_hat: np.ndarray | None, qr_hat: np.ndarray | None, ql: np.ndarra
 # ---------------------------------------------------------------------------------------------
 
 FRAME_METHODS = {
-    "soap": lambda p, mem: SOAP([p], lr=0.0, weight_decay=0.0, shampoo_beta=mem,
-                                precondition_frequency=10),
+    "soap": lambda p, mem: SOAP(
+        [p], lr=0.0, weight_decay=0.0, shampoo_beta=mem, precondition_frequency=10
+    ),
     "soap_rt": lambda p, mem: SOAP([p], lr=0.0, weight_decay=0.0, shampoo_beta=mem, realtime=True),
     "klsoap": lambda p, mem: KLSOAP([p], lr=0.0, beta_kron=mem),
     # Gimbal with the current defaults (C-004, C-013): bias-corrected rate, damping 0.003, flow
@@ -132,10 +139,12 @@ FRAME_METHODS = {
     "gimbal_k4": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, frame_every=4),
     # Historical ablations, run before C-013 and pinned to its uncentered statistics: C-003
     # without shrinkage; v0.3 (C-002 only: Adam's V as flow variance, eigh initialization).
-    "gimbal_noshrink": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, flow_shrink=False,
-                                             frame_every=1, flow_center=False),
-    "gimbal_v03": lambda p, mem: Gimbal([p], lr=0.0, rot_rate=mem, flow_beta=None, init="eigh",
-                                        frame_every=1, flow_center=False),
+    "gimbal_noshrink": lambda p, mem: Gimbal(
+        [p], lr=0.0, rot_rate=mem, flow_shrink=False, frame_every=1, flow_center=False
+    ),
+    "gimbal_v03": lambda p, mem: Gimbal(
+        [p], lr=0.0, rot_rate=mem, flow_beta=None, init="eigh", frame_every=1, flow_center=False
+    ),
 }
 
 # Memory grids. For EMA methods the value is the EMA coefficient (memory ~ 2/(1-beta) samples);
@@ -154,10 +163,24 @@ MEMORY_GRID = {
 # Grid extensions, applied to every method alike when best memories sit on a grid edge: longer
 # memory for stationary suites, shorter for drift (experiments ledger, E2.1).
 MEMORY_EXTENSION = {
-    "long": {"soap": [0.9999], "soap_rt": [0.9999], "pooled_eigh": [0.9999], "klsoap": [0.999],
-             "kl_eigh": [0.999], "gimbal": [1e-4], "gimbal_k4": [1e-4]},
-    "short": {"soap": [0.8], "soap_rt": [0.8], "pooled_eigh": [0.8], "klsoap": [0.8],
-              "kl_eigh": [0.8], "gimbal": [0.2], "gimbal_k4": [0.2]},
+    "long": {
+        "soap": [0.9999],
+        "soap_rt": [0.9999],
+        "pooled_eigh": [0.9999],
+        "klsoap": [0.999],
+        "kl_eigh": [0.999],
+        "gimbal": [1e-4],
+        "gimbal_k4": [1e-4],
+    },
+    "short": {
+        "soap": [0.8],
+        "soap_rt": [0.8],
+        "pooled_eigh": [0.8],
+        "klsoap": [0.8],
+        "kl_eigh": [0.8],
+        "gimbal": [0.2],
+        "gimbal_k4": [0.2],
+    },
 }
 
 
@@ -169,8 +192,15 @@ def full_grid(extension: str | None) -> dict[str, list[float]]:
 
 # Equal effective sample size: EMA beta=0.99 averages ~2/(1-beta)=200 samples; the flow with rate
 # alpha behaves like ~(2-alpha)/alpha samples (Theorem 4), so alpha=0.01 is the matched setting.
-MATCHED_MEMORY = {"soap": 0.99, "soap_rt": 0.99, "klsoap": 0.99, "pooled_eigh": 0.99,
-                  "kl_eigh": 0.99, "gimbal": 0.01, "gimbal_k4": 0.01}
+MATCHED_MEMORY = {
+    "soap": 0.99,
+    "soap_rt": 0.99,
+    "klsoap": 0.99,
+    "pooled_eigh": 0.99,
+    "kl_eigh": 0.99,
+    "gimbal": 0.01,
+    "gimbal_k4": 0.01,
+}
 
 
 def eigh_desc_np(s: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -216,9 +246,16 @@ def get_frames(method: str, opt: torch.optim.Optimizer, p: torch.Tensor):
     return to_np(ql), to_np(qr)
 
 
-def frame_trace(method: str, mem: float, grads: list[np.ndarray], ql: np.ndarray,
-                qr: np.ndarray, d: np.ndarray, every: int = 1,
-                true_frames: list[tuple[np.ndarray, np.ndarray]] | None = None) -> np.ndarray:
+def frame_trace(
+    method: str,
+    mem: float,
+    grads: list[np.ndarray],
+    ql: np.ndarray,
+    qr: np.ndarray,
+    d: np.ndarray,
+    every: int = 1,
+    true_frames: list[tuple[np.ndarray, np.ndarray]] | None = None,
+) -> np.ndarray:
     """Run one frame estimator on a fixed gradient list and return J after each step."""
     m, n = d.shape
     if method in ("pooled_eigh", "kl_eigh"):
@@ -246,8 +283,9 @@ def frame_trace(method: str, mem: float, grads: list[np.ndarray], ql: np.ndarray
 # ---------------------------------------------------------------------------------------------
 
 
-def paired_bootstrap_ci(diff: np.ndarray, n_boot: int = 20000, level: float = 0.95,
-                        seed: int = 0) -> tuple[float, float, float]:
+def paired_bootstrap_ci(
+    diff: np.ndarray, n_boot: int = 20000, level: float = 0.95, seed: int = 0
+) -> tuple[float, float, float]:
     """Mean of paired differences with a percentile bootstrap interval."""
     rng = np.random.default_rng(seed)
     diff = np.asarray(diff, dtype=float)

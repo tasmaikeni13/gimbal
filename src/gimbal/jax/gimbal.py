@@ -116,8 +116,7 @@ def schedule(t: int, cfg: GimbalConfig) -> Kind:
             count = 0
         moves.append(move)
     _MOVES[(cfg, "count")] = count
-    return Kind(first=t == 1, factors=warm and 1 < t <= tw, restart=restart,
-                move=moves[t - 1])
+    return Kind(first=t == 1, factors=warm and 1 < t <= tw, restart=restart, move=moves[t - 1])
 
 
 def init_state(shape: tuple[int, int], cfg: GimbalConfig, dtype=jnp.float32) -> dict:
@@ -125,11 +124,17 @@ def init_state(shape: tuple[int, int], cfg: GimbalConfig, dtype=jnp.float32) -> 
     m, n = shape
     z = jnp.zeros(shape, dtype)
     state = {
-        "M": z, "V": z, "VF": z, "VF_odd": z,
+        "M": z,
+        "V": z,
+        "VF": z,
+        "VF_odd": z,
         "w_odd": jnp.zeros((), dtype),
-        "QL": jnp.eye(m, dtype=dtype), "QR": jnp.eye(n, dtype=dtype),
-        "acc_L": jnp.zeros((m, m), dtype), "acc_R": jnp.zeros((n, n), dtype),
-        "keep": jnp.ones((), dtype), "count": jnp.zeros((), dtype),
+        "QL": jnp.eye(m, dtype=dtype),
+        "QR": jnp.eye(n, dtype=dtype),
+        "acc_L": jnp.zeros((m, m), dtype),
+        "acc_R": jnp.zeros((n, n), dtype),
+        "keep": jnp.ones((), dtype),
+        "count": jnp.zeros((), dtype),
     }
     if cfg.warm_start_steps > 1:
         state["L_acc"] = jnp.zeros((m, m), dtype)
@@ -142,8 +147,9 @@ def drop_warm_start_buffers(state: dict) -> dict:
     return {k: v for k, v in state.items() if k not in ("L_acc", "R_acc")}
 
 
-def _mean_shrinkage(m_prev: jax.Array, v_prev: jax.Array, t: jax.Array,
-                    cfg: GimbalConfig) -> jax.Array:
+def _mean_shrinkage(
+    m_prev: jax.Array, v_prev: jax.Array, t: jax.Array, cfg: GimbalConfig
+) -> jax.Array:
     """James–Stein factor of the previous momentum as an estimate of the mean (Prop. 5.7).
 
     ``||M||²`` and ``Σ V`` do not depend on the frame, so the rotated momentum gives the same
@@ -165,20 +171,25 @@ def _mean_shrinkage(m_prev: jax.Array, v_prev: jax.Array, t: jax.Array,
     return jnp.where(jnp.logical_and(separable, nonzero), c, 0.0)
 
 
-def _shrunk_variances(vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_odd: jax.Array,
-                      floor: float) -> jax.Array:
+def _shrunk_variances(
+    vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_odd: jax.Array, floor: float
+) -> jax.Array:
     """Empirical-Bayes variances for the flow (Proposition 5.5), as in the reference."""
     m, n = vf.shape
     v_hat = vf / w_full
     fl = floor * jnp.mean(v_hat) + tiny(vf.dtype)
     log_v = jnp.log(v_hat + fl)
-    additive = (jnp.mean(log_v, axis=1, keepdims=True) + jnp.mean(log_v, axis=0, keepdims=True)
-                - jnp.mean(log_v))
+    additive = (
+        jnp.mean(log_v, axis=1, keepdims=True)
+        + jnp.mean(log_v, axis=0, keepdims=True)
+        - jnp.mean(log_v)
+    )
     resid = log_v - additive
     w_even = w_full - w_odd
     split = jnp.logical_and(w_odd > 0.0, w_even > 1e-12 * w_full)
-    ratio = (jnp.log(vf_odd / jnp.where(split, w_odd, 1.0) + fl)
-             - jnp.log(jnp.maximum(vf - vf_odd, 0.0) / jnp.where(split, w_even, 1.0) + fl))
+    ratio = jnp.log(vf_odd / jnp.where(split, w_odd, 1.0) + fl) - jnp.log(
+        jnp.maximum(vf - vf_odd, 0.0) / jnp.where(split, w_even, 1.0) + fl
+    )
     noise = jnp.var(ratio) * (0.25 * (1.0 - 1.0 / m) * (1.0 - 1.0 / n))
     shrink = jnp.clip(1.0 - noise / jnp.maximum(jnp.mean(resid * resid), 1e-30), 0.0, 1.0)
     shrink = jnp.where(split, shrink, 0.0)
@@ -191,8 +202,9 @@ def _shrunk_variances(vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_odd
     return jnp.maximum(e * (jnp.mean(v_hat + fl) / jnp.mean(e)), tiny(vf.dtype))
 
 
-def separability_stats(vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_odd: jax.Array,
-                       floor: float) -> dict:
+def separability_stats(
+    vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_odd: jax.Array, floor: float
+) -> dict:
     """Diagnostics of the flow's variance average (not used by the update): the share of the
     variance of log V̂^F outside its additive fit (raw κ), the same share after subtracting the
     split-sample noise estimate (noise-corrected κ, the E3.1 statistic), and the shrinkage factor c
@@ -201,16 +213,22 @@ def separability_stats(vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_od
     v_hat = vf / w_full
     fl = floor * jnp.mean(v_hat) + tiny(vf.dtype)
     log_v = jnp.log(v_hat + fl)
-    additive = (jnp.mean(log_v, axis=1, keepdims=True) + jnp.mean(log_v, axis=0, keepdims=True)
-                - jnp.mean(log_v))
+    additive = (
+        jnp.mean(log_v, axis=1, keepdims=True)
+        + jnp.mean(log_v, axis=0, keepdims=True)
+        - jnp.mean(log_v)
+    )
     resid_sq = jnp.mean((log_v - additive) ** 2)
-    ratio = (jnp.log(vf_odd / w_odd + fl)
-             - jnp.log(jnp.maximum(vf - vf_odd, 0.0) / (w_full - w_odd) + fl))
+    ratio = jnp.log(vf_odd / w_odd + fl) - jnp.log(
+        jnp.maximum(vf - vf_odd, 0.0) / (w_full - w_odd) + fl
+    )
     noise = jnp.var(ratio) * (0.25 * (1.0 - 1.0 / m) * (1.0 - 1.0 / n))
     total = jnp.maximum(jnp.var(log_v), 1e-30)
-    return {"kappa_raw": resid_sq / total,
-            "kappa_noise_corrected": jnp.maximum(resid_sq - noise, 0.0) / total,
-            "shrink_c": jnp.clip(1.0 - noise / jnp.maximum(resid_sq, 1e-30), 0.0, 1.0)}
+    return {
+        "kappa_raw": resid_sq / total,
+        "kappa_noise_corrected": jnp.maximum(resid_sq - noise, 0.0) / total,
+        "shrink_c": jnp.clip(1.0 - noise / jnp.maximum(resid_sq, 1e-30), 0.0, 1.0),
+    }
 
 
 def _skew_score(z: jax.Array, za: jax.Array, side: str) -> jax.Array:
@@ -228,8 +246,9 @@ def _fisher(d: jax.Array, a: jax.Array, side: str) -> tuple[jax.Array, int]:
     return jnp.maximum(f + f.T - 2.0 * groups, 0.0), groups
 
 
-def _generator(score: jax.Array, fisher: jax.Array, groups: int, rate: jax.Array,
-               cfg: GimbalConfig) -> jax.Array:
+def _generator(
+    score: jax.Array, fisher: jax.Array, groups: int, rate: jax.Array, cfg: GimbalConfig
+) -> jax.Array:
     """Damped natural-gradient generator with the entry clip and the spectral trust region."""
     omega = -rate * score / (fisher + cfg.damping * groups)
     omega = omega * (1.0 - jnp.eye(omega.shape[0], dtype=omega.dtype))
@@ -238,8 +257,15 @@ def _generator(score: jax.Array, fisher: jax.Array, groups: int, rate: jax.Array
     return jnp.where(norm > cfg.max_rotation, omega * (cfg.max_rotation / norm), omega)
 
 
-def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
-         cfg: GimbalConfig, kind: Kind) -> tuple[dict, jax.Array]:
+def step(
+    state: dict,
+    g: jax.Array,
+    p: jax.Array,
+    lr: jax.Array,
+    t: jax.Array,
+    cfg: GimbalConfig,
+    kind: Kind,
+) -> tuple[dict, jax.Array]:
     """One Gimbal step for one matrix.
 
     Parameters
@@ -307,8 +333,7 @@ def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
     state["w_odd"] = state["w_odd"] * beta_d + odd * (1.0 - beta_d)
     if kind.restart:
         return state, delta
-    d = _shrunk_variances(state["VF"], state["VF_odd"], 1.0 - beta_d**tf, state["w_odd"],
-                          cfg.floor)
+    d = _shrunk_variances(state["VF"], state["VF_odd"], 1.0 - beta_d**tf, state["w_odd"], cfg.floor)
 
     # One accumulated natural-gradient step of the likelihood (Section 5, amortized flow).
     alpha = cfg.rot_rate
@@ -329,8 +354,7 @@ def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
     for key, side, acc in (("QL", "left", acc_l), ("QR", "right", acc_r)):
         fisher, groups = _fisher(d, a, side)
         omega = _generator(acc / k, fisher, groups, rate, cfg)
-        new_q[key] = polish_until_orthogonal(mm(state[key], expm2(omega)),
-                                             cfg.polish_max_iters)
+        new_q[key] = polish_until_orthogonal(mm(state[key], expm2(omega)), cfg.polish_max_iters)
     # Re-express the momentum in the new frame (it is a parameter-space quantity).
     state["M"] = rotate(unrotate(state["M"], ql, qr), new_q["QL"], new_q["QR"])
     state["QL"], state["QR"] = new_q["QL"], new_q["QR"]

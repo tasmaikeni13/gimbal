@@ -59,8 +59,7 @@ def jitted(name: str, kind):
 
 def run(method: str, lr: float, cfg: dict, seed: int, steps: int = 400) -> float:
     """Final loss (mean of the last 5% of steps), as in ``e25_noisy_quadratic.run``."""
-    rng = np.random.default_rng(10_000 + seed * 31 + int(cfg["gamma"] * 7)
-                                + int(cfg["noise"] * 13))
+    rng = np.random.default_rng(10_000 + seed * 31 + int(cfg["gamma"] * 7) + int(cfg["noise"] * 13))
     m, n = cfg["shape"]
     h = make_variances(m, n, cfg["gamma"], cfg["slope"], rng)
     h = h / h.max()
@@ -97,31 +96,52 @@ def run(method: str, lr: float, cfg: dict, seed: int, steps: int = 400) -> float
         if not math.isfinite(losses[-1]) or losses[-1] > 1e8:
             losses += [float("inf")] * (steps - t - 1)
             break
-    return float(np.mean(losses[-max(1, steps // 20):]))
+    return float(np.mean(losses[-max(1, steps // 20) :]))
 
 
 def main() -> None:
     lrs = json.loads((RESULTS / f"e25_selected_lr_{TAG}.json").read_text())
-    ref = [json.loads(x) for x in gzip.decompress(
-        (RESULTS / f"e25_eval_{TAG}.jsonl.gz").read_bytes()).decode().splitlines() if x]
+    ref = [
+        json.loads(x)
+        for x in gzip.decompress((RESULTS / f"e25_eval_{TAG}.jsonl.gz").read_bytes())
+        .decode()
+        .splitlines()
+        if x
+    ]
     rows, checks = [], {}
     for cfg in CONFIGS:
         for method in METHODS:
             lr = lrs[f"{cfg['gamma']}|{cfg['noise']}|{method}"]["lr"]
-            torch_rows = {r["seed"]: r["final_loss"] for r in ref if r["method"] == method
-                          and r["gamma"] == cfg["gamma"] and r["noise"] == cfg["noise"]}
+            torch_rows = {
+                r["seed"]: r["final_loss"]
+                for r in ref
+                if r["method"] == method
+                and r["gamma"] == cfg["gamma"]
+                and r["noise"] == cfg["noise"]
+            }
             diffs = []
             for seed in sorted(torch_rows):
                 ours = run(method, lr, cfg, seed)
-                rows.append({"method": method, "gamma": cfg["gamma"], "noise": cfg["noise"],
-                             "seed": seed, "lr": lr, "final_loss_jax": ours,
-                             "final_loss_torch": torch_rows[seed]})
+                rows.append(
+                    {
+                        "method": method,
+                        "gamma": cfg["gamma"],
+                        "noise": cfg["noise"],
+                        "seed": seed,
+                        "lr": lr,
+                        "final_loss_jax": ours,
+                        "final_loss_torch": torch_rows[seed],
+                    }
+                )
                 diffs.append(ours - torch_rows[seed])
             sd = float(np.std(list(torch_rows.values()), ddof=1))
             key = f"gamma={cfg['gamma']},noise={cfg['noise']},{method}"
-            checks[key] = {"mean_diff": float(np.mean(diffs)), "max_abs_diff":
-                           float(np.max(np.abs(diffs))), "seed_sd": sd,
-                           "pass": bool(abs(np.mean(diffs)) <= 0.1 * sd)}
+            checks[key] = {
+                "mean_diff": float(np.mean(diffs)),
+                "max_abs_diff": float(np.max(np.abs(diffs))),
+                "seed_sd": sd,
+                "pass": bool(abs(np.mean(diffs)) <= 0.1 * sd),
+            }
             print(key, checks[key], flush=True)
     gate = {"G3.3": all(c["pass"] for c in checks.values()), "checks": checks}
     OUT.mkdir(exist_ok=True)

@@ -53,8 +53,11 @@ def check_efficiency_inequality(rng, trials):
         worst = min(worst, ratio)
         w_mle = (a - b) / (a * b)
         eq_err = max(eq_err, abs(v_weighted(w_mle, a, b) * f - 1))
-    return {"min_ratio_V_times_F": worst, "mle_equality_max_err": eq_err,
-            "pass": bool(worst >= 1 - 1e-9 and eq_err < 1e-6)}
+    return {
+        "min_ratio_V_times_F": worst,
+        "mle_equality_max_err": eq_err,
+        "pass": bool(worst >= 1 - 1e-9 and eq_err < 1e-6),
+    }
 
 
 def check_separable_formulas(rng, trials):
@@ -69,8 +72,11 @@ def check_separable_formulas(rng, trials):
         err_kl = max(err_kl, abs(v_weighted(1 / mu, a, b) * f - 1))
         pred = n * np.sum(mu**2) / np.sum(mu) ** 2
         err_soap = max(err_soap, abs(v_weighted(np.ones(n), a, b) * f / pred - 1))
-    return {"kl_efficiency_max_err": err_kl, "soap_loss_formula_max_err": err_soap,
-            "pass": bool(err_kl < 1e-8 and err_soap < 1e-8)}
+    return {
+        "kl_efficiency_max_err": err_kl,
+        "soap_loss_formula_max_err": err_soap,
+        "pass": bool(err_kl < 1e-8 and err_soap < 1e-8),
+    }
 
 
 def angle_between(q_est, q_true, i, k):
@@ -109,10 +115,19 @@ def check_delta_method(rng, quick):
     cr = 1 / (fisher(a, b) * n_samples)
     rel = lambda e, p: abs(e / p - 1)  # noqa: E731
     tol = 0.15 if quick else 0.08
-    return {"pooled_pred": pred_pool, "pooled_emp": emp_pool, "kl_pred": pred_kl,
-            "kl_emp": emp_kl, "cramer_rao": cr,
-            "pass": bool(rel(emp_pool, pred_pool) < tol and rel(emp_kl, pred_kl) < tol
-                         and emp_pool > cr and emp_kl > cr)}
+    return {
+        "pooled_pred": pred_pool,
+        "pooled_emp": emp_pool,
+        "kl_pred": pred_kl,
+        "kl_emp": emp_kl,
+        "cramer_rao": cr,
+        "pass": bool(
+            rel(emp_pool, pred_pool) < tol
+            and rel(emp_kl, pred_kl) < tol
+            and emp_pool > cr
+            and emp_kl > cr
+        ),
+    }
 
 
 def check_fisher_mc(rng, quick):
@@ -126,8 +141,12 @@ def check_fisher_mc(rng, quick):
     score = np.sum(zi * zk * (1 / b - 1 / a), axis=1)
     emp = np.mean(score**2)
     f = fisher(a, b)
-    return {"fisher": f, "mc_score_second_moment": emp, "mean_score": float(np.mean(score)),
-            "pass": bool(abs(emp / f - 1) < 0.02 and abs(np.mean(score)) < 0.02 * np.sqrt(f))}
+    return {
+        "fisher": f,
+        "mc_score_second_moment": emp,
+        "mean_score": float(np.mean(score)),
+        "pass": bool(abs(emp / f - 1) < 0.02 and abs(np.mean(score)) < 0.02 * np.sqrt(f)),
+    }
 
 
 def check_flow_stationary_variance(rng, quick):
@@ -158,8 +177,12 @@ def check_flow_stationary_variance(rng, quick):
     emp = np.var(trace)
     pred = alpha / (2 - alpha) / f
     # AR(1) autocorrelation makes the variance estimate noisy: tolerance 15%.
-    return {"pred": pred, "emp": float(emp), "mean": float(trace.mean()),
-            "pass": bool(abs(emp / pred - 1) < 0.15 and abs(trace.mean()) < 3 * np.sqrt(pred))}
+    return {
+        "pred": pred,
+        "emp": float(emp),
+        "mean": float(trace.mean()),
+        "pass": bool(abs(emp / pred - 1) < 0.15 and abs(trace.mean()) < 3 * np.sqrt(pred)),
+    }
 
 
 def check_retractions(rng, trials):
@@ -179,8 +202,12 @@ def check_retractions(rng, trials):
         err_ns = max(err_ns, np.abs(y.T @ y - eye - rhs).max() / scale)
         cay = np.linalg.solve(eye - om, eye + om)
         err_cay = max(err_cay, np.abs(cay.T @ cay - eye).max())
-    return {"expm2_identity_err": err_exp, "ns_identity_err": err_ns, "cayley_orth_err": err_cay,
-            "pass": bool(err_exp < 1e-10 and err_ns < 1e-10 and err_cay < 1e-10)}
+    return {
+        "expm2_identity_err": err_exp,
+        "ns_identity_err": err_ns,
+        "cayley_orth_err": err_cay,
+        "pass": bool(err_exp < 1e-10 and err_ns < 1e-10 and err_cay < 1e-10),
+    }
 
 
 def check_transport(rng, trials):
@@ -192,8 +219,11 @@ def check_transport(rng, trials):
         err_ds = max(err_ds, np.abs(t.sum(0) - 1).max(), np.abs(t.sum(1) - 1).max())
         k = np.kron(pl, pr)
         err_kron = max(err_kron, np.abs(k * k - np.kron(pl * pl, pr * pr)).max())
-    return {"double_stochastic_err": err_ds, "kron_hadamard_err": err_kron,
-            "pass": bool(err_ds < 1e-12 and err_kron < 1e-12)}
+    return {
+        "double_stochastic_err": err_ds,
+        "kron_hadamard_err": err_kron,
+        "pass": bool(err_ds < 1e-12 and err_kron < 1e-12),
+    }
 
 
 def check_tie_identifiability(rng):
@@ -220,8 +250,11 @@ def check_tie_identifiability(rng):
         score = np.sum(zi * zk * (1 / d[1] - 1 / d[0]))
         theta_err += alpha * score / f  # same sign convention as check_flow_stationary_variance
     spread = float(np.std(pooled_spread))
-    return {"pooled_angle_spread_rad": spread, "flow_final_error_deg": float(np.rad2deg(theta_err)),
-            "pass": bool(spread > 0.2 and abs(np.rad2deg(theta_err)) < 5)}
+    return {
+        "pooled_angle_spread_rad": spread,
+        "flow_final_error_deg": float(np.rad2deg(theta_err)),
+        "pass": bool(spread > 0.2 and abs(np.rad2deg(theta_err)) < 5),
+    }
 
 
 def check_gimbal_step_invariances():
@@ -232,8 +265,11 @@ def check_gimbal_step_invariances():
 
     torch.manual_seed(0)
     gen = torch.Generator().manual_seed(0)
-    grads = [torch.randn(6, 6, generator=gen, dtype=torch.float64) * torch.linspace(0.2, 2, 6,
-             dtype=torch.float64) for _ in range(30)]
+    grads = [
+        torch.randn(6, 6, generator=gen, dtype=torch.float64)
+        * torch.linspace(0.2, 2, 6, dtype=torch.float64)
+        for _ in range(30)
+    ]
 
     def run(gs, w0):
         w = torch.nn.Parameter(w0.clone())
@@ -277,9 +313,12 @@ def main() -> int:
     out.write_text(json.dumps(results, indent=2, default=float))
     ok = all(r["pass"] for r in results.values())
     for name, r in results.items():
-        print(f"{'PASS' if r['pass'] else 'FAIL'}  {name}: "
-              + ", ".join(f"{k}={v:.4g}" for k, v in r.items()
-                          if k != "pass" and isinstance(v, (int, float))))
+        print(
+            f"{'PASS' if r['pass'] else 'FAIL'}  {name}: "
+            + ", ".join(
+                f"{k}={v:.4g}" for k, v in r.items() if k != "pass" and isinstance(v, (int, float))
+            )
+        )
     return 0 if ok else 1
 
 

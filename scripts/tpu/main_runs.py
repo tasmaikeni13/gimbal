@@ -46,20 +46,30 @@ def run(snapshot: str, opt: str, seed: int) -> dict:
     done = final(name)
     if done is not None and not done.get("diverged"):
         return done
-    base = (f"python -m gimbal.train.train --optimizer {opt} --seed {seed} --steps {STEPS} "
-            f"--run-dir runs/main/{name} --set log.ckpt_every=1000 {frozen_args(opt)}")
+    base = (
+        f"python -m gimbal.train.train --optimizer {opt} --seed {seed} --steps {STEPS} "
+        f"--run-dir runs/main/{name} --set log.ckpt_every=1000 {frozen_args(opt)}"
+    )
     env = dict(os.environ, GIMBAL_CODE=snapshot)
     divergences = 0
     resume_flag = ""
     for attempt in range(4):
         resume = resume_flag or ("--resume" if (RUNS / name / "log.jsonl").exists() else "")
         t0 = time.time()
-        proc = subprocess.run([str(ROOT / "scripts/tpu/launch.sh"),
-                               str(ROOT / "runs/logs/main" / f"{opt}_seed{seed}_a{attempt}"),
-                               f"{base} {resume}"], env=env)
+        proc = subprocess.run(
+            [
+                str(ROOT / "scripts/tpu/launch.sh"),
+                str(ROOT / "runs/logs/main" / f"{opt}_seed{seed}_a{attempt}"),
+                f"{base} {resume}",
+            ],
+            env=env,
+        )
         done = final(name)
-        print(f"{time.strftime('%H:%M:%S')} {name} attempt={attempt} exit={proc.returncode} "
-              f"{time.time() - t0:.0f}s {done}", flush=True)
+        print(
+            f"{time.strftime('%H:%M:%S')} {name} attempt={attempt} exit={proc.returncode} "
+            f"{time.time() - t0:.0f}s {done}",
+            flush=True,
+        )
         if done is not None and not done.get("diverged"):
             return done
         if done is not None and done.get("diverged"):
@@ -79,22 +89,47 @@ def run(snapshot: str, opt: str, seed: int) -> dict:
 def write_manifest() -> None:
     with (RUNS / "manifest.csv").open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["optimizer", "seed", "run_dir", "status", "val_loss", "train_seconds",
-                    "config_commit", "final_checkpoint"])
+        w.writerow(
+            [
+                "optimizer",
+                "seed",
+                "run_dir",
+                "status",
+                "val_loss",
+                "train_seconds",
+                "config_commit",
+                "final_checkpoint",
+            ]
+        )
         for seed in SEEDS:
             for opt in OPTIMIZERS:
                 name = f"{opt}/seed{seed}"
                 r = final(name)
                 cfg = RUNS / name / "config.json"
                 commit = json.loads(cfg.read_text()).get("git", "") if cfg.exists() else ""
-                status = ("planned" if r is None else "diverged" if r.get("diverged")
-                          else "done" if "val_loss" in r else "running")
+                status = (
+                    "planned"
+                    if r is None
+                    else "diverged"
+                    if r.get("diverged")
+                    else "done"
+                    if "val_loss" in r
+                    else "running"
+                )
                 # one shard file per host (process_<k>/shards.npz on worker k's local disk)
                 ckpt = RUNS / name / "ckpt" / f"step_{STEPS:06d}"
-                w.writerow([opt, seed, f"runs/main/{name}", status,
-                            "" if r is None else r.get("val_loss", ""),
-                            "" if r is None else round(r.get("train_seconds", 0)), commit,
-                            str(ckpt.relative_to(ROOT)) if ckpt.exists() else ""])
+                w.writerow(
+                    [
+                        opt,
+                        seed,
+                        f"runs/main/{name}",
+                        status,
+                        "" if r is None else r.get("val_loss", ""),
+                        "" if r is None else round(r.get("train_seconds", 0)),
+                        commit,
+                        str(ckpt.relative_to(ROOT)) if ckpt.exists() else "",
+                    ]
+                )
 
 
 def main() -> None:
@@ -103,8 +138,11 @@ def main() -> None:
     if snap_file.exists():
         snapshot = snap_file.read_text().strip()
     else:
-        snapshot = subprocess.check_output(
-            [str(ROOT / "scripts/tpu/snapshot.sh"), "main"], text=True).strip().splitlines()[-1]
+        snapshot = (
+            subprocess.check_output([str(ROOT / "scripts/tpu/snapshot.sh"), "main"], text=True)
+            .strip()
+            .splitlines()[-1]
+        )
         snap_file.write_text(snapshot + "\n")
     print("snapshot", snapshot, flush=True)
     write_manifest()

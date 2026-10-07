@@ -26,7 +26,12 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-extend-exclude = ["formal/.lake"]
+# tests/third_party: the vendored official SOAP, kept byte-identical to upstream.
+extend-exclude = ["formal/.lake", "tests/third_party"]
+
+[tool.ruff.format]
+# The parity test written against the vendored SOAP keeps its layout.
+exclude = ["tests/test_optimizers.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N"]

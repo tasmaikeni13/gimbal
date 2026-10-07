@@ -21,21 +21,32 @@ from jax.experimental import multihost_utils
 
 
 def _key(index: tuple, shape: tuple) -> str:
-    return ",".join(f"{s.start or 0}:{s.stop if s.stop is not None else n}"
-                    for s, n in zip(index, shape, strict=True))
+    return ",".join(
+        f"{s.start or 0}:{s.stop if s.stop is not None else n}"
+        for s, n in zip(index, shape, strict=True)
+    )
 
 
 def latest(ckpt_dir: pathlib.Path, at_most: int | None = None) -> int | None:
     """Step of the newest complete checkpoint (optionally the newest at or before ``at_most``)."""
-    steps = sorted(int(p.name.split("_")[1]) for p in ckpt_dir.glob("step_*")
-                   if (p / f"process_{jax.process_index()}" / "done").exists())
+    steps = sorted(
+        int(p.name.split("_")[1])
+        for p in ckpt_dir.glob("step_*")
+        if (p / f"process_{jax.process_index()}" / "done").exists()
+    )
     if at_most is not None:
         steps = [s for s in steps if s <= at_most]
     return steps[-1] if steps else None
 
 
-def save(ckpt_dir: pathlib.Path, step: int, params: dict, state: dict,
-         params_only: bool = False, keep: int = 2) -> None:
+def save(
+    ckpt_dir: pathlib.Path,
+    step: int,
+    params: dict,
+    state: dict,
+    params_only: bool = False,
+    keep: int = 2,
+) -> None:
     tree = {"params": params} if params_only else {"params": params, "state": state}
     leaves, _ = jax.tree.flatten(tree)
     out = ckpt_dir / f"step_{step:06d}" / f"process_{jax.process_index()}"
@@ -47,8 +58,9 @@ def save(ckpt_dir: pathlib.Path, step: int, params: dict, state: dict,
             if name not in arrays:
                 arrays[name] = np.asarray(sh.data)
     np.savez(out / "shards.npz", **arrays)
-    (out / "meta.json").write_text(json.dumps({"step": step, "leaves": len(leaves),
-                                               "params_only": params_only}))
+    (out / "meta.json").write_text(
+        json.dumps({"step": step, "leaves": len(leaves), "params_only": params_only})
+    )
     (out / "done").touch()
     multihost_utils.sync_global_devices(f"ckpt_{step}")
     kept = sorted(ckpt_dir.glob("step_*"), key=lambda p: int(p.name.split("_")[1]))[-keep:]
@@ -65,15 +77,19 @@ def restore(ckpt_dir: pathlib.Path, step: int, trainer, seed: int) -> tuple[dict
     params_abs = trainer.init_params_abstract()
     state_abs = trainer.abstract_state(step)
     tree_abs = {"params": params_abs, "state": state_abs}
-    shard = {"params": jax.tree.map(lambda _: trainer.replicated, params_abs),
-             "state": trainer.state_shardings(state_abs)}
+    shard = {
+        "params": jax.tree.map(lambda _: trainer.replicated, params_abs),
+        "state": trainer.state_shardings(state_abs),
+    }
     leaves, treedef = jax.tree.flatten(tree_abs)
     shard_leaves = jax.tree.leaves(shard)
-    data = np.load(ckpt_dir / f"step_{step:06d}" / f"process_{jax.process_index()}"
-                   / "shards.npz")
+    data = np.load(ckpt_dir / f"step_{step:06d}" / f"process_{jax.process_index()}" / "shards.npz")
     arrays = []
     for i, (x, sh) in enumerate(zip(leaves, shard_leaves, strict=True)):
-        arrays.append(jax.make_array_from_callback(
-            x.shape, sh, lambda index, i=i, x=x: data[f"{i}|{_key(index, x.shape)}"]))
+        arrays.append(
+            jax.make_array_from_callback(
+                x.shape, sh, lambda index, i=i, x=x: data[f"{i}|{_key(index, x.shape)}"]
+            )
+        )
     tree = jax.tree.unflatten(treedef, arrays)
     return tree["params"], tree["state"]

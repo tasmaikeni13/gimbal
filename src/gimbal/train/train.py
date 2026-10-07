@@ -52,11 +52,15 @@ def code_version() -> dict:
     snap = ROOT / "SNAPSHOT_COMMIT"
     if snap.exists():
         diff = (ROOT / "SNAPSHOT_DIFF").read_text()
-        return {"git": snap.read_text().strip(), "git_dirty": bool(diff.strip()),
-                "snapshot": str(ROOT)}
+        return {
+            "git": snap.read_text().strip(),
+            "git_dirty": bool(diff.strip()),
+            "snapshot": str(ROOT),
+        }
     git = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, cwd=ROOT)
-    dirty = subprocess.run(["git", "status", "--porcelain", "src", "configs"],
-                           capture_output=True, text=True, cwd=ROOT)
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain", "src", "configs"], capture_output=True, text=True, cwd=ROOT
+    )
     return {"git": git.stdout.strip(), "git_dirty": bool(dirty.stdout.strip())}
 
 
@@ -117,8 +121,9 @@ class Trainer:
     # -- placement ------------------------------------------------------------------------
     def init(self, seed: int) -> tuple[dict, dict]:
         """Parameters (replicated) and optimizer state, created directly in their layouts."""
-        params = jax.jit(partial(init_params, self.model_cfg),
-                         out_shardings=self.replicated)(jax.random.PRNGKey(seed))
+        params = jax.jit(partial(init_params, self.model_cfg), out_shardings=self.replicated)(
+            jax.random.PRNGKey(seed)
+        )
         make = partial(dist.init_state, self.spec, self.buckets)
         shard = self.state_shardings(jax.eval_shape(make, params))
         return params, jax.jit(make, out_shardings=shard)(params)
@@ -137,8 +142,11 @@ class Trainer:
         return state
 
     def state_shardings(self, state: dict) -> dict:
-        return jax.tree.map(lambda s: NamedSharding(self.mesh, s), dist.state_specs(state),
-                            is_leaf=lambda x: isinstance(x, P))
+        return jax.tree.map(
+            lambda s: NamedSharding(self.mesh, s),
+            dist.state_specs(state),
+            is_leaf=lambda x: isinstance(x, P),
+        )
 
     # -- compiled steps -------------------------------------------------------------------
     def _grad_specs(self) -> dict:
@@ -157,8 +165,13 @@ class Trainer:
             return jax.lax.pmean(loss, dist.AXIS), grads, dist.global_norm(grads)
 
         param_specs = {k: P() for k in self.param_shapes}
-        fn = shard_map(local, mesh=self.mesh, in_specs=(param_specs, P(dist.AXIS, None)),
-                       out_specs=(P(), self._grad_specs(), P()), check_rep=False)
+        fn = shard_map(
+            local,
+            mesh=self.mesh,
+            in_specs=(param_specs, P(dist.AXIS, None)),
+            out_specs=(P(), self._grad_specs(), P()),
+            check_rep=False,
+        )
         return jax.jit(fn)
 
     def _make_update_fn(self, kind, state: dict):
@@ -175,9 +188,13 @@ class Trainer:
         out_state = in_state
         if spec.name == "gimbal" and kind.restart:
             out_state = dist.state_specs(dist.drop_gimbal_warm_buffers(state))
-        fn = shard_map(local, mesh=self.mesh,
-                       in_specs=(in_state, self._grad_specs(), param_specs, P(), P(), P()),
-                       out_specs=(out_state, param_specs), check_rep=False)
+        fn = shard_map(
+            local,
+            mesh=self.mesh,
+            in_specs=(in_state, self._grad_specs(), param_specs, P(), P(), P()),
+            out_specs=(out_state, param_specs),
+            check_rep=False,
+        )
         return jax.jit(fn, donate_argnums=(0, 1, 2))
 
     def update(self, state, grads, params, gnorm, lr: float, t: int):
@@ -190,9 +207,13 @@ class Trainer:
     def _make_eval_fn(self):
         mcfg = self.model_cfg
         param_specs = {k: P() for k in self.param_shapes}
-        fn = shard_map(lambda params, batch: token_losses(params, batch, mcfg), mesh=self.mesh,
-                       in_specs=(param_specs, P(dist.AXIS, None)), out_specs=P(dist.AXIS),
-                       check_rep=False)
+        fn = shard_map(
+            lambda params, batch: token_losses(params, batch, mcfg),
+            mesh=self.mesh,
+            in_specs=(param_specs, P(dist.AXIS, None)),
+            out_specs=P(dist.AXIS),
+            check_rep=False,
+        )
         return jax.jit(fn)
 
     def evaluate(self, params, data: TokenFile, n_seq: int) -> np.ndarray:
@@ -200,8 +221,9 @@ class Trainer:
         from jax.experimental import multihost_utils
 
         out = []
-        for batch, real in eval_batches(data, n_seq, self.cfg["eval"]["batch"],
-                                        self.batch_sharding):
+        for batch, real in eval_batches(
+            data, n_seq, self.cfg["eval"]["batch"], self.batch_sharding
+        ):
             losses = multihost_utils.process_allgather(self._eval_fn(params, batch), tiled=True)
             out.append(np.asarray(losses)[:real])
         return np.concatenate(out)
@@ -222,7 +244,7 @@ def diagnostics(spec: dist.OptimizerSpec, buckets: tuple, state: dict, t: int) -
             continue
         stats = {}
         for side in ("QL", "QR"):
-            q = st[side][:b.count]
+            q = st[side][: b.count]
             gram = jnp.einsum("kij,kil->kjl", q, q, precision=jax.lax.Precision.HIGHEST)
             stats[f"orth_defect_{side}"] = jnp.max(jnp.abs(gram - jnp.eye(q.shape[-1])))
         if spec.name == "gimbal":
@@ -234,11 +256,15 @@ def diagnostics(spec: dist.OptimizerSpec, buckets: tuple, state: dict, t: int) -
                 resid = ld - ld.mean(1, keepdims=True) - ld.mean(0, keepdims=True) + ld.mean()
                 return jnp.var(resid) / jnp.maximum(jnp.var(ld), 1e-12)
 
-            stats["kappa_D_mean"] = jnp.mean(jax.vmap(kappa)(
-                st["VF"][:b.count], st["VF_odd"][:b.count], st["w_odd"][:b.count]))
+            stats["kappa_D_mean"] = jnp.mean(
+                jax.vmap(kappa)(
+                    st["VF"][: b.count], st["VF_odd"][: b.count], st["w_odd"][: b.count]
+                )
+            )
             stats_fn = partial(separability_stats, w_full=w_full, floor=spec.matrix.floor)
             raw = jax.vmap(lambda a, b_, c, f=stats_fn: f(a, b_, w_odd=c))(
-                st["VF"][:b.count], st["VF_odd"][:b.count], st["w_odd"][:b.count])
+                st["VF"][: b.count], st["VF_odd"][: b.count], st["w_odd"][: b.count]
+            )
             for name, v in raw.items():
                 stats[f"{name}_mean"] = jnp.mean(v)
                 stats[f"{name}_median"] = jnp.median(v)
@@ -257,15 +283,22 @@ def main() -> None:
     parser.add_argument("--run-dir", required=True)
     parser.add_argument("--set", action="append", default=[], help="dotted.key=yaml_value")
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--resume-before", type=int, default=None,
-                        help="resume from the newest checkpoint at or before this step "
-                             "(restart after a divergence)")
+    parser.add_argument(
+        "--resume-before",
+        type=int,
+        default=None,
+        help="resume from the newest checkpoint at or before this step "
+        "(restart after a divergence)",
+    )
     parser.add_argument("--full-eval", action="store_true", default=True)
     parser.add_argument("--no-full-eval", dest="full_eval", action="store_false")
     parser.add_argument("--eval-at-start", action="store_true")
-    parser.add_argument("--stop-after", type=int, default=None,
-                        help="stop after this many steps (smoke tests); the schedule still uses "
-                             "--steps")
+    parser.add_argument(
+        "--stop-after",
+        type=int,
+        default=None,
+        help="stop after this many steps (smoke tests); the schedule still uses --steps",
+    )
     args = parser.parse_args()
 
     jax.config.update("jax_compilation_cache_dir", str(ROOT / ".jax_cache"))
@@ -279,8 +312,9 @@ def main() -> None:
     if args.steps is not None:
         cfg["train"]["steps"] = args.steps
     steps = int(cfg["train"]["steps"])
-    run_dir = (ROOT / args.run_dir) if not os.path.isabs(args.run_dir) else pathlib.Path(
-        args.run_dir)
+    run_dir = (
+        (ROOT / args.run_dir) if not os.path.isabs(args.run_dir) else pathlib.Path(args.run_dir)
+    )
     trainer = Trainer(cfg, args.optimizer)
     warmup = max(1, round(cfg["train"]["warmup_frac"] * steps))
     batch = int(cfg["train"]["batch"])
@@ -301,7 +335,8 @@ def main() -> None:
     start = 0
     ckpt_dir = run_dir / "ckpt"
     if (args.resume or args.resume_before is not None) and checkpoint.latest(
-            ckpt_dir, args.resume_before) is not None:
+        ckpt_dir, args.resume_before
+    ) is not None:
         start = checkpoint.latest(ckpt_dir, args.resume_before)
         params, state = checkpoint.restore(ckpt_dir, start, trainer, args.seed)
 
@@ -309,11 +344,18 @@ def main() -> None:
     if writer:
         run_dir.mkdir(parents=True, exist_ok=True)
         meta = {
-            "optimizer": args.optimizer, "peak_lr": trainer.peak_lr, "seed": args.seed,
-            "steps": steps, "warmup": warmup, "tokens_per_step": tokens_per_step,
-            "matrix_config": asdict(trainer.spec.matrix), "other_config": asdict(
-                trainer.spec.other), "config": cfg, "n_params": count_params(params),
-            "n_devices": trainer.n_dev, "jax": jax.__version__,
+            "optimizer": args.optimizer,
+            "peak_lr": trainer.peak_lr,
+            "seed": args.seed,
+            "steps": steps,
+            "warmup": warmup,
+            "tokens_per_step": tokens_per_step,
+            "matrix_config": asdict(trainer.spec.matrix),
+            "other_config": asdict(trainer.spec.other),
+            "config": cfg,
+            "n_params": count_params(params),
+            "n_devices": trainer.n_dev,
+            "jax": jax.__version__,
             **code_version(),
             "argv": vars(args),
         }
@@ -331,8 +373,14 @@ def main() -> None:
     stop = steps if args.stop_after is None else min(steps, args.stop_after)
     if args.eval_at_start:
         v = trainer.evaluate(params, val_data, int(cfg["eval"]["subset_seqs"]))
-        emit(evals, {"step": start, "val_loss_subset": float(v.sum() / (
-            len(v) * trainer.model_cfg.seq_len)), "tokens": start * tokens_per_step})
+        emit(
+            evals,
+            {
+                "step": start,
+                "val_loss_subset": float(v.sum() / (len(v) * trainer.model_cfg.seq_len)),
+                "tokens": start * tokens_per_step,
+            },
+        )
     pending = None  # (step, loss, gnorm, lr): read one step late so the device never idles
     # Divergence (Phase 07): loss above twice its minimum over the previous 100 steps for 50
     # consecutive steps, or a non-finite loss. The rule was written for language-model losses
@@ -344,8 +392,9 @@ def main() -> None:
     t_start = t_last
     diverged = False
     eval_every = int(cfg["eval"]["every"])
-    for s, batch_arr in enumerate(train_batches(train_data, order, batch, start, stop,
-                                                trainer.batch_sharding), start=start):
+    for s, batch_arr in enumerate(
+        train_batches(train_data, order, batch, start, stop, trainer.batch_sharding), start=start
+    ):
         lr = lr_at(s, trainer.peak_lr, steps, warmup, cfg["train"]["final_lr_frac"])
         loss, grads, gnorm = trainer._grad_fn(params, batch_arr)
         state, params = trainer.update(state, grads, params, gnorm, lr, s + 1)
@@ -353,9 +402,18 @@ def main() -> None:
             ps, ploss, pgnorm, plr = pending
             ploss, pgnorm = float(ploss), float(pgnorm)
             now = time.perf_counter()
-            emit(log, {"step": ps, "loss": ploss, "lr": plr, "grad_norm": pgnorm,
-                       "step_time": now - t_last, "tokens_per_s": tokens_per_step / (now - t_last),
-                       "wall": now - t_start})
+            emit(
+                log,
+                {
+                    "step": ps,
+                    "loss": ploss,
+                    "lr": plr,
+                    "grad_norm": pgnorm,
+                    "step_time": now - t_last,
+                    "tokens_per_s": tokens_per_step / (now - t_last),
+                    "wall": now - t_start,
+                },
+            )
             t_last = now
             if not math.isfinite(ploss):
                 diverged = True
@@ -372,9 +430,15 @@ def main() -> None:
             jax.block_until_ready(params)
             t0 = time.perf_counter()
             v = trainer.evaluate(params, val_data, int(cfg["eval"]["subset_seqs"]))
-            emit(evals, {"step": done, "val_loss_subset": float(v.sum() / (
-                len(v) * trainer.model_cfg.seq_len)), "eval_seconds": time.perf_counter() - t0,
-                "tokens": done * tokens_per_step})
+            emit(
+                evals,
+                {
+                    "step": done,
+                    "val_loss_subset": float(v.sum() / (len(v) * trainer.model_cfg.seq_len)),
+                    "eval_seconds": time.perf_counter() - t0,
+                    "tokens": done * tokens_per_step,
+                },
+            )
             t_last += time.perf_counter() - t0  # evaluation time is not step time
         # Diagnostics and checkpoints are overheads: like evaluation, they are timed separately
         # and kept out of the step times (Phase 08 reports them apart from the step time).
@@ -394,16 +458,32 @@ def main() -> None:
     if pending is not None and not diverged:
         ps, ploss, pgnorm, plr = pending
         now = time.perf_counter()
-        emit(log, {"step": ps, "loss": float(ploss), "lr": plr, "grad_norm": float(pgnorm),
-                   "step_time": now - t_last, "tokens_per_s": tokens_per_step / (now - t_last),
-                   "wall": now - t_start})
+        emit(
+            log,
+            {
+                "step": ps,
+                "loss": float(ploss),
+                "lr": plr,
+                "grad_norm": float(pgnorm),
+                "step_time": now - t_last,
+                "tokens_per_s": tokens_per_step / (now - t_last),
+                "wall": now - t_start,
+            },
+        )
         diverged = not math.isfinite(float(ploss))
-    final = {"steps_done": stop if not diverged else None, "diverged": diverged,
-             "train_seconds": time.perf_counter() - t_start}
+    final = {
+        "steps_done": stop if not diverged else None,
+        "diverged": diverged,
+        "train_seconds": time.perf_counter() - t_start,
+    }
     if args.full_eval and not diverged and stop == steps:
         v = trainer.evaluate(params, val_data, val_data.n_seq)
-        final.update({"val_loss": float(v.sum() / (len(v) * trainer.model_cfg.seq_len)),
-                      "val_tokens": int(len(v) * trainer.model_cfg.seq_len)})
+        final.update(
+            {
+                "val_loss": float(v.sum() / (len(v) * trainer.model_cfg.seq_len)),
+                "val_tokens": int(len(v) * trainer.model_cfg.seq_len),
+            }
+        )
         if writer:
             np.save(run_dir / "val_seq_losses.npy", v.astype(np.float32))
         if int(cfg["log"].get("ckpt_every", 0)):

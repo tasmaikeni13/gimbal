@@ -15,8 +15,14 @@ from __future__ import annotations
 import numpy as np
 
 
-def stream(shape: tuple[int, int], steps: int, seed: int, kind: str = "identified",
-           scale: float = 1e-3, mean: float = 0.3) -> list[np.ndarray]:
+def stream(
+    shape: tuple[int, int],
+    steps: int,
+    seed: int,
+    kind: str = "identified",
+    scale: float = 1e-3,
+    mean: float = 0.3,
+) -> list[np.ndarray]:
     rng = np.random.default_rng(seed)
     m, n = shape
     ql = np.linalg.qr(rng.standard_normal((m, m)))[0]
@@ -30,8 +36,9 @@ def stream(shape: tuple[int, int], steps: int, seed: int, kind: str = "identifie
         raise ValueError(kind)
     d = d / d.mean()
     mu = mean * rng.standard_normal(shape)
-    return [(scale * (mu + ql @ (np.sqrt(d) * rng.standard_normal(shape)) @ qr.T))
-            for _ in range(steps)]
+    return [
+        (scale * (mu + ql @ (np.sqrt(d) * rng.standard_normal(shape)) @ qr.T)) for _ in range(steps)
+    ]
 
 
 def initial_params(shape: tuple[int, int], seed: int) -> np.ndarray:

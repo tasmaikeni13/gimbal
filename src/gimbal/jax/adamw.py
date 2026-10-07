@@ -25,8 +25,9 @@ def init_state(x: jax.Array) -> dict:
     return {"m": jnp.zeros_like(x, dtype), "v": jnp.zeros_like(x, dtype)}
 
 
-def step(state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array,
-         cfg: AdamWConfig) -> tuple[dict, jax.Array]:
+def step(
+    state: dict, g: jax.Array, p: jax.Array, lr: jax.Array, t: jax.Array, cfg: AdamWConfig
+) -> tuple[dict, jax.Array]:
     """One step; ``t`` is the 1-based step number. Returns the state and ``Δp``.
 
     Decoupled weight decay is applied as in PyTorch: ``p ← p (1 − lr·wd)`` before the Adam step.

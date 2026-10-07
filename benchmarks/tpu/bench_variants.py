@@ -55,27 +55,39 @@ def main() -> None:
         "fwd_bwd_local": (lambda p, b: jax.grad(full)(p, b), pspec),
         "fwd_bwd_reduce_scatter": (
             lambda p, b: dist.reduce_gradients(jax.grad(full)(p, b), tr.buckets, tr.n_dev),
-            tr._grad_specs()),
+            tr._grad_specs(),
+        ),
         "fwd_bwd_local_bf16_logits": (lambda p, b: jax.grad(bf16_logits_loss)(p, b), pspec),
         "fwd_bwd_local_no_head": (lambda p, b: jax.grad(hidden_loss)(p, b), pspec),
     }
     out = {}
     if os.environ.get("BENCH_MODEL_SET"):  # e.g. "attention=xla,scan_layers=false"
         import dataclasses
+
         sets = dict(kv.split("=") for kv in os.environ["BENCH_MODEL_SET"].split(","))
         mcfg = dataclasses.replace(mcfg, **{k: yaml.safe_load(v) for k, v in sets.items()})
         full = lambda p, b: M.loss_fn(p, b, mcfg)  # noqa: E731
-        variants = {"forward_only": (lambda p, b: jax.lax.pmean(full(p, b), "data"), P()),
-                    "fwd_bwd_local": (lambda p, b: jax.grad(full)(p, b), pspec)}
+        variants = {
+            "forward_only": (lambda p, b: jax.lax.pmean(full(p, b), "data"), P()),
+            "fwd_bwd_local": (lambda p, b: jax.grad(full)(p, b), pspec),
+        }
     for name, (fn, ospec) in variants.items():
-        f = jax.jit(shard_map(fn, mesh=tr.mesh, in_specs=(pspec, P("data", None)),
-                              out_specs=ospec, check_rep=False))
+        f = jax.jit(
+            shard_map(
+                fn,
+                mesh=tr.mesh,
+                in_specs=(pspec, P("data", None)),
+                out_specs=ospec,
+                check_rep=False,
+            )
+        )
         out[name] = timeit(f, params, batch)
         print(name, out[name], flush=True)
     if os.environ.get("GIMBAL_WORKER", "0") == "0":
         tag = os.environ.get("BENCH_MODEL_SET", "").replace("=", "_").replace(",", "__")
         (ROOT / f"benchmarks/tpu/results/variants{('_' + tag) if tag else ''}.json").write_text(
-            json.dumps(out, indent=1))
+            json.dumps(out, indent=1)
+        )
 
 
 if __name__ == "__main__":

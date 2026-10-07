@@ -36,19 +36,28 @@ def main() -> None:
     kind = tr.spec.kind(t)
     if name == "gimbal":
         from gimbal.jax import distributed as dist
+
         state = jax.eval_shape(lambda: dist.drop_gimbal_warm_buffers(state))
-        state = jax.tree.map(lambda s, sh: jax.ShapeDtypeStruct(s.shape, s.dtype, sharding=sh),
-                             state, tr.state_shardings(state))
+        state = jax.tree.map(
+            lambda s, sh: jax.ShapeDtypeStruct(s.shape, s.dtype, sharding=sh),
+            state,
+            tr.state_shardings(state),
+        )
     fn = tr._make_update_fn(kind, jax.eval_shape(lambda: state))
-    texts["update"] = fn.lower(state, grads, params, gnorm, jnp.float32(1e-3),
-                               jnp.int32(t)).compile().as_text()
+    texts["update"] = (
+        fn.lower(state, grads, params, gnorm, jnp.float32(1e-3), jnp.int32(t)).compile().as_text()
+    )
     if os.environ.get("GIMBAL_WORKER", "0") != "0":
         return
     for k, text in texts.items():
         (out / f"{name}_{k}.hlo.txt").write_text(text)
-        ops = collections.Counter(re.findall(
-            r"= \S+ (all-reduce|all-gather|reduce-scatter|all-to-all|collective-permute)"
-            r"(?:-start)?\(", text))
+        ops = collections.Counter(
+            re.findall(
+                r"= \S+ (all-reduce|all-gather|reduce-scatter|all-to-all|collective-permute)"
+                r"(?:-start)?\(",
+                text,
+            )
+        )
         print(name, k, dict(ops), flush=True)
         pattern = re.compile(r"(all-reduce|all-gather|reduce-scatter)(-start)?\(")
         for line in text.splitlines():

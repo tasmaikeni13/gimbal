@@ -75,13 +75,19 @@ def part1() -> dict:
                         j[dtype] = float(np.mean(trace[400:]))
                         ok &= finite
                         if dtype == torch.float32:
-                            out.append({"cell": [gamma, slope], "rate": rate, "k": k,
-                                        "seed": seed, "fp32_defect": defect})
+                            out.append(
+                                {
+                                    "cell": [gamma, slope],
+                                    "rate": rate,
+                                    "k": k,
+                                    "seed": seed,
+                                    "fp32_defect": defect,
+                                }
+                            )
                     ratios.append(j[torch.float32] / j[torch.float64])
                 r = float(np.mean(ratios))
                 ok &= 0.9 <= r <= 1.1
-                out.append({"cell": [gamma, slope], "rate": rate, "k": k,
-                            "J_ratio_fp32_fp64": r})
+                out.append({"cell": [gamma, slope], "rate": rate, "k": k, "J_ratio_fp32_fp64": r})
     return {"records": out, "pass": bool(ok)}
 
 
@@ -124,21 +130,29 @@ def part3() -> dict:
     pre-registered implementation of this test), and float32 at 1e+-15.
     """
     res, ok = {}, True
-    cases = (("square_default", (32, 32), "pooled", True),
-             ("rect_identity", (32, 48), "identity", True),
-             ("rect_default", (32, 48), "pooled", False))
+    cases = (
+        ("square_default", (32, 32), "pooled", True),
+        ("rect_identity", (32, 48), "identity", True),
+        ("rect_default", (32, 48), "pooled", False),
+    )
     for name, shape, init, gated in cases:
         grads, _, _, _ = stream(*shape, 1.0, 1.0, 54, 300)
-        for dtype, scales, tag in ((torch.float64, (1e-30, 1e-15, 1e15, 1e30), "fp64"),
-                                   (torch.float32, (1e-15, 1e15), "fp32")):
+        for dtype, scales, tag in (
+            (torch.float64, (1e-30, 1e-15, 1e15, 1e30), "fp64"),
+            (torch.float32, (1e-15, 1e15), "fp32"),
+        ):
             base = run_init(grads, dtype, 1.0, init)
             for c in scales:
                 ql, qr, finite = run_init(grads, dtype, c, init)
                 raw = max(float(np.abs(ql - base[0]).max()), float(np.abs(qr - base[1]).max()))
                 msp = max(mod_signed_permutation(ql, base[0]), mod_signed_permutation(qr, base[1]))
                 is_gate = gated and tag == "fp64"
-                res[f"{name}_{tag}_{c:g}"] = {"raw_deviation": raw, "mod_signed_perm": msp,
-                                             "finite": finite, "gated": is_gate}
+                res[f"{name}_{tag}_{c:g}"] = {
+                    "raw_deviation": raw,
+                    "mod_signed_perm": msp,
+                    "finite": finite,
+                    "gated": is_gate,
+                }
                 ok &= finite and (raw <= 1e-8 or not is_gate)
     return {**res, "pass": bool(ok)}
 
@@ -152,14 +166,25 @@ def part4() -> dict:
     cases = {
         "zeros_first": [np.zeros((m, n))] * 20 + base[20:],
         "all_zero": [np.zeros((m, n))] * steps,
-        "dead_row": [ql @ (np.sqrt(np.vstack([np.zeros((1, n)), d[1:]]))
-                           * rng.standard_normal((m, n))) @ qr.T for _ in range(steps)],
-        "dead_col": [ql @ (np.sqrt(np.hstack([np.zeros((m, 1)), d[:, 1:]]))
-                           * rng.standard_normal((m, n))) @ qr.T for _ in range(steps)],
-        "rank_one": [np.outer(rng.standard_normal(m), rng.standard_normal(n))
-                     for _ in range(steps)],
-        "range_1e12": [ql @ (np.sqrt(10.0 ** rng.uniform(-6, 6, (m, n)))
-                             * rng.standard_normal((m, n))) @ qr.T for _ in range(steps)],
+        "dead_row": [
+            ql
+            @ (np.sqrt(np.vstack([np.zeros((1, n)), d[1:]])) * rng.standard_normal((m, n)))
+            @ qr.T
+            for _ in range(steps)
+        ],
+        "dead_col": [
+            ql
+            @ (np.sqrt(np.hstack([np.zeros((m, 1)), d[:, 1:]])) * rng.standard_normal((m, n)))
+            @ qr.T
+            for _ in range(steps)
+        ],
+        "rank_one": [
+            np.outer(rng.standard_normal(m), rng.standard_normal(n)) for _ in range(steps)
+        ],
+        "range_1e12": [
+            ql @ (np.sqrt(10.0 ** rng.uniform(-6, 6, (m, n))) * rng.standard_normal((m, n))) @ qr.T
+            for _ in range(steps)
+        ],
         # noise-free: the momentum equals the gradient, so the centered statistic (C-013) is
         # rounding residue
         "constant": [base[0]] * steps,
@@ -178,44 +203,77 @@ def main() -> None:
     parser.add_argument("--tag", default="", help="suffix of the output files (re-runs)")
     args = parser.parse_args()
     torch.set_num_threads(1)
-    res = {"1_precision": part1(), "2_long_run": part2(), "3_scale": part3(),
-           "4_degenerate": part4()}
+    res = {
+        "1_precision": part1(),
+        "2_long_run": part2(),
+        "3_scale": part3(),
+        "4_degenerate": part4(),
+    }
     res["G2.6_iii"] = all(v["pass"] for v in res.values() if isinstance(v, dict))
     RESULTS.mkdir(parents=True, exist_ok=True)
     (RESULTS / f"e212_numerics{args.tag}.json").write_text(json.dumps(res, indent=1))
     p1 = [r for r in res["1_precision"]["records"] if "J_ratio_fp32_fp64" in r]
-    lines = ["# E2.12 numerical behaviour (generated by e212_numerics.py)", "",
-             "## 1. float32 vs float64 (frame KL ratio, mean over seeds 50–52)", "",
-             "| cell (γ, s) | rate | frame_every | J fp32 / J fp64 |", "|---|---|---|---|"]
-    lines += [f"| {r['cell']} | {r['rate']} | {r['k']} | {r['J_ratio_fp32_fp64']:.4f} |"
-              for r in p1]
+    lines = [
+        "# E2.12 numerical behaviour (generated by e212_numerics.py)",
+        "",
+        "## 1. float32 vs float64 (frame KL ratio, mean over seeds 50–52)",
+        "",
+        "| cell (γ, s) | rate | frame_every | J fp32 / J fp64 |",
+        "|---|---|---|---|",
+    ]
+    lines += [
+        f"| {r['cell']} | {r['rate']} | {r['k']} | {r['J_ratio_fp32_fp64']:.4f} |" for r in p1
+    ]
     d32 = max(r["fp32_defect"] for r in res["1_precision"]["records"] if "fp32_defect" in r)
-    lines += ["", f"Largest float32 orthogonality defect in these runs: {d32:.1e}.", "",
-              "## 2. 10⁴ steps, 64×64", "",
-              ", ".join(f"{k}: max defect {v['max_defect']:.1e}"
-                        for k, v in res["2_long_run"].items() if isinstance(v, dict)) + ".", "",
-              "## 3. Gradient scale (frame deviation from scale 1 after 300 steps)", "",
-              "Gated rows start from gauge-free frames (square stream with the default "
-              "initialization; identity initialization on 32×48). `rect_default` is the "
-              "pre-registered implementation: the first gradient's GᵀG is rank-deficient, so "
-              "eigh's basis of its null space is arbitrary and rounding differences select "
-              "different "
-              "bases (F-015); the flow then re-converges, as the distance modulo signed "
-              "permutations shows.", "",
-              "| case, precision, scale | raw deviation | modulo signed permutations | finite "
-              "| gated |", "|---|---|---|---|---|"]
+    lines += [
+        "",
+        f"Largest float32 orthogonality defect in these runs: {d32:.1e}.",
+        "",
+        "## 2. 10⁴ steps, 64×64",
+        "",
+        ", ".join(
+            f"{k}: max defect {v['max_defect']:.1e}"
+            for k, v in res["2_long_run"].items()
+            if isinstance(v, dict)
+        )
+        + ".",
+        "",
+        "## 3. Gradient scale (frame deviation from scale 1 after 300 steps)",
+        "",
+        "Gated rows start from gauge-free frames (square stream with the default "
+        "initialization; identity initialization on 32×48). `rect_default` is the "
+        "pre-registered implementation: the first gradient's GᵀG is rank-deficient, so "
+        "eigh's basis of its null space is arbitrary and rounding differences select "
+        "different "
+        "bases (F-015); the flow then re-converges, as the distance modulo signed "
+        "permutations shows.",
+        "",
+        "| case, precision, scale | raw deviation | modulo signed permutations | finite | gated |",
+        "|---|---|---|---|---|",
+    ]
     for k, v in res["3_scale"].items():
         if isinstance(v, dict):
-            lines.append(f"| {k} | {v['raw_deviation']:.1e} | {v['mod_signed_perm']:.1e} | "
-                         f"{v['finite']} | {v['gated']} |")
-    lines += ["", "## 4. Degenerate inputs (500 steps)", "", "| case | finite | max defect |",
-              "|---|---|---|"]
+            lines.append(
+                f"| {k} | {v['raw_deviation']:.1e} | {v['mod_signed_perm']:.1e} | "
+                f"{v['finite']} | {v['gated']} |"
+            )
+    lines += [
+        "",
+        "## 4. Degenerate inputs (500 steps)",
+        "",
+        "| case | finite | max defect |",
+        "|---|---|---|",
+    ]
     for k, v in res["4_degenerate"].items():
         if isinstance(v, dict):
             lines.append(f"| {k} | {v['finite']} | {v['max_defect']:.1e} |")
-    lines += ["", "Pass by part: " + ", ".join(f"{k}: {v['pass']}" for k, v in res.items()
-                                               if isinstance(v, dict)),
-              "", f"**G2.6 (iii): {res['G2.6_iii']}**"]
+    lines += [
+        "",
+        "Pass by part: "
+        + ", ".join(f"{k}: {v['pass']}" for k, v in res.items() if isinstance(v, dict)),
+        "",
+        f"**G2.6 (iii): {res['G2.6_iii']}**",
+    ]
     (RESULTS / f"e212_report{args.tag}.md").write_text("\n".join(lines))
     print("\n".join(lines))
 

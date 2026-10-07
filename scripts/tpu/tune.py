@@ -48,17 +48,23 @@ def launch(snapshot: str, opt: str, lr: float, seed: int, sets: list[str], name:
     done = result(name)
     if done is not None:
         return done
-    cmd = (f"python -m gimbal.train.train --optimizer {opt} --lr {lr} --seed {seed} "
-           f"--steps {STEPS} --run-dir runs/tuning/{name} "
-           + " ".join(f"--set {s}" for s in sets))
+    cmd = (
+        f"python -m gimbal.train.train --optimizer {opt} --lr {lr} --seed {seed} "
+        f"--steps {STEPS} --run-dir runs/tuning/{name} " + " ".join(f"--set {s}" for s in sets)
+    )
     for attempt in range(2):  # one retry for infrastructure failures (not for divergence)
         env = dict(os.environ, GIMBAL_CODE=snapshot)
         t0 = time.time()
-        proc = subprocess.run([str(ROOT / "scripts/tpu/launch.sh"),
-                               str(ROOT / "runs/logs/tuning" / name), cmd], env=env)
+        proc = subprocess.run(
+            [str(ROOT / "scripts/tpu/launch.sh"), str(ROOT / "runs/logs/tuning" / name), cmd],
+            env=env,
+        )
         done = result(name)
-        print(f"{time.strftime('%H:%M:%S')} {name} exit={proc.returncode} "
-              f"attempt={attempt} {time.time() - t0:.0f}s {done}", flush=True)
+        print(
+            f"{time.strftime('%H:%M:%S')} {name} exit={proc.returncode} "
+            f"attempt={attempt} {time.time() - t0:.0f}s {done}",
+            flush=True,
+        )
         if done is not None:
             return done
     return {"diverged": None, "failed": True}
@@ -97,15 +103,43 @@ def write_manifest(grids: dict) -> None:
                     rows.append(("C", opt, lr, f"{key}={v}", s, run_name(opt, lr, s, f"{key}{v}")))
     with (RUNS / "manifest.csv").open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["stage", "optimizer", "lr", "secondary", "seed", "run", "status",
-                    "val_loss", "train_seconds"])
+        w.writerow(
+            [
+                "stage",
+                "optimizer",
+                "lr",
+                "secondary",
+                "seed",
+                "run",
+                "status",
+                "val_loss",
+                "train_seconds",
+            ]
+        )
         for stage, opt, lr, sec, s, name in rows:
             r = result(name)
-            status = ("pending" if r is None else "diverged" if r.get("diverged")
-                      else "failed" if r.get("failed") else "done")
-            w.writerow([stage, opt, f"{lr:.4g}", sec, s, name, status,
-                        "" if r is None else r.get("val_loss", ""),
-                        "" if r is None else round(r.get("train_seconds", 0))])
+            status = (
+                "pending"
+                if r is None
+                else "diverged"
+                if r.get("diverged")
+                else "failed"
+                if r.get("failed")
+                else "done"
+            )
+            w.writerow(
+                [
+                    stage,
+                    opt,
+                    f"{lr:.4g}",
+                    sec,
+                    s,
+                    name,
+                    status,
+                    "" if r is None else r.get("val_loss", ""),
+                    "" if r is None else round(r.get("train_seconds", 0)),
+                ]
+            )
 
 
 def main() -> None:
@@ -114,8 +148,11 @@ def main() -> None:
     if snap_file.exists():
         snapshot = snap_file.read_text().strip()
     else:
-        snapshot = subprocess.check_output(
-            [str(ROOT / "scripts/tpu/snapshot.sh"), "tuning"], text=True).strip().splitlines()[-1]
+        snapshot = (
+            subprocess.check_output([str(ROOT / "scripts/tpu/snapshot.sh"), "tuning"], text=True)
+            .strip()
+            .splitlines()[-1]
+        )
         snap_file.write_text(snapshot + "\n")
     print("snapshot", snapshot, flush=True)
     grids = {opt: [c * 2.0**k for k in range(-3, 4)] for opt, c in CENTRE.items()}
@@ -133,8 +170,11 @@ def main() -> None:
             break
         for opt in CENTRE:
             lrs = sorted(grids[opt])
-            if best[opt] == lrs[-1] or (not edge[opt] and score(opt, lrs[lrs.index(best[opt]) + 1])
-                                        < score(opt, lrs[lrs.index(best[opt]) - 1])):
+            if best[opt] == lrs[-1] or (
+                not edge[opt]
+                and score(opt, lrs[lrs.index(best[opt]) + 1])
+                < score(opt, lrs[lrs.index(best[opt]) - 1])
+            ):
                 new = [lrs[-1] * 2, lrs[-1] * 4]
             else:
                 new = [lrs[0] / 2, lrs[0] / 4]
@@ -155,20 +195,39 @@ def main() -> None:
             for opt in CENTRE:
                 key, values = SECONDARY[opt]
                 v = values[idx]
-                launch(snapshot, opt, best[opt], s, [f"optimizers.{opt}.{key}={v}"],
-                       run_name(opt, best[opt], s, f"{key}{v}"))
+                launch(
+                    snapshot,
+                    opt,
+                    best[opt],
+                    s,
+                    [f"optimizers.{opt}.{key}={v}"],
+                    run_name(opt, best[opt], s, f"{key}{v}"),
+                )
                 write_manifest(grids)
     final = {}
     for opt in CENTRE:
         key, values = SECONDARY[opt]
-        scores = {v: (score(opt, best[opt]) if v == DEFAULT_SECONDARY[opt]
-                      else score(opt, best[opt], f"{key}{v}")) for v in values}
+        scores = {
+            v: (
+                score(opt, best[opt])
+                if v == DEFAULT_SECONDARY[opt]
+                else score(opt, best[opt], f"{key}{v}")
+            )
+            for v in values
+        }
         top = min(scores.values())
         # ties within 0.002 nats keep the default
-        chosen = (DEFAULT_SECONDARY[opt] if scores[DEFAULT_SECONDARY[opt]] <= top + 0.002
-                  else min(scores, key=scores.get))
-        final[opt] = {"lr": best[opt], key: chosen, "stage_c_scores": scores,
-                      "stage_a_scores": {f"{lr:.4g}": score(opt, lr) for lr in sorted(grids[opt])}}
+        chosen = (
+            DEFAULT_SECONDARY[opt]
+            if scores[DEFAULT_SECONDARY[opt]] <= top + 0.002
+            else min(scores, key=scores.get)
+        )
+        final[opt] = {
+            "lr": best[opt],
+            key: chosen,
+            "stage_c_scores": scores,
+            "stage_a_scores": {f"{lr:.4g}": score(opt, lr) for lr in sorted(grids[opt])},
+        }
     (RUNS / "selection.json").write_text(json.dumps(final, indent=1))
     print("selection", json.dumps(final), flush=True)
 

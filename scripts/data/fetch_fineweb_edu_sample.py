@@ -32,8 +32,7 @@ OUT = pathlib.Path(__file__).resolve().parents[2] / "data" / "raw"
 
 def fetch_rows(offset: int, length: int, retries: int = 5) -> list[str]:
     query = urllib.parse.urlencode(
-        {"dataset": DATASET, "config": CONFIG, "split": "train", "offset": offset,
-         "length": length}
+        {"dataset": DATASET, "config": CONFIG, "split": "train", "offset": offset, "length": length}
     )
     for attempt in range(retries):
         try:
@@ -79,23 +78,34 @@ def main() -> None:
     parser.add_argument("--train-docs", type=int, default=6000)
     parser.add_argument("--val-docs", type=int, default=600)
     parser.add_argument("--train-start", type=int, default=0)
-    parser.add_argument("--val-start", type=int, default=None,
-                        help="default 2,000,000 (parquet) or 5,000,000 (api)")
+    parser.add_argument(
+        "--val-start", type=int, default=None, help="default 2,000,000 (parquet) or 5,000,000 (api)"
+    )
     parser.add_argument("--source", choices=["parquet", "api"], default="parquet")
     args = parser.parse_args()
     if args.val_start is None:
         args.val_start = 2_000_000 if args.source == "parquet" else 5_000_000
     OUT.mkdir(parents=True, exist_ok=True)
-    manifest = {"dataset": DATASET, "config": CONFIG, "source": args.source,
-                "api": API if args.source == "api" else None}
-    for split, start, n in (("train", args.train_start, args.train_docs),
-                            ("val", args.val_start, args.val_docs)):
+    manifest = {
+        "dataset": DATASET,
+        "config": CONFIG,
+        "source": args.source,
+        "api": API if args.source == "api" else None,
+    }
+    for split, start, n in (
+        ("train", args.train_start, args.train_docs),
+        ("val", args.val_start, args.val_docs),
+    ):
         docs = (parquet_range if args.source == "parquet" else fetch_range)(start, n)
         blob = "\x00".join(docs).encode("utf-8")
         path = OUT / f"fineweb_edu_{split}.txt"
         path.write_bytes(blob)
-        manifest[split] = {"row_start": start, "n_docs": len(docs), "bytes": len(blob),
-                           "sha256": hashlib.sha256(blob).hexdigest()}
+        manifest[split] = {
+            "row_start": start,
+            "n_docs": len(docs),
+            "bytes": len(blob),
+            "sha256": hashlib.sha256(blob).hexdigest(),
+        }
         print(split, manifest[split], flush=True)
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

@@ -41,8 +41,9 @@ from ._linalg import (
 )
 
 
-def _rotated_copy(x: torch.Tensor, ql: torch.Tensor | None,
-                  qr: torch.Tensor | None) -> torch.Tensor:
+def _rotated_copy(
+    x: torch.Tensor, ql: torch.Tensor | None, qr: torch.Tensor | None
+) -> torch.Tensor:
     """``rotate`` that never aliases its input (with no frame on either side it returns ``x``)."""
     y = rotate(x, ql, qr)
     return y.clone() if y is x else y
@@ -300,8 +301,9 @@ class Gimbal(Optimizer):
             self._flow(state, z_flow, d, group)
 
     @staticmethod
-    def _mean_shrinkage(m_buf: torch.Tensor, v_buf: torch.Tensor, b1: float, b2: float,
-                        t: int) -> torch.Tensor:
+    def _mean_shrinkage(
+        m_buf: torch.Tensor, v_buf: torch.Tensor, b1: float, b2: float, t: int
+    ) -> torch.Tensor:
         """Empirical-Bayes factor of the previous momentum as an estimate of the mean (Prop. 5.7).
 
         The bias-corrected momentum over ``t - 1`` gradients carries sampling noise ``eta`` times
@@ -321,8 +323,9 @@ class Gimbal(Optimizer):
         return (1 - noise / s_m.clamp_min(torch.finfo(s_m.dtype).tiny)).clamp(0.0, 1.0)
 
     @staticmethod
-    def _shrunk_variances(vf: torch.Tensor, vf_odd: torch.Tensor, w_full: float, w_odd: float,
-                          floor: float) -> torch.Tensor:
+    def _shrunk_variances(
+        vf: torch.Tensor, vf_odd: torch.Tensor, w_full: float, w_odd: float, floor: float
+    ) -> torch.Tensor:
         """Empirical-Bayes variance estimate for the flow (Proposition 5.5).
 
         ``log D`` is split into its additive fit ``r_i + c_j`` (the separable, Kronecker-product
@@ -390,8 +393,9 @@ class Gimbal(Optimizer):
         return s - s.T, fisher, groups
 
     @staticmethod
-    def _generator(score: torch.Tensor, fisher: torch.Tensor, groups: int, rate: float,
-                   group: dict) -> torch.Tensor:
+    def _generator(
+        score: torch.Tensor, fisher: torch.Tensor, groups: int, rate: float, group: dict
+    ) -> torch.Tensor:
         """Damped natural-gradient generator (skew-symmetric) with the trust-region caps."""
         omega = score.mul(-rate).div_(fisher + group["damping"] * groups)
         omega.fill_diagonal_(0.0)

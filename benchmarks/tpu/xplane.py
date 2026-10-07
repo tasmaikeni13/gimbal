@@ -32,19 +32,20 @@ def _fields(buf: bytes):
         if wt == 0:
             val, i = _varint(buf, i)
         elif wt == 1:
-            val, i = buf[i:i + 8], i + 8
+            val, i = buf[i : i + 8], i + 8
         elif wt == 2:
             ln, i = _varint(buf, i)
-            val, i = buf[i:i + ln], i + ln
+            val, i = buf[i : i + ln], i + ln
         elif wt == 5:
-            val, i = buf[i:i + 4], i + 4
+            val, i = buf[i : i + 4], i + 4
         else:
             raise ValueError(f"unsupported wire type {wt}")
         yield num, wt, val
 
 
-def device_op_times(path: str, plane_prefix: str = "/device:TPU:0",
-                    line_names: tuple[str, ...] = ("XLA Ops",)) -> collections.Counter:
+def device_op_times(
+    path: str, plane_prefix: str = "/device:TPU:0", line_names: tuple[str, ...] = ("XLA Ops",)
+) -> collections.Counter:
     """Total duration (ns) per operation name on one device plane."""
     data = open(path, "rb").read()
     totals: collections.Counter = collections.Counter()

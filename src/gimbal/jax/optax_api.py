@@ -39,20 +39,24 @@ def _switch(index: jax.Array, kinds: list, fn: Callable) -> object:
     return jax.lax.switch(index, [lambda k=k: fn(k) for k in kinds])
 
 
-def adamw(learning_rate: LearningRate,
-          cfg: _adamw.AdamWConfig | None = None) -> optax.GradientTransformation:
+def adamw(
+    learning_rate: LearningRate, cfg: _adamw.AdamWConfig | None = None
+) -> optax.GradientTransformation:
     cfg = cfg or _adamw.AdamWConfig()
 
     def init(params):
-        return {"count": jnp.zeros((), jnp.int32),
-                "inner": jax.tree.map(_adamw.init_state, params)}
+        return {"count": jnp.zeros((), jnp.int32), "inner": jax.tree.map(_adamw.init_state, params)}
 
     def update(grads, state, params):
         t = state["count"] + 1
         lr = _lr(learning_rate, state["count"])
-        out = jax.tree.map(lambda s, g, p: _adamw.step(s, _f32(g), _f32(p), lr, t, cfg),
-                           state["inner"],
-                           grads, params, is_leaf=lambda x: isinstance(x, dict) and "m" in x)
+        out = jax.tree.map(
+            lambda s, g, p: _adamw.step(s, _f32(g), _f32(p), lr, t, cfg),
+            state["inner"],
+            grads,
+            params,
+            is_leaf=lambda x: isinstance(x, dict) and "m" in x,
+        )
         inner = jax.tree.map(lambda o: o[0], out, is_leaf=lambda x: isinstance(x, tuple))
         deltas = jax.tree.map(lambda o: o[1], out, is_leaf=lambda x: isinstance(x, tuple))
         return deltas, {"count": t, "inner": inner}
@@ -60,12 +64,20 @@ def adamw(learning_rate: LearningRate,
     return optax.GradientTransformation(init, update)
 
 
-def _matrix_transform(init_one: Callable, step_one: Callable, kinds: list,
-                      kind_index: Callable, learning_rate: LearningRate, t_of: Callable,
-                      fix_layout: Callable) -> optax.GradientTransformation:
+def _matrix_transform(
+    init_one: Callable,
+    step_one: Callable,
+    kinds: list,
+    kind_index: Callable,
+    learning_rate: LearningRate,
+    t_of: Callable,
+    fix_layout: Callable,
+) -> optax.GradientTransformation:
     def init(params):
-        return {"count": jnp.zeros((), jnp.int32),
-                "inner": [init_one(p) for p in jax.tree.leaves(params)]}
+        return {
+            "count": jnp.zeros((), jnp.int32),
+            "inner": [init_one(p) for p in jax.tree.leaves(params)],
+        }
 
     def update(grads, state, params):
         call = state["count"] + 1
@@ -74,10 +86,13 @@ def _matrix_transform(init_one: Callable, step_one: Callable, kinds: list,
         p_leaves = jax.tree.leaves(params)
 
         def run(kind):
-            outs = [step_one(s, _f32(g), _f32(p), lr, t_of(call), kind)
-                    for s, g, p in zip(state["inner"], g_leaves, p_leaves, strict=True)]
-            return [fix_layout(o[0], s) for o, s in zip(outs, state["inner"], strict=True)], \
-                [o[1] for o in outs]
+            outs = [
+                step_one(s, _f32(g), _f32(p), lr, t_of(call), kind)
+                for s, g, p in zip(state["inner"], g_leaves, p_leaves, strict=True)
+            ]
+            return [fix_layout(o[0], s) for o, s in zip(outs, state["inner"], strict=True)], [
+                o[1] for o in outs
+            ]
 
         inner, deltas = _switch(kind_index(call), kinds, run)
         return jax.tree.unflatten(treedef, deltas), {"count": call, "inner": inner}
@@ -85,8 +100,9 @@ def _matrix_transform(init_one: Callable, step_one: Callable, kinds: list,
     return optax.GradientTransformation(init, update)
 
 
-def soap(learning_rate: LearningRate,
-         cfg: _soap.SOAPConfig | None = None) -> optax.GradientTransformation:
+def soap(
+    learning_rate: LearningRate, cfg: _soap.SOAPConfig | None = None
+) -> optax.GradientTransformation:
     cfg = cfg or _soap.SOAPConfig()
     kinds = [_soap.Kind(init=a, refresh=b) for a, b in itertools.product((False, True), repeat=2)]
 
@@ -95,15 +111,20 @@ def soap(learning_rate: LearningRate,
         refresh = jnp.logical_and(t > 0, t % cfg.precondition_frequency == 0)
         return 2 * (call == 1).astype(jnp.int32) + refresh.astype(jnp.int32)
 
-    return _matrix_transform(lambda p: _soap.init_state(p.shape),
-                             lambda s, g, p, lr, t, k: _soap.step(s, g, p, lr, t, cfg, k),
-                             kinds, kind_index, learning_rate,
-                             t_of=lambda call: jnp.maximum(call - 1, 1),
-                             fix_layout=lambda new, old: new)
+    return _matrix_transform(
+        lambda p: _soap.init_state(p.shape),
+        lambda s, g, p, lr, t, k: _soap.step(s, g, p, lr, t, cfg, k),
+        kinds,
+        kind_index,
+        learning_rate,
+        t_of=lambda call: jnp.maximum(call - 1, 1),
+        fix_layout=lambda new, old: new,
+    )
 
 
-def gimbal(learning_rate: LearningRate,
-           cfg: _gimbal.GimbalConfig | None = None) -> optax.GradientTransformation:
+def gimbal(
+    learning_rate: LearningRate, cfg: _gimbal.GimbalConfig | None = None
+) -> optax.GradientTransformation:
     cfg = cfg or _gimbal.GimbalConfig()
     # The move pattern is tabulated until it is periodic (fixed period frame_every once the
     # adaptive k_t has reached it and the warm start is over) and continued periodically after.
@@ -135,7 +156,12 @@ def gimbal(learning_rate: LearningRate,
         # Keep the warm-start buffers (as zeros once freed) so every branch has one layout.
         return {**{k: jnp.zeros_like(v) for k, v in old.items() if k not in new}, **new}
 
-    return _matrix_transform(lambda p: _gimbal.init_state(p.shape, cfg),
-                             lambda s, g, p, lr, t, k: _gimbal.step(s, g, p, lr, t, cfg, k),
-                             kinds, kind_index, learning_rate, t_of=lambda call: call,
-                             fix_layout=fix_layout)
+    return _matrix_transform(
+        lambda p: _gimbal.init_state(p.shape, cfg),
+        lambda s, g, p, lr, t, k: _gimbal.step(s, g, p, lr, t, cfg, k),
+        kinds,
+        kind_index,
+        learning_rate,
+        t_of=lambda call: call,
+        fix_layout=fix_layout,
+    )

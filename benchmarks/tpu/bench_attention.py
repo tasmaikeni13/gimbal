@@ -13,9 +13,16 @@ import jax
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-VARIANTS = [("xla", 0, 0, 1), ("flash", 0, 0, 1), ("flash", 256, 256, 1), ("flash", 512, 512, 1),
-            ("flash", 1024, 512, 1), ("flash", 1024, 1024, 1), ("flash", 512, 512, 3),
-            ("flash", 1024, 1024, 3)]
+VARIANTS = [
+    ("xla", 0, 0, 1),
+    ("flash", 0, 0, 1),
+    ("flash", 256, 256, 1),
+    ("flash", 512, 512, 1),
+    ("flash", 1024, 512, 1),
+    ("flash", 1024, 1024, 1),
+    ("flash", 512, 512, 3),
+    ("flash", 1024, 1024, 3),
+]
 
 
 def main() -> None:
@@ -31,13 +38,12 @@ def main() -> None:
     order = train_order(data.n_seq, 0)
     out = {}
     for kind, bq, bk, bb in VARIANTS:
-        cfg["model"].update(attention=kind, flash_block_q=bq, flash_block_k=bk,
-                            flash_block_b=bb)
+        cfg["model"].update(attention=kind, flash_block_q=bq, flash_block_k=bk, flash_block_b=bb)
         name = f"{kind}_q{bq}_k{bk}_b{bb}"
         try:
             tr = Trainer(cfg, "adamw")
             params, _ = tr.init(0)
-            batch = global_batch(data, order[:cfg["train"]["batch"]], tr.batch_sharding)
+            batch = global_batch(data, order[: cfg["train"]["batch"]], tr.batch_sharding)
             out[name] = timeit(tr._grad_fn, params, batch)
         except Exception as exc:
             out[name] = f"failed: {type(exc).__name__}: {exc}"[:300]

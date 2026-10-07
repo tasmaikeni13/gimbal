@@ -45,12 +45,34 @@ def run(method: str, lr: float, seed: int, steps: int, threads: int, tag: str) -
     path = summary_path(method, lr, seed, tag)
     if path.exists():
         return json.loads(path.read_text())
-    cmd = [sys.executable, str(HERE / "e27_small_lm.py"), "--method", method, "--lr", str(lr),
-           "--seed", str(seed), "--steps", str(steps), "--threads", str(threads), "--tag", tag]
-    env = {"OMP_NUM_THREADS": str(threads), "MKL_NUM_THREADS": str(threads),
-           "OPENBLAS_NUM_THREADS": str(threads)}
-    subprocess.run(cmd, check=True, cwd=HERE, env={**__import__("os").environ, **env},
-                   stdout=subprocess.DEVNULL)
+    cmd = [
+        sys.executable,
+        str(HERE / "e27_small_lm.py"),
+        "--method",
+        method,
+        "--lr",
+        str(lr),
+        "--seed",
+        str(seed),
+        "--steps",
+        str(steps),
+        "--threads",
+        str(threads),
+        "--tag",
+        tag,
+    ]
+    env = {
+        "OMP_NUM_THREADS": str(threads),
+        "MKL_NUM_THREADS": str(threads),
+        "OPENBLAS_NUM_THREADS": str(threads),
+    }
+    subprocess.run(
+        cmd,
+        check=True,
+        cwd=HERE,
+        env={**__import__("os").environ, **env},
+        stdout=subprocess.DEVNULL,
+    )
     return json.loads(path.read_text())
 
 
@@ -101,16 +123,22 @@ def main() -> None:
     def one(job):
         method, lr, seed = job
         r = run(method, lr, seed, args.steps, args.threads, args.tag)
-        print(f"{args.stage} {method:9s} lr={lr:<8g} seed={seed} val={r['final_val_loss']:.4f} "
-              f"opt_s={r['optimizer_seconds']:.0f}", flush=True)
+        print(
+            f"{args.stage} {method:9s} lr={lr:<8g} seed={seed} val={r['final_val_loss']:.4f} "
+            f"opt_s={r['optimizer_seconds']:.0f}",
+            flush=True,
+        )
 
     with ThreadPoolExecutor(args.jobs) as pool:
         list(pool.map(one, todo))
         if args.stage == "A":
             # Equal treatment: extend any grid whose optimum is on its edge (at most twice).
             for _ in range(2):
-                ext = [(m, lr, 0) for m in args.methods
-                       if (lr := edge_extension(m, args.tag)) is not None]
+                ext = [
+                    (m, lr, 0)
+                    for m in args.methods
+                    if (lr := edge_extension(m, args.tag)) is not None
+                ]
                 if not ext:
                     break
                 list(pool.map(one, ext))
