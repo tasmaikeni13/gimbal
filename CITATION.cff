@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: "Gimbal: Adam in a Maximum-Likelihood Kronecker Frame"
+type: software
+authors:
+  - family-names: Keni
+    given-names: Tasmai
+repository-code: "https://github.com/tasmaikeni13/gimbal"
+license: MIT
+version: "1.0.0"
+date-released: "2026-10-07"
+keywords:
+  - optimization
+  - preconditioning
+  - SOAP
+  - Shampoo
+  - joint diagonalization
+  - language models

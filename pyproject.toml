@@ -7,6 +7,8 @@ name = "gimbal"
 version = "0.1.0"
 description = "Gimbal: matrix-preconditioned optimization with a self-consistent, online maximum-likelihood eigenbasis"
 readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Tasmai Keni"}]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.26",
