@@ -1,1 +1,16 @@
-\emph{Pending: written after Phase 08 from the claim matrix.}
+SOAP runs Adam in a rotated frame of each weight matrix, but it takes the frame from Shampoo's
+Kronecker factors, which belong to a different statistical model than the free diagonal that Adam
+estimates in it. We derive the frame that maximizes the likelihood of SOAP's own model, a
+joint-diagonalization problem, together with its score and Fisher information, and show that the
+likelihood identifies every pair of rows whose variance profiles differ while every
+single-factor estimator, SOAP's and KL-Shampoo's included, is statistically inefficient except in
+special cases (\LeanCount{} statements checked in Lean). Gimbal follows the likelihood frame online
+with a damped natural-gradient flow on the orthogonal groups that uses only matrix products after a
+short warm start. On synthetic gradient streams with known truth, pooled across conditions, the
+frame KL of SOAP's estimator is \FactorSoap{} times and KL-SOAP's \FactorKlsoap{} times Gimbal's. On
+the two language models we trained the premise behind the method fails: the rotated gradient
+variances are almost exactly separable. In a 125M-parameter, 2.5B-token comparison on a
+TPU v4-32, with equal tuning budgets, two seeds and a decision rule fixed in advance, Gimbal reaches
+a lower validation loss than AdamW (\ValGimbal{} against \ValAdamw{}) but only matches SOAP
+(\ValSoap{}), while its step is \MainStepGimbalOverSoap\% slower. We report the theory, the
+negative result and the evidence that explains it.

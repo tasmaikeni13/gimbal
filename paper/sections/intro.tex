@@ -30,14 +30,19 @@ machine-checked in Lean.
 toward the separable fit, an innovation-centred statistic, a pooled warm start and adaptive
 amortization; matrix products only after step 50.
 \item Evidence at three levels, including where it is negative: Monte Carlo on gradient streams
-with known truth (\cref{sec:montecarlo}), where Gimbal's frame is several times more accurate than
-SOAP's and KL-SOAP's; a small language model (\cref{sec:smalllm}), where the premise that real
-gradient variances are non-separable fails, Gimbal beats SOAP narrowly and KL-SOAP beats Gimbal; and
-a 125M-parameter, 2.5B-token comparison with AdamW and SOAP on a TPU v4-32 under equal tuning budgets
-(\cref{sec:setup,sec:results}).
+with known truth (\cref{sec:montecarlo}), where Gimbal's frame is much more accurate than SOAP's
+and KL-SOAP's; a small language model (\cref{sec:smalllm}), where the premise that real gradient
+variances are non-separable fails, Gimbal beats SOAP narrowly and KL-SOAP beats Gimbal; and a
+125M-parameter, 2.5B-token comparison with AdamW and SOAP on a TPU v4-32 under equal tuning
+budgets and a decision rule fixed in advance (\cref{sec:setup,sec:results}).
 \end{itemize}
 
-At 125M parameters the predeclared decision rule gives: Gimbal beats AdamW on loss:
-\BeatsLossAdamw; beats SOAP on loss: \BeatsLossSoap; the headline claim (beats both on loss and is no
-slower than SOAP per step) is \Headline. In the confirmatory runs Gimbal's training step took
-\MainStepGimbalOverSoap\% longer than SOAP's on the TPU.
+The 125M comparison is negative for the method's main claim. Gimbal beats AdamW clearly (final
+validation loss \ValGimbal{} against \ValAdamw{}, mean of two seeds) but only matches SOAP
+(\ValSoap{}): the paired differences have opposite signs on the two seeds, and Gimbal's step is
+\MainStepGimbalOverSoap\% slower on the TPU, so the predeclared headline claim is \Headline. The
+diagnostics point to the same cause as on the small model: in the rotated frame the gradient
+variances of these models are almost exactly separable, which is the case in which our theory
+says the likelihood frame and the pooled factors agree. Along the way we found that Adam's
+momentum $\beta_1=0.9$ makes both SOAP and Gimbal unstable early at high learning rates on this
+model, a confound that equal-budget comparisons of frame-based optimizers should control.
