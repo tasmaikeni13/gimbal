@@ -81,7 +81,8 @@ large, are not amortized.
 \paragraph{Defaults.}
 $\alpha=1-\beta_2=0.05$ (the frame, its variances and Adam's second moment share one estimation
 window of effective size 39, SOAP's convention for its factors), $\delta=0.003$,
-$\theta_{\max}=0.25$, $K=4$, $T_w=50$, $\beta=(0.9,0.95)$. \Cref{alg:gimbal} summarizes one step.
+$\theta_{\max}=0.25$, $K=4$, $T_w=50$, $\beta=(0.9,0.95)$; in every comparison $\beta_1$ is the
+same for all frame-based methods (SOAP's $0.95$ at 125M, \cref{sec:setup}). \Cref{alg:gimbal} summarizes one step.
 
 \begin{figure}[t]
 \centering

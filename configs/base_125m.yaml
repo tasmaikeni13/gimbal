@@ -36,7 +36,8 @@ optimizers:
   adamw:  {lr: 1.0e-3, b1: 0.9, b2: 0.95, eps: 1.0e-8}
   soap:   {lr: 3.0e-3, b1: 0.95, b2: 0.95, shampoo_beta: -1.0, eps: 1.0e-8,
            precondition_frequency: 10}
-  gimbal: {lr: 3.0e-3, b1: 0.9, b2: 0.95, eps: 1.0e-8, rot_rate: 0.05, rot_rate_max: 0.5,
+  # Gimbal's momentum matched to SOAP's (C-019, F-032): the comparison is about the frame
+  gimbal: {lr: 3.0e-3, b1: 0.95, b2: 0.95, eps: 1.0e-8, rot_rate: 0.05, rot_rate_max: 0.5,
            damping: 0.003, floor: 1.0e-8, max_angle: 0.25, max_rotation: 1.0, frame_every: 4,
            frame_schedule: adaptive, warm_start_steps: 50}
 other:                    # embeddings and norms, identical for every optimizer (no weight decay)

@@ -70,7 +70,7 @@ Source: `theory/gimbal_theory.md` §5 (this project). Defaults as of change C-01
   orthogonality defect is below 1e-6 (float32), at most 4 iterations.
 * Block length: `k_t = clamp(round(K·α/α_t), 1, K)` (adaptive amortization, C-018).
 
-Defaults: β = (0.9, 0.95), ε = 1e-8, α (`rot_rate`) = 1 − β₂ = 0.05, δ (`damping`) = 0.003,
+Defaults: β = (0.9, 0.95) (the 125M study uses SOAP's β₁ = 0.95, C-019), ε = 1e-8, α (`rot_rate`) = 1 − β₂ = 0.05, δ (`damping`) = 0.003,
 ρ (`floor`) = 1e-8, θ_max = 0.25, spectral cap 1, K (`frame_every`) = 4 adaptive, T_w = 50,
 λ = 0.1 (TPU study); learning-rate grid centre 3e-3 (the reference implementation's default,
 equal to SOAP's). Secondary knob: α ∈ {0.025, 0.05, 0.1}. History of the defaults:

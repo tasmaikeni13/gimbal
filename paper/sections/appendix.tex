@@ -52,7 +52,7 @@ noise estimate, and the conjecture; these are proved on paper or checked by Mont
 
 Exact update rules, defaults and sources of AdamW~\citep{loshchilov2019adamw}, SOAP and Gimbal, and
 of the PyTorch-only peers of \cref{sec:smalllm} (SOAP real-time, KL-SOAP, Muon, NorMuon, SPlus,
-ARO), are in \texttt{docs/optimizers.md}. Gimbal's defaults: $\beta=(0.9,0.95)$,
+ARO), are in \texttt{docs/optimizers.md}. Gimbal's defaults: $\beta=(0.9,0.95)$ ($\beta_1=0.95$, SOAP's, at 125M),
 $\epsilon=10^{-8}$, $\alpha=0.05$, $\delta=0.003$, relative floor $10^{-8}$, $\theta_{\max}=0.25$, spectral
 cap 1, $K=4$ (adaptive), $T_w=50$. SOAP: $\beta=(0.95,0.95)$, factor memory $\beta_s=\beta_2$,
 $f=10$. AdamW: $\beta=(0.9,0.95)$. Weight decay 0.1 on hidden matrices for all three.

@@ -130,6 +130,15 @@ def test_adamw_matches_torch():
 ADAPTIVE = dict(frame_schedule="adaptive", rot_rate=0.05)  # the default since C-018
 FIXED = dict(frame_schedule="fixed", rot_rate=0.02)  # the default before C-018
 TRANSPORT = dict(ADAPTIVE, transport=True)  # moments transported at every move (Theorem 7)
+SOAP_MOMENTUM = dict(ADAPTIVE, b1=0.95)  # the 125M study's setting (C-019)
+
+
+def _torch_kwargs(variant: dict) -> dict:
+    """The reference's keyword arguments for a JAX config variant (``b1`` -> ``betas``)."""
+    kw = {k: v for k, v in variant.items() if k != "b1"}
+    if "b1" in variant:
+        kw["betas"] = (variant["b1"], 0.95)
+    return kw
 
 
 @cpu_only
@@ -151,14 +160,14 @@ def test_gimbal_golden_float64(shape, kind, variant):
 
 
 @cpu_only
-@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE, TRANSPORT])
+@pytest.mark.parametrize("variant", [FIXED, ADAPTIVE, TRANSPORT, SOAP_MOMENTUM])
 def test_gimbal_float64_single_steps(variant):
     """Every step, started from the reference's own state, agrees to rounding (float64)."""
     shape = (10, 6)
     grads = stream(shape, 70, seed=14)
     p0 = initial_params(shape, 14)
     ref, states, _ = _torch_run(
-        Gimbal, dict(lr=LR, weight_decay=0.1, **variant), p0, grads, keep_states=True
+        Gimbal, dict(lr=LR, weight_decay=0.1, **_torch_kwargs(variant)), p0, grads, keep_states=True
     )
     cfg = jgimbal.GimbalConfig(weight_decay=0.1, **variant)
     with enable_x64():
