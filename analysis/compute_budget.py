@@ -39,6 +39,29 @@ def launches(path: pathlib.Path) -> list[tuple[str, int]]:
     return out
 
 
+DIAG = re.compile(r"^(\d\d):(\d\d):(\d\d) (start|end) (\S+)")
+DIAG_OPT = {"d6_soap_b1_09": "soap"}  # the other F-032 diagnostics ran Gimbal
+
+
+def diagnostics() -> dict:
+    """F-032 diagnostic runs (``runs/logs/diag/*.log``: start and end times of each launch)."""
+    per = defaultdict(lambda: {"launches": 0, "seconds": 0})
+    for log in sorted((ROOT / "runs" / "logs" / "diag").glob("*.log")):
+        start = {}
+        for line in log.read_text().splitlines():
+            m = DIAG.match(line)
+            if not m:
+                continue
+            sec = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + int(m.group(3))
+            if m.group(4) == "start":
+                start[m.group(5)] = sec
+            elif m.group(5) in start:
+                opt = DIAG_OPT.get(m.group(5), "gimbal")
+                per[opt]["launches"] += 1
+                per[opt]["seconds"] += (sec - start.pop(m.group(5))) % 86400
+    return per
+
+
 def main() -> None:
     res: dict = {"chips": CHIPS, "stages": {}}
     for stage, log in (("tuning", "tune.log"), ("main", "main_runs.log")):
@@ -50,6 +73,10 @@ def main() -> None:
         res["stages"][stage] = {
             o: dict(per[o], chip_hours=per[o]["seconds"] * CHIPS / 3600) for o in OPTS
         }
+    per = diagnostics()
+    res["stages"]["diagnostics"] = {
+        o: dict(per[o], chip_hours=per[o]["seconds"] * CHIPS / 3600) for o in OPTS
+    }
     res["total_chip_hours"] = {
         o: sum(res["stages"][s][o]["chip_hours"] for s in res["stages"]) for o in OPTS
     }
@@ -61,15 +88,17 @@ def main() -> None:
         f"Wall-clock time the slice was held per launch × {CHIPS} TPU v4 chips "
         "(start-up, compilation, evaluation and retries included).",
         "",
-        "| optimizer | tuning launches | tuning chip-hours | main launches | "
-        "main chip-hours | total chip-hours |",
-        "|---|---|---|---|---|---|",
+        "| optimizer | tuning launches | tuning chip-hours | diagnostic launches (F-032) | "
+        "diagnostic chip-hours | main launches | main chip-hours | total chip-hours |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for o in OPTS:
         t, m = res["stages"]["tuning"][o], res["stages"]["main"][o]
+        d = res["stages"]["diagnostics"][o]
         lines.append(
-            f"| {o} | {t['launches']} | {t['chip_hours']:.1f} | {m['launches']} | "
-            f"{m['chip_hours']:.1f} | {res['total_chip_hours'][o]:.1f} |"
+            f"| {o} | {t['launches']} | {t['chip_hours']:.1f} | {d['launches']} | "
+            f"{d['chip_hours']:.1f} | {m['launches']} | {m['chip_hours']:.1f} | "
+            f"{res['total_chip_hours'][o]:.1f} |"
         )
     (OUT / "compute.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
