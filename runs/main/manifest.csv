@@ -1,0 +1,7 @@
+optimizer,seed,run_dir,status,val_loss,train_seconds,config_commit,final_checkpoint
+adamw,2,runs/main/adamw/seed2,done,3.0998716354370117,1755,a7b77913b6cc55f9280f373c766b3a92afbfe855,runs/main/adamw/seed2/ckpt/step_010172
+soap,2,runs/main/soap/seed2,done,3.056041717529297,2014,a7b77913b6cc55f9280f373c766b3a92afbfe855,runs/main/soap/seed2/ckpt/step_010172
+gimbal,2,runs/main/gimbal/seed2,done,3.0530169010162354,2290,a7b77913b6cc55f9280f373c766b3a92afbfe855,runs/main/gimbal/seed2/ckpt/step_010172
+adamw,3,runs/main/adamw/seed3,done,3.1038930416107178,1710,a7b77913b6cc55f9280f373c766b3a92afbfe855,runs/main/adamw/seed3/ckpt/step_010172
+soap,3,runs/main/soap/seed3,done,3.0513434410095215,1805,a7b77913b6cc55f9280f373c766b3a92afbfe855,runs/main/soap/seed3/ckpt/step_010172
+gimbal,3,runs/main/gimbal/seed3,done,3.0528247356414795,1882,a7b77913b6cc55f9280f373c766b3a92afbfe855,runs/main/gimbal/seed3/ckpt/step_010172

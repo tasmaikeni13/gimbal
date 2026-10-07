@@ -1,0 +1,61 @@
+{
+ "chips": 16,
+ "stages": {
+  "tuning": {
+   "adamw": {
+    "launches": 21,
+    "seconds": 9229,
+    "chip_hours": 41.01777777777778
+   },
+   "soap": {
+    "launches": 20,
+    "seconds": 10734,
+    "chip_hours": 47.70666666666666
+   },
+   "gimbal": {
+    "launches": 28,
+    "seconds": 16626,
+    "chip_hours": 73.89333333333333
+   }
+  },
+  "main": {
+   "adamw": {
+    "launches": 2,
+    "seconds": 3510,
+    "chip_hours": 15.6
+   },
+   "soap": {
+    "launches": 2,
+    "seconds": 3861,
+    "chip_hours": 17.16
+   },
+   "gimbal": {
+    "launches": 2,
+    "seconds": 4218,
+    "chip_hours": 18.746666666666666
+   }
+  },
+  "diagnostics": {
+   "adamw": {
+    "launches": 0,
+    "seconds": 0,
+    "chip_hours": 0.0
+   },
+   "soap": {
+    "launches": 1,
+    "seconds": 132,
+    "chip_hours": 0.5866666666666667
+   },
+   "gimbal": {
+    "launches": 5,
+    "seconds": 2053,
+    "chip_hours": 9.124444444444444
+   }
+  }
+ },
+ "total_chip_hours": {
+  "adamw": 56.61777777777778,
+  "soap": 65.45333333333333,
+  "gimbal": 101.76444444444445
+ }
+}

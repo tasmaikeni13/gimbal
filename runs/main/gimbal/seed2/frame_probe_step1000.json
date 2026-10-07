@@ -1,0 +1,46 @@
+{
+ "checkpoint_step": 1000,
+ "samples": 32,
+ "matrices": {
+  "layer0_q": {
+   "shape": [
+    768,
+    768
+   ],
+   "L_own_frame": -7662488.50085671,
+   "L_pooled_fit_frame": -7642123.505455992,
+   "L_identity": -7295269.608104248,
+   "kappa_pooled_frame": 0.0698429870588797
+  },
+  "layer11_q": {
+   "shape": [
+    768,
+    768
+   ],
+   "L_own_frame": -7531202.276635908,
+   "L_pooled_fit_frame": -7490234.389926618,
+   "L_identity": -7074732.103175575,
+   "kappa_pooled_frame": 0.022458872801394934
+  },
+  "layer0_up": {
+   "shape": [
+    768,
+    2048
+   ],
+   "L_own_frame": -19840691.932636607,
+   "L_pooled_fit_frame": -20363154.4607689,
+   "L_identity": -16697593.525498677,
+   "kappa_pooled_frame": 0.052903578109229125
+  },
+  "layer11_up": {
+   "shape": [
+    768,
+    2048
+   ],
+   "L_own_frame": -19735964.345041443,
+   "L_pooled_fit_frame": -19692294.154308062,
+   "L_identity": -18706038.055149592,
+   "kappa_pooled_frame": 0.1306703441703242
+  }
+ }
+}

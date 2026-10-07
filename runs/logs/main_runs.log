@@ -1,0 +1,8 @@
+snapshot /home/tasma/gimbal_snapshots/main
+10:51:11 adamw/seed2 attempt=0 exit=0 1782s {'steps_done': 10172, 'diverged': False, 'train_seconds': 1755.3988151729573, 'val_loss': 3.0998716354370117, 'val_tokens': 19999744}
+11:25:07 soap/seed2 attempt=0 exit=0 2036s {'steps_done': 10172, 'diverged': False, 'train_seconds': 2013.912416578969, 'val_loss': 3.056041717529297, 'val_tokens': 19999744}
+12:03:41 gimbal/seed2 attempt=0 exit=0 2314s {'steps_done': 10172, 'diverged': False, 'train_seconds': 2290.453775701113, 'val_loss': 3.0530169010162354, 'val_tokens': 19999744}
+12:32:29 adamw/seed3 attempt=0 exit=0 1728s {'steps_done': 10172, 'diverged': False, 'train_seconds': 1709.5654992829077, 'val_loss': 3.1038930416107178, 'val_tokens': 19999744}
+13:02:54 soap/seed3 attempt=0 exit=0 1825s {'steps_done': 10172, 'diverged': False, 'train_seconds': 1804.9737015259452, 'val_loss': 3.0513434410095215, 'val_tokens': 19999744}
+13:34:38 gimbal/seed3 attempt=0 exit=0 1904s {'steps_done': 10172, 'diverged': False, 'train_seconds': 1882.438570864033, 'val_loss': 3.0528247356414795, 'val_tokens': 19999744}
+all runs finished
