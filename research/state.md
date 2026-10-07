@@ -1,4 +1,4 @@
-# Research state — Gimbal — updated 2026-10-06 (Phases 03–06)
+# Research state — Gimbal — updated 2026-10-07 (Phases 03–06)
 
 ## Contract
 Target claim: Gimbal reaches lower validation loss than SOAP (and AdamW) at 125M parameters /
@@ -16,7 +16,11 @@ compares AdamW, SOAP f = 10 and Gimbal). Decision rule: Phase 08 (D-005 definiti
   real-time ties it: H1's kill criterion is met at small scale (D-006).
 - Phase 04: Gimbal's training step is 1.9% slower than SOAP's on the v4-32 (G4.2 fails).
 - Phase 05 passed (pipeline validated against GPT-2's published validation loss).
-- Phase 06 sweep running.
+- Phase 06 sweep running. F-032: with Adam's momentum β₁ = 0.9 Gimbal was unstable early at
+  peak learning rates ≥ 1.5e-3 and finished ~0.03 nats behind SOAP (official β₁ = 0.95); TPU
+  diagnostics showed SOAP with β₁ = 0.9 is unstable too, and moment transport or per-step moves do
+  not help. C-019: in the 125M study Gimbal uses SOAP's β₁ = 0.95 (the comparison is about the
+  frame); Gimbal re-tuned with the full budget. Phase 02 frame gates hold at β₁ = 0.95.
 
 ## Live hypotheses
 - H1 at 125M vs AdamW and SOAP (the confirmatory test). Reserves: H2 transport, H5 Lie momentum,
