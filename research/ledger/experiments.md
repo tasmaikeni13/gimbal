@@ -182,3 +182,40 @@ Template: `ml-research` skill, `references/research-loop.md`. Raw outputs live n
 * GPT-2 (OpenAI 124M checkpoint) on the first 5,120 validation sequences: 3.262 (published
   3.2924 on build-nanogpt's FineWeb-Edu validation shard). `scripts/eval/gpt2_reference.py`,
   `runs/reference/gpt2_on_val.json`.
+
+## E6 — Phase 06 tuning (TPU v4-32, 125M, 2,500 steps, seeds 0 and 1)
+* Hypothesis/question: each optimizer's best peak learning rate and secondary knob under equal
+  budgets. Command `python scripts/tpu/tune.py`; snapshots `tuning` (5741a82) and `tuning_c019`
+  (31b1833); raw outputs `runs/tuning/*/` (config, logs, evaluation curve, per-sequence losses),
+  driver log `runs/logs/tune.log`; report `research/ledger/tuning.md` (generated).
+* Changed variable: peak learning rate (7 points), then one knob (3 values + one by D-010).
+  Held constant: model, data, schedule shape, batch, clipping, weight decay, seeds.
+* Interruptions: paused for the F-032 diagnosis (Gimbal re-tuned after C-019; pre-repair trials
+  in `runs/tuning/pre_c019/`); restarted once to fix the Stage C loop (AdamW's default had been
+  re-run instead of β₂ = 0.98; the replicate reproduced the original bit for bit).
+* Result: frozen configurations `configs/frozen/*.yaml` (tag `tuning-frozen`); G6.1 holds,
+  G6.2 fails only for Gimbal's rotation rate (selected at the edge of the extended grid).
+
+## F-032 diagnostics (TPU, lr 3e-3, seed 0, 300 of 2,500 steps)
+* Question: why Gimbal (β₁ = 0.9) was unstable early at high learning rates while SOAP
+  (β₁ = 0.95) was not. One setting changed per run: frame frozen after the warm start (D1),
+  β₁ = 0.95 (D2), rotation per move ≤ 0.1 (D3), frame move every step (D4), moment transport at
+  every move (D5), SOAP with β₁ = 0.9 (D6). Scripts and logs `runs/diag/`, `runs/logs/diag/`;
+  table generated into the paper's appendix. Outcome: β₁ = 0.9 is the cause for both optimizers;
+  transport and per-step moves do not help; decision D-008 → C-019.
+* Supporting check: the distributed optimizer step equals a per-matrix loop in float64
+  (`tests/test_distributed.py`).
+
+## E7 — Phase 07 confirmatory runs (TPU v4-32, 125M, 10,172 steps = 2.5B tokens, seeds 2 and 3)
+* Command `python scripts/tpu/main_runs.py` (snapshot `main`, a7b7791 = tag `tuning-frozen` + the
+  D-009 keepers); raw outputs `runs/main/<optimizer>/seed<k>/`, manifest `runs/main/manifest.csv`,
+  driver log `runs/logs/main_runs.log`. All six runs completed without divergence or restart.
+  Checkpoints on the hosts' disks (the GCS upload failed: billing account delinquent).
+
+## E8 — Phase 08 analysis, probes and test evaluation
+* `python analysis/phase08.py`, `analysis/write_decision.py`, `analysis/compute_budget.py`
+  (results `analysis/results/`, decision `analysis/decision.md`). Frame probes on the final and
+  the step-1000 checkpoints (`scripts/tpu/frame_probe.py`, D-005 item 8 and D-009) and the
+  one-time test evaluation (`scripts/tpu/eval_test.py`) ran on all hosts after the decision.
+* Outcome: Gimbal beats AdamW on loss and wall-clock and matches SOAP within seed noise with a
+  slower step (headline claim not allowed; D-011); premise (non-separability) fails at 125M.
