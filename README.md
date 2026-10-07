@@ -1,86 +1,155 @@
 # Gimbal
 
-**Gimbal** is a matrix-preconditioned optimizer for neural networks. Like SOAP, it runs Adam in a
-rotated frame `(Q_L, Q_R)` of each weight matrix. Unlike SOAP, it chooses that frame with the same
-statistical model that Adam's diagonal assumes, so the frame and the eigenvalues are estimated
-consistently. That maximum-likelihood frame is a joint-diagonalization (common principal
-components) problem. Gimbal follows it online with one natural-gradient step on the orthogonal
-groups per iteration. The variances that weight that step are shrunk toward their separable
-(Kronecker) fit by an empirical-Bayes factor measured from the data, so the estimator behaves like
-KL-Shampoo's on separable gradients and like the free maximum-likelihood estimator on
-non-separable ones. The frame is fitted to the gradient minus the part of the momentum that a
-second empirical-Bayes factor judges to be signal, so a deterministic descent direction does not
-tilt it. The step uses only matrix multiplications: after a 50-step warm start there
-are no Kronecker factor buffers and no QR or eigendecomposition.
+Gimbal is a matrix-preconditioned optimizer. Like SOAP, it runs Adam in a rotated frame
+`(Q_L, Q_R)` of each weight matrix. It differs in how that frame is chosen. SOAP takes the
+eigenvectors of Shampoo's Kronecker factors `E[GGᵀ]` and `E[GᵀG]`, which are statistics of a model
+in which the gradient's variances form a Kronecker product. Adam's own diagonal assumes something
+else: independent coordinates with a free array of variances. Gimbal estimates the frame under
+that second model, the one the preconditioner actually uses. The maximum-likelihood frame of that
+model is a joint-diagonalization problem, and Gimbal follows it online with one damped
+natural-gradient step on the orthogonal groups per block of steps, using only matrix products
+after a 50-step warm start.
 
-## Why
+This repository holds the whole research program: the theory (its central statements checked in
+Lean 4), a Monte Carlo study on synthetic gradient streams, PyTorch and JAX implementations, a
+small language-model study, a 125M-parameter / 2.5B-token comparison with AdamW and SOAP on a TPU
+v4-32, the analysis and the paper.
 
-SOAP (Vyas et al., 2024) runs Adam in the eigenbasis of Shampoo's Kronecker factors `E[GGᵀ]` and
-`E[GᵀG]`. Those factors are the right statistics for a Kronecker-*product* covariance, but SOAP's own
-preconditioner has a *free* diagonal of eigenvalues. When the gradient variances in the rotated frame
-are not a product (the situation in which SOAP beats Shampoo), pooled factors are a statistically
-inefficient way to find the frame, and they can fail to identify it at all. The theory in
-`theory/gimbal_theory.md` makes this precise:
+## What we found
 
-* every frame estimator built from a single weighted factor (SOAP, KL-SOAP, …) has variance at or
-  above the Cramér–Rao bound, strictly above on non-separable arrays (machine-checked in Lean);
-* the likelihood identifies a rotation whenever two variance *profiles* differ, while pooled
-  factors need their *sums* to differ;
-* Gimbal's flow solves the likelihood equation, is equivariant and scale-invariant, keeps its frames
-  orthogonal, and its bias-corrected rotation schedule turns the frame estimate into a
-  bias-corrected exponential average (Theorem 4.4, machine-checked).
+<!-- findings: written after the Phase 08 decision -->
 
-`theory.md` explains the ideas and equations; `theory/gimbal_theory.md` has statements, proofs and
-evidence labels; `formal/` has 53 Lean 4 + Mathlib theorems.
+## Results at 125M parameters
 
-## Status
+Llama-style decoder (123.6M parameters), FineWeb-Edu `sample-10BT`, 10,172 steps of 240 × 1,024
+tokens (2.5B tokens), two seeds per optimizer, every optimizer tuned with the same budget (seven
+learning rates and three values of one secondary knob, two seeds each, at a quarter of the
+horizon). Losses are mean token cross-entropy on the 20M-token validation split; the test split
+was read once, after the decision rule had been applied.
 
-The project runs as ten phases (`phases/`), each with predeclared gates and a self-correcting,
-dependency-aware protocol (`phases/README.md`). Current state: `phases/STATUS.md`.
+<!-- results:start -->
+_The confirmatory runs have not been analysed yet._
+<!-- results:end -->
 
-| Phase | Content | State |
-|---|---|---|
-| 01 | Formal theory of Gimbal and its peers; Lean formalization | done |
-| 02 | Formal, mathematical, numerical, statistical and Monte Carlo analysis against every peer (no model training) | see `phases/STATUS.md` |
-| 03–08 | Reference/JAX implementations and small-LM validation, TPU v4-32 kernels, FineWeb-Edu pipeline, fair tuning, 125M × 2.5B-token runs (2 seeds per optimizer), analysis | planned |
-| 09–10 | Paper; release | planned |
+## How it works
 
-Results so far are generated into `experiments/phase1/results/` and `experiments/phase2/results/`;
-`experiments/phase2/report.md` collects them with the gate verdicts. No language-model result exists
-yet; nothing here claims one.
+For a frame `U = (Q_L, Q_R)` write `Z = Q_Lᵀ G Q_R`. SOAP's preconditioner family is "Adam in the
+frame `U`", i.e. a Gaussian with independent entries of `Z` and variances `D`. Minimizing the KL
+divergence from the gradient distribution to that family over `D` leaves a function of the frame
+alone,
 
-## Quick start
+    J(U) = ½ (Σᵢⱼ log E[Zᵢⱼ²] − log det S),
+
+which is small when the rotated second moment is close to diagonal. Its score is a skew-symmetric
+matrix `S_L − S_Lᵀ` with `S_L = Z (Z ∘ D⁻¹)ᵀ`, its Fisher information is diagonal in the rotation
+coordinates, and dividing one by the other gives a natural-gradient step on `O(m) × O(n)`. Gimbal
+takes that step with a bias-corrected rate, damping and a spectral trust region, retracts with
+`I + Ω + Ω²/2` and a Newton–Schulz polish, and fits it to the gradient minus the part of the
+momentum that a James–Stein factor judges to be signal. The variances that weight the score are
+shrunk toward their Kronecker-separable fit by an empirical-Bayes factor, so the estimator behaves
+like KL-Shampoo's when the variances are separable and like the free maximum-likelihood estimator
+when they are not.
+
+The theory shows that the likelihood identifies a rotation whenever two rows of variances differ
+(pooled factors need their sums to differ) and that every single-factor estimator, SOAP's and
+KL-Shampoo's included, is statistically inefficient except in special cases. Start with
+[`theory.md`](theory.md); statements, proofs and evidence labels are in
+[`theory/gimbal_theory.md`](theory/gimbal_theory.md), the Lean proofs in [`formal/`](formal/README.md),
+and the paper in [`paper/`](paper/README.md).
+
+## Using it
 
 ```bash
-pip install -e ".[dev]"
-pytest -q
+pip install -e ".[dev]"            # PyTorch reference implementations
+pip install -e ".[dev,jax]"        # plus the JAX/Optax versions of AdamW, SOAP and Gimbal
 ```
 
+PyTorch: hidden 2-D weight matrices go to Gimbal, everything else (embeddings, norms, biases) to
+AdamW.
+
 ```python
-import torch
 from gimbal.torch import build
 
-model = ...  # any model with 2-D hidden weight matrices
-hidden = [p for p in model.parameters() if p.ndim == 2]  # route embeddings/heads/norms to AdamW
-other = [p for p in model.parameters() if p.ndim != 2]
+hidden = [p for name, p in model.named_parameters() if p.ndim == 2 and "embed" not in name]
+other = [p for name, p in model.named_parameters() if p.ndim != 2 or "embed" in name]
 opt = build("gimbal", hidden, other, matrix_kwargs={"lr": 3e-3}, other_kwargs={"lr": 3e-3})
 ```
 
-Gimbal's knobs beyond AdamW's: `rot_rate` (frame memory, default 0.02), `damping` (default 0.003)
-and `frame_every` (the frame moves every k steps with the mean score of those steps, default 4).
-The variance shrinkage (`flow_shrink`), the centering of the frame statistic
-(`flow_center="adaptive"`) and the warm start (`init="pooled"`, `warm_start_steps=50`) have no
-tuning knobs.
+JAX: `gimbal.jax.optax_api.gimbal(learning_rate, gimbal.jax.GimbalConfig())` is an Optax
+transformation over a pytree of 2-D matrices; `gimbal.jax.gimbal.step` is the per-matrix step that
+the TPU training loop batches and shards.
+
+The knobs beyond Adam's are the rotation rate `rot_rate` (default 0.05 = 1 − β₂, one estimation
+window for the frame and the second moment), `damping` (0.003) and `frame_every` (the frame moves
+every `k_t ≤ 4` steps, every step at first). The variance shrinkage, the centring of the frame
+statistic and the warm start have no knobs. Use the same momentum as the method you compare with:
+the 125M study runs Gimbal with SOAP's β₁ = 0.95. Update rules, defaults and sources of every
+optimizer in the repository are in [`docs/optimizers.md`](docs/optimizers.md).
+
+## Reproducing
+
+```bash
+pytest -q                                              # PyTorch and JAX implementations
+cd formal && lake exe cache get && lake build && lake env lean audit/Axioms.lean
+python experiments/phase1/check_identities.py          # numerical checks of the theory
+experiments/phase2/run_e21_all.sh && experiments/phase2/run_e21_ext.sh
+experiments/phase2/run_phase2_rest.sh && python experiments/phase2/make_report.py
+python scripts/data/fetch_fineweb_edu_sample.py        # small language model (CPU)
+python experiments/phase3/run_e27_sweep.py --stage A
+```
+
+The TPU study ran on a v4-32 slice (4 hosts × 4 chips) with JAX 0.6.2. Data:
+`python scripts/data/prepare_fineweb_edu.py` (checksums in `data/tokens_manifest.json`). Every run
+executes a frozen copy of the code (`scripts/tpu/snapshot.sh`) on all hosts
+(`scripts/tpu/launch.sh`):
+
+```bash
+python scripts/tpu/tune.py                 # Phase 06: equal-budget tuning
+python scripts/tpu/freeze_configs.py       # configs/frozen/<optimizer>.yaml
+python scripts/tpu/main_runs.py            # Phase 07: two seeds per optimizer
+python analysis/phase08.py                 # every number of the comparison, from the run logs
+python analysis/compute_budget.py && python analysis/readme_results.py
+make -C paper                              # the paper, numbers generated from result files
+```
+
+Performance on the TPU (attention kernels, step times, collectives) is documented in
+[`docs/performance.md`](docs/performance.md).
 
 ## Repository
 
 | Path | Contents |
 |---|---|
-| `src/gimbal/torch/` | Gimbal and reference implementations of SOAP (incl. real-time), KL-SOAP, Muon, NorMuon, SPlus, ARO |
-| `theory/`, `theory.md` | theory |
-| `formal/` | Lean proofs |
-| `experiments/` | Phase 1–2 experiments and their raw results |
-| `research/` | literature frontier, hypotheses, ledgers |
-| `phases/` | the research protocol and phase files |
+| `src/gimbal/torch/` | PyTorch reference implementations: Gimbal, SOAP (and its real-time variant), KL-SOAP, Muon, NorMuon, SPlus, ARO |
+| `src/gimbal/jax/` | JAX implementations of AdamW, SOAP and Gimbal, the distributed step and Optax wrappers |
+| `src/gimbal/train/` | 125M model, data pipeline, training loop and checkpoints for the TPU study |
+| `theory.md`, `theory/` | readable overview; full theory with proofs and evidence labels |
+| `formal/` | Lean 4 + Mathlib proofs |
+| `experiments/` | Phase 01–03 experiments and their raw results |
+| `scripts/` | data preparation, TPU launch, tuning, confirmatory runs |
+| `analysis/` | Phase 06–08 analysis; generated tables and figures in `analysis/results/` |
+| `runs/` | logs of the tuning, diagnostic and confirmatory runs |
+| `paper/` | the paper (`make -C paper`) |
+| `phases/`, `research/` | the research protocol, phase files and status; literature, hypotheses and ledgers of experiments, failures, decisions and claims |
 
-Agents working on this repository should read `AGENTS.md`.
+## How the research was done
+
+The project followed a written protocol in ten phases (`phases/README.md`), each with gates
+fixed before the work started, a self-correcting loop for failures, and dependency tracking so
+that a change to the mathematics re-opened every phase that used it. The ledgers in
+`research/ledger/` record every experiment, every failure with its mechanism, and every decision.
+The work was carried out by an AI agent (Claude, Anthropic) following that protocol under the
+author's direction.
+
+## Citation
+
+```bibtex
+@software{keni2026gimbal,
+  title  = {Gimbal: Adam in a Maximum-Likelihood Kronecker Frame},
+  author = {Keni, Tasmai},
+  year   = {2026},
+  url    = {https://github.com/tasmaikeni13/gimbal}
+}
+```
+
+MIT license (`LICENSE`). The vendored official SOAP implementation in `tests/third_party/` keeps
+its own MIT license.
