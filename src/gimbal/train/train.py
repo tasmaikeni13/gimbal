@@ -408,8 +408,8 @@ def main() -> None:
             np.save(run_dir / "val_seq_losses.npy", v.astype(np.float32))
         if int(cfg["log"].get("ckpt_every", 0)):
             # Full state: the final frames feed the Phase 08 frame diagnostics, the parameters
-            # the one-time test evaluation.
-            checkpoint.save(ckpt_dir, stop, params, state)
+            # the one-time test evaluation. The periodic checkpoints are only for restarts.
+            checkpoint.save(ckpt_dir, stop, params, state, keep=1)
     if writer:
         (run_dir / "final.json").write_text(json.dumps(final, indent=1))
         print(json.dumps(final), flush=True)

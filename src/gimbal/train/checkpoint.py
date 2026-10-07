@@ -4,8 +4,9 @@ Every host writes the shards it holds (replicated arrays once) to
 ``<dir>/step_<n>/process_<k>/shards.npz`` and restores them with
 ``jax.make_array_from_callback``, so no array is ever gathered to one host. The two latest
 checkpoints of a run are kept, so that a run can restart from one taken before a divergence
-began. JAX numbers processes by chip coordinates, which are fixed for the slice, so a host finds
-its own files again on restart.
+began; a completed run keeps only its final checkpoint (``keep=1``), which bounds the disk use of
+the six confirmatory runs on worker 0. JAX numbers processes by chip coordinates, which are
+fixed for the slice, so a host finds its own files again on restart.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ def latest(ckpt_dir: pathlib.Path, at_most: int | None = None) -> int | None:
 
 
 def save(ckpt_dir: pathlib.Path, step: int, params: dict, state: dict,
-         params_only: bool = False) -> None:
+         params_only: bool = False, keep: int = 2) -> None:
     tree = {"params": params} if params_only else {"params": params, "state": state}
     leaves, _ = jax.tree.flatten(tree)
     out = ckpt_dir / f"step_{step:06d}" / f"process_{jax.process_index()}"
@@ -50,9 +51,9 @@ def save(ckpt_dir: pathlib.Path, step: int, params: dict, state: dict,
                                                "params_only": params_only}))
     (out / "done").touch()
     multihost_utils.sync_global_devices(f"ckpt_{step}")
-    keep = sorted(ckpt_dir.glob("step_*"), key=lambda p: int(p.name.split("_")[1]))[-2:]
+    kept = sorted(ckpt_dir.glob("step_*"), key=lambda p: int(p.name.split("_")[1]))[-keep:]
     for old in ckpt_dir.glob("step_*"):
-        if old not in keep:
+        if old not in kept:
             shutil.rmtree(old / f"process_{jax.process_index()}", ignore_errors=True)
             if not any(old.iterdir()):
                 old.rmdir()
