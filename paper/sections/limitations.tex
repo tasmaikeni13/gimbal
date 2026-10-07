@@ -10,6 +10,11 @@ On the small model KL-SOAP beat Gimbal and SOAP real-time tied it; neither was r
 Muon and the other peers.
 \item \emph{Horizon.} Learning rates and secondary knobs were tuned at a quarter of the confirmatory
 horizon for every optimizer alike; optimal values can drift with the horizon.
+\item \emph{Tuning grid.} Gimbal's selected rotation rate lies at the edge of its (once extended)
+grid: a faster-moving frame was better at every value tried, so Gimbal may be under-tuned in this
+dimension. Its momentum is SOAP's ($\beta_1=0.95$); the first tuning trials with Adam's $0.9$ were
+replaced after a diagnosis that was not available to the other optimizers (\cref{app:diag}),
+which gave Gimbal more attention than its competitors.
 \item \emph{Premise.} The likelihood frame is most valuable when the rotated variances are
 non-separable. On real gradients of the small model they were almost exactly separable, and the
 diagnostics of the 125M runs (\cref{sec:results}) show where the larger model stands.
