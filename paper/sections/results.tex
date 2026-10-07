@@ -11,7 +11,7 @@ learning rate. Selected: AdamW \LrAdamw{} ($\beta_2=\KnobAdamw$), SOAP \LrSoap{}
 
 \begin{figure}[t]
 \centering
-\IfFileExists{generated/tuning_lr_curves.png}{\includegraphics[width=0.62\linewidth]{generated/tuning_lr_curves.png}}{\pending}
+\IfFileExists{generated/tuning_lr_curves.png}{\includegraphics[width=\linewidth]{generated/tuning_lr_curves.png}}{\pending}
 \caption{Tuning (614M tokens, mean of seeds 0 and 1): final validation loss against the peak
 learning rate (Gimbal with SOAP's momentum, after the repair of \cref{app:diag}).}
 \label{fig:tuning}

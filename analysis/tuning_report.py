@@ -120,7 +120,8 @@ def main() -> None:
             + ".",
         ]
     lines += ["", "## Stage A: mean final validation loss by learning rate (two seeds)", ""]
-    fig, ax = plt.subplots(figsize=(6.5, 4))
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    curves = {}
     for opt in OPTS:
         by_lr = defaultdict(list)
         for x in rows:
@@ -142,12 +143,19 @@ def main() -> None:
                 xs.append(lr)
                 ys.append(mean)
         lines.append(f"* **{opt}**: " + "; ".join(cells))
-        ax.plot(xs, ys, marker="o", label=opt)
-    ax.set_xscale("log")
-    ax.set_xlabel("peak learning rate")
-    ax.set_ylabel("final validation loss (mean of 2 seeds)")
-    ax.legend()
-    ax.grid(alpha=0.3)
+        curves[opt] = (xs, ys)
+    best = min((min(ys) for _, ys in curves.values() if ys), default=None)
+    for ax, zoom in zip(axes, (False, True), strict=True):
+        for opt, (xs, ys) in curves.items():
+            ax.plot(xs, ys, marker="o", label=opt)
+        ax.set_xscale("log")
+        ax.set_xlabel("peak learning rate")
+        ax.set_ylabel("final validation loss (mean of 2 seeds)")
+        ax.grid(alpha=0.3)
+        if zoom and best is not None:
+            ax.set_ylim(best - 0.02, best + 0.3)  # near the optima; worse points are off-scale
+            ax.set_title("near the optima", fontsize=9)
+    axes[0].legend()
     FIG.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
     fig.savefig(FIG, dpi=150)
