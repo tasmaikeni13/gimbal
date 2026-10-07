@@ -47,6 +47,8 @@ def load(root: pathlib.Path) -> dict:
                 "diag": read_jsonl(d / "diag.jsonl"),
                 "seq": np.load(d / "val_seq_losses.npy").astype(np.float64)
                 if (d / "val_seq_losses.npy").exists() else None,
+                "probe": json.loads((d / "frame_probe.json").read_text())
+                if (d / "frame_probe.json").exists() else None,
             }
     return runs
 
@@ -103,10 +105,43 @@ def spikes(log: list[dict], start: int = 500, window: int = 100, jump: float = 0
     return count
 
 
+DIAG_KEYS = ("kappa_noise_corrected_median", "kappa_raw_median", "shrink_c_median",
+             "kappa_D_mean")
+
+
+def mechanism(r: dict) -> dict:
+    """D-005 item 8: κ of Gimbal's flow variances and the shrinkage factor (median over the
+    matrices of a bucket) at the last diagnostic step and their median over training after step
+    1,000; the largest orthogonality defect of the frames; the held-out frame quality of the final
+    frames (``frame_probe.json``) as differences of L, i.e. of the frame KL (negative = better)."""
+    out: dict = {}
+    for b in ("attn", "mlp"):
+        for k in DIAG_KEYS:
+            pts = [(x["step"], x[f"{b}/{k}"]) for x in r["diag"] if f"{b}/{k}" in x]
+            if pts:
+                out[f"{b}/{k}/final"] = pts[-1][1]
+                out[f"{b}/{k}/median_after_1000"] = float(np.median(
+                    [v for s, v in pts if s >= 1000] or [pts[-1][1]]))
+        for side in ("QL", "QR"):
+            vals = [x[f"{b}/orth_defect_{side}"] for x in r["diag"]
+                    if f"{b}/orth_defect_{side}" in x]
+            if vals:
+                out[f"{b}/orth_defect_{side}/max"] = max(vals)
+    if r["probe"]:
+        for label, m in r["probe"]["matrices"].items():
+            out[f"probe/{label}/own_minus_pooled"] = m["L_own_frame"] - m["L_pooled_fit_frame"]
+            out[f"probe/{label}/own_minus_identity"] = m["L_own_frame"] - m["L_identity"]
+            out[f"probe/{label}/kappa_pooled_frame"] = m["kappa_pooled_frame"]
+    return out
+
+
 def main() -> None:
+    global OUT
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=str(ROOT / "runs" / "main"))
+    parser.add_argument("--out", default=str(OUT), help="output directory (dry runs)")
     args = parser.parse_args()
+    OUT = pathlib.Path(args.out)
     runs = load(pathlib.Path(args.root))
     rng = np.random.default_rng(20261006)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -128,6 +163,7 @@ def main() -> None:
                if fin.get("steps_done") else None}
         if r["seq"] is not None:
             row["bootstrap_se"] = bootstrap_se(r["seq"], rng)
+        row["mechanism"] = mechanism(r)
         res["runs"][f"{opt}/seed{seed}"] = row
     ses = [v["bootstrap_se"] for v in res["runs"].values() if "bootstrap_se" in v]
     pooled_se = float(np.sqrt(np.mean(np.square(ses)))) if ses else None
@@ -231,6 +267,15 @@ def tables(res: dict) -> None:
                   f"{p['two_pooled_se']}); beats on loss: **{p['beats_on_loss']}**; step time "
                   f"Gimbal {1e3 * p['gimbal_step_s']:.1f} ms vs {1e3 * p['competitor_step_s']:.1f}"
                   f" ms; beats on wall-clock: **{p['beats_on_wallclock']}**.", ""]
+    mech = {n: r["mechanism"] for n, r in res["runs"].items() if r.get("mechanism")}
+    keys = sorted({k for m in mech.values() for k in m})
+    if keys:
+        lines += ["## Mechanism diagnostics (D-005 item 8)", "",
+                  "| quantity | " + " | ".join(mech) + " |", "|---|" + "---|" * len(mech)]
+        for k in keys:
+            lines.append(f"| {k} | " + " | ".join(
+                f"{m[k]:.4g}" if k in m else "—" for m in mech.values()) + " |")
+        lines.append("")
     if res["decision"]:
         lines += ["## Decision rule", "", "```", json.dumps(res["decision"], indent=1), "```", ""]
     (OUT / "phase08_tables.md").write_text("\n".join(lines))
@@ -265,22 +310,29 @@ def figures(runs: dict) -> None:
     axes[0].legend(fontsize=8)
     fig.tight_layout()
     fig.savefig(OUT / "loss_curves.png", dpi=150)
-    # Optimizer diagnostics over training (Gimbal's kappa of D, orthogonality defects).
-    fig, ax = plt.subplots(figsize=(5.5, 3.5))
+    # Gimbal's mechanism diagnostics over training: the noise-corrected non-separability index
+    # of its flow variances (the E3.1 premise statistic, G3.4 threshold 0.05) and the shrinkage
+    # factor c of Proposition 5.5 (median over the matrices of each bucket).
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.6))
     for (opt, seed), r in sorted(runs.items()):
-        pts = [(x["step"], x.get("mlp/kappa_D_mean")) for x in r["diag"]
-               if x.get("mlp/kappa_D_mean") is not None]
-        pts_a = [(x["step"], x.get("attn/kappa_D_mean")) for x in r["diag"]
-                 if x.get("attn/kappa_D_mean") is not None]
-        for p, lab, st in ((pts, "MLP", "-"), (pts_a, "attention", ":")):
-            if p:
-                s, k = zip(*p, strict=True)
-                ax.plot(s, k, st, color=colors[opt], label=f"{opt} s{seed} {lab}")
-    ax.set_xlabel("step")
-    ax.set_ylabel("non-separability index κ of D")
-    ax.grid(alpha=0.3)
-    if ax.lines:
-        ax.legend(fontsize=7)
+        for b, lab, st in (("mlp", "MLP", "-"), ("attn", "attention", ":")):
+            for ax, key in zip(axes, ("kappa_noise_corrected_median", "shrink_c_median"),
+                               strict=True):
+                pts = [(x["step"], x[f"{b}/{key}"]) for x in r["diag"] if f"{b}/{key}" in x]
+                if pts:
+                    s, k = zip(*pts, strict=True)
+                    ax.plot(s, k, st, color=colors[opt],
+                            alpha=1.0 if seed == SEEDS[0] else 0.5,
+                            label=f"{opt} seed {seed} {lab}")
+    axes[0].axhline(0.05, color="grey", lw=0.8, ls="--", label="G3.4 threshold 0.05")
+    axes[0].set_yscale("log")
+    axes[0].set_ylabel("noise-corrected κ of D (median)")
+    axes[1].set_ylabel("shrinkage factor c (median)")
+    for ax in axes:
+        ax.set_xlabel("step")
+        ax.grid(alpha=0.3)
+        if ax.lines:
+            ax.legend(fontsize=7)
     fig.tight_layout()
     fig.savefig(OUT / "kappa.png", dpi=150)
 
