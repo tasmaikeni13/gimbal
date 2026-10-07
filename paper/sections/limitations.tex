@@ -16,8 +16,9 @@ dimension. Its momentum is SOAP's ($\beta_1=0.95$); the first tuning trials with
 replaced after a diagnosis that was not available to the other optimizers (\cref{app:diag}),
 which gave Gimbal more attention than its competitors.
 \item \emph{Premise.} The likelihood frame is most valuable when the rotated variances are
-non-separable. On real gradients of the small model they were almost exactly separable, and the
-diagnostics of the 125M runs (\cref{sec:results}) show where the larger model stands.
+non-separable. On real gradients of both models we trained they were almost exactly separable
+(\cref{sec:smalllm,sec:results}); we did not look for models, layers or training regimes where
+they are not, which is where the method's advantage would have to appear.
 \item \emph{Cost.} On the TPU v4 Gimbal's float32 frame moves make its step slower than SOAP's; the
 comparison of step times is specific to this hardware, its software stack and our implementation
 of both optimizers.
