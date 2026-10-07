@@ -3,8 +3,9 @@
 Every optimizer acts on one matrix parameter `W ∈ R^{m×n}` with gradient `G`. In all comparisons the
 hidden matrices (attention q, k, v, o; MLP gate, up, down) use the optimizer under test and every
 other parameter (embeddings, output head, norms) uses one AdamW configuration that is identical for
-all methods (Phase 03 routing; in the TPU study its learning rate is the method's tuned rate and
-its weight decay is zero). Decoupled weight decay applies to hidden matrices only. `lr` is the
+all methods (Phase 03 routing; in the TPU study its learning rate is the method's tuned rate, its
+weight decay is zero, and for the AdamW baseline, one optimizer, its tuned β₂ applies to every
+parameter). Decoupled weight decay applies to hidden matrices only. `lr` is the
 scheduled learning rate of the step. Implementations: PyTorch `src/gimbal/torch/`, JAX
 `src/gimbal/jax/` (AdamW, SOAP and Gimbal only, the optimizers of the TPU study, decision D-003).
 The JAX versions agree with the PyTorch ones to about 1e-12 (Gimbal) and 1e-8 (SOAP) per step in

@@ -16,8 +16,9 @@ FineWeb-Edu validation shard of build-nanogpt~\citep{karpathy2024buildnanogpt}.
 tokens). The learning rate warms up linearly for 5\% of the steps and decays by a cosine to 10\% of
 its peak; gradients are clipped at global norm 1; decoupled weight decay 0.1 applies to the hidden
 matrices only. The hidden matrices use the optimizer under test; embeddings and norms use AdamW
-with identical settings for every method. bfloat16 compute, float32 master weights and optimizer
-state. A seed fixes the initialization and the data order and is shared by all optimizers.
+($\beta=(0.9,0.95)$, no weight decay) with the same peak learning rate and schedule as the hidden
+matrices (the AdamW baseline is one optimizer, so its tuned $\beta_2$ applies to every parameter).
+bfloat16 compute, float32 master weights and optimizer state. A seed fixes the initialization and the data order and is shared by all optimizers.
 
 \paragraph{Implementation on a TPU v4-32.} All three optimizers are written in JAX
 \citep{bradbury2018jax} as pure per-matrix steps, verified against the PyTorch references (per-step
