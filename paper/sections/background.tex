@@ -1,0 +1,32 @@
+\section{Background: SOAP and the frames of matrix preconditioners}
+\label{sec:background}
+
+Let $W\in\R^{m\times n}$ be a weight matrix with stochastic gradient $G$. Kronecker-factored
+preconditioners keep two factor matrices $L\approx\E[GG^\top]$ and $R\approx\E[G^\top G]$
+(Shampoo~\citep{gupta2018shampoo,anil2020scalable}). SOAP~\citep{vyas2024soap} observed that
+Shampoo with power $1/2$ is Adafactor run in the eigenbasis of $(L,R)$ and replaced Adafactor by
+Adam: with $Q_L,Q_R$ the eigenvectors of $L,R$ and rotated coordinates
+$Z_U(X)=Q_L^\top XQ_R$, SOAP runs Adam on $Z_U(G)$ and rotates the step back,
+\begin{equation}
+  \Delta W = -\eta\, Q_L\Big(\hat M \hdiv\big(\sqrt{\hat V}+\epsilon\big)\Big)Q_R^\top ,
+  \label{eq:soap}
+\end{equation}
+where $\hat M,\hat V$ are Adam's bias-corrected moments of $Z_U(G)$. The frame is refreshed every
+$f$ steps by one power-iteration step and a QR decomposition, $Q\leftarrow\mathrm{qr}(LQ)$;
+$\hat V$ is re-ordered with it. SOAP is among the strongest optimizers for language-model
+pre-training at small and medium scale~\citep{vyas2024soap,wen2025fantastic,semenov2025benchmarking},
+and a line of work has improved its frame: the KL-optimal factor rule of KL-Shampoo and
+KL-SOAP~\citep{lin2025klshampoo}, refreshes that include the current gradient and run every step
+for stability at scale~\citep{nvidia2026soapmuon}, eigenvalue corrections that remove
+grafting~\citep{eschenhagen2025purifying}, and cheaper or one-sided rotations
+\citep{liu2025cosmos,gong2026aro}.
+
+\paragraph{The model behind each part of SOAP.}
+Adam's diagonal second moment is the maximum-likelihood estimate of a free array of variances
+$D\in\R^{m\times n}_{>0}$ in the frame: it treats the entries of $Z_U(G)$ as independent with
+$\E[Z_U(G)^{\circ2}]=D$. Call this model $\KRD(U,D)$ (Kronecker-rotated diagonal). The pooled
+factors $L,R$, on the other hand, are maximum-likelihood statistics of a different model, a
+Kronecker \emph{product} covariance, in which $D=\lambda\mu^\top$ is separable (Shampoo, K-FAC,
+KL-Shampoo). SOAP therefore estimates its eigenvalues under one model and its frame under another.
+Lin et al.\ noted that SOAP's $D$ cannot be a Kronecker product~\citep{lin2025klshampoo}; they
+did not derive a frame estimator for the free-diagonal model. This paper does.

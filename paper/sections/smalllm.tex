@@ -1,0 +1,54 @@
+\section{A small language model: the premise, a failure and its repair}
+\label{sec:smalllm}
+
+A byte-level Llama-style model ($d=128$, four layers, sequence length 128, batch 32, 800 steps) on a
+FineWeb-Edu sample gives a cheap test on real gradients. Every optimizer received the same
+four-point learning-rate grid (factor two, extended at an edge) on seed 0 and was then run on two
+more seeds at its selected rate. Ten optimizers were compared in PyTorch.
+
+\paragraph{The default first lost to SOAP.} \Cref{tab:smalllm} lists the outcome. The default of the
+time (amortized frame moves every four steps, rotation rate $\alpha=0.02$) lost to SOAP on every seed;
+moving the frame every step won on every seed; KL-SOAP was best. Selection runs on separate seeds
+isolated two causes. The amortized move matches the per-step flow only to first order in
+$k\alpha_t$, and with the bias-corrected schedule $\alpha_t$ is large early: the gap to the per-step flow
+was largest at step 100 and never closed. And the 100-step frame memory of $\alpha=0.02$, chosen on
+stationary synthetic streams, lagged the drifting statistics of a language model: larger $\alpha$ was
+better at every amortization. SOAP's memory knob received the same selection budget. The repair
+fixed $\alpha=1-\beta_2$ (one estimation window for the frame and Adam's second moment, SOAP's own
+convention) and the adaptive amortization of \cref{sec:method}, chosen by a rule written before the
+TPU timings were known: faster-moving variants were better on this model but cost more step time
+than the rule allowed (\cref{sec:setup}). Every Monte Carlo gate was re-run with the new default
+and still passes.
+
+\paragraph{Confirmation on fresh seeds.} With the learning rate re-selected on seed 20 and seeds
+21--22 added, the repaired default is lower than SOAP and AdamW on every seed: mean
+\GthreeFiveGimbal{} versus \GthreeFiveSoap{} (SOAP) and \GthreeFiveAdamw{} (AdamW). The margin over
+SOAP is small (mean difference \GthreeFiveDiffSoap{}, smallest \GthreeFiveDiffSoapMin{}; one-sided
+paired $t$-test with Holm correction $p=\GthreeFiveP$). On the same seeds KL-SOAP reaches
+\KillKlsoap{}, better than Gimbal on every seed, and SOAP real-time \KillSoapRt{}, indistinguishable
+from Gimbal.
+
+\begin{table}[t]
+\centering\small
+\input{generated/e32_table}
+\caption{Small language model (E3.2), final validation loss at each optimizer's selected learning
+rate. ``gimbal'' is the default before the repair of this section (fixed amortization,
+$\alpha=0.02$); ``gimbal-k1'' moves the frame every step. Other peers: SOAP real-time, KL-SOAP,
+Muon, NorMuon, SPlus, ARO (\cref{app:optimizers}).}
+\label{tab:smalllm}
+\end{table}
+
+\paragraph{The premise does not hold at this scale.} At steps 100, 400 and 800, 96 independent
+minibatch gradients of eight matrices were collected at fixed weights, frames were fitted on half
+of them and scored on the other half by the held-out likelihood. The likelihood frame beats SOAP's
+pooled frame in \EThreeOneWinsSoap{} of \EThreeOneMatrices{} matrices (median gain
+\EThreeOneGainSoap{} nats of held-out log-likelihood). But the non-separability index of the
+variances, the share of $\mathrm{Var}(\log D)$ not explained by the additive fit, has median
+\KappaMedian{} (largest \KappaMax{}), far below the 0.05 that the predeclared premise required: the
+rotated variances of this model are almost exactly separable. The likelihood frame's advantage over
+SOAP is therefore the efficiency gain of Theorem~\ref{thm:efficiency}.3 on steep separable spectra,
+which KL-factor estimators share: against KL frames the likelihood frame wins in only
+\EThreeOneWinsKl{} of \EThreeOneMatrices{} matrices (median \EThreeOneGainKl{} nats). This is the
+ordering the theory predicts when $\kappa\approx0$, and it matches the losses above. The
+hypothesis' own kill criterion ($\kappa\approx0$ and SOAP real-time at least as good as Gimbal) is met
+at this scale.

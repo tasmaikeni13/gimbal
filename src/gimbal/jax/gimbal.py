@@ -191,6 +191,28 @@ def _shrunk_variances(vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_odd
     return jnp.maximum(e * (jnp.mean(v_hat + fl) / jnp.mean(e)), tiny(vf.dtype))
 
 
+def separability_stats(vf: jax.Array, vf_odd: jax.Array, w_full: jax.Array, w_odd: jax.Array,
+                       floor: float) -> dict:
+    """Diagnostics of the flow's variance average (not used by the update): the share of the
+    variance of log V̂^F outside its additive fit (raw κ), the same share after subtracting the
+    split-sample noise estimate (noise-corrected κ, the E3.1 statistic), and the shrinkage factor c
+    of Proposition 5.5."""
+    m, n = vf.shape
+    v_hat = vf / w_full
+    fl = floor * jnp.mean(v_hat) + tiny(vf.dtype)
+    log_v = jnp.log(v_hat + fl)
+    additive = (jnp.mean(log_v, axis=1, keepdims=True) + jnp.mean(log_v, axis=0, keepdims=True)
+                - jnp.mean(log_v))
+    resid_sq = jnp.mean((log_v - additive) ** 2)
+    ratio = (jnp.log(vf_odd / w_odd + fl)
+             - jnp.log(jnp.maximum(vf - vf_odd, 0.0) / (w_full - w_odd) + fl))
+    noise = jnp.var(ratio) * (0.25 * (1.0 - 1.0 / m) * (1.0 - 1.0 / n))
+    total = jnp.maximum(jnp.var(log_v), 1e-30)
+    return {"kappa_raw": resid_sq / total,
+            "kappa_noise_corrected": jnp.maximum(resid_sq - noise, 0.0) / total,
+            "shrink_c": jnp.clip(1.0 - noise / jnp.maximum(resid_sq, 1e-30), 0.0, 1.0)}
+
+
 def _skew_score(z: jax.Array, za: jax.Array, side: str) -> jax.Array:
     """Skew score ``S − Sᵀ`` of Lemma A, ``S_L = Z (Z∘A)ᵀ`` or ``S_R = Zᵀ (Z∘A)``."""
     s = mm(z, za.T) if side == "left" else mm(z.T, za)

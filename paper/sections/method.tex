@@ -1,0 +1,114 @@
+\section{Gimbal: the maximum-likelihood frame, followed online}
+\label{sec:method}
+
+\subsection{The objective behind SOAP's own preconditioner}
+For a frame $U=(Q_L,Q_R)\in O(m)\times O(n)$ write $d_U=\E[Z_U(G)^{\circ2}]$ and let $S$ be the
+second-moment operator of $\mathrm{vec}\,G$. The Kullback--Leibler projection of $\mathcal N(0,S)$
+onto SOAP's family, minimized over $D$, is
+\begin{equation}
+  J(U)=\min_{D>0}\mathrm{KL}\big(\mathcal N(0,S)\,\|\,\KRD(U,D)\big)
+      =\tfrac12\Big(\sum_{ij}\log(d_U)_{ij}-\log\det S\Big)\;\ge0,
+  \label{eq:J}
+\end{equation}
+attained at $D=d_U$ (Proposition~\ref{prop:J}). The best member of SOAP's preconditioner family
+uses the frame that makes the rotated second moment ``as diagonal as possible'' in this
+log-determinant sense: a joint-diagonalization (common principal components) problem
+\citep{flury1984cpc,pham2001joint}, here restricted to Kronecker frames. Adam's average of
+$Z_U(G)^{\circ2}$ estimates $d_U$ for whatever frame is used; the frame is the part SOAP takes
+from another model.
+
+\subsection{The likelihood score and its Fisher information}
+Perturb the left frame as $Q_L\mapsto Q_L(I+\Omega)$ with $\Omega$ skew-symmetric. With
+$A=D^{\circ-1}$, the score of the working Gaussian log-likelihood of one gradient is the
+skew-symmetric matrix
+\begin{equation}
+  E_L=S_L-S_L^\top,\qquad S_L=Z\,(Z\had A)^\top ,
+  \label{eq:score}
+\end{equation}
+and on the right $E_R=S_R-S_R^\top$ with $S_R=Z^\top(Z\had A)$ (Lemma~\ref{lem:score}). In the
+true frame its Fisher information is diagonal in the rotation coordinates,
+\begin{equation}
+  F^L_{ik}=\sum_j\Big(\frac{D_{ij}}{D_{kj}}+\frac{D_{kj}}{D_{ij}}-2\Big)
+  =\big(DA^\top+AD^\top\big)_{ik}-2n ,
+  \label{eq:fisher}
+\end{equation}
+so the rotation of the pair $(i,k)$ is identifiable exactly when the rows $D_{i\cdot}$ and
+$D_{k\cdot}$ differ, while pooled factors need their \emph{sums} to differ (Theorem~\ref{thm:fisher}).
+
+\subsection{The flow}
+Gimbal follows the maximum-likelihood frame online with one damped natural-gradient step on
+$O(m)\times O(n)$:
+\begin{equation}
+  \Omega_L=-\alpha_t\,\frac{S_L-S_L^\top}{F_L+\delta n},\qquad
+  Q_L\leftarrow\mathrm{polish}\big(Q_L(I+\Omega_L+\tfrac12\Omega_L^2)\big),
+  \label{eq:flow}
+\end{equation}
+with entrywise division, the diagonal of $\Omega_L$ set to zero, entries clipped to
+$[-\theta_{\max},\theta_{\max}]$ and the spectral norm capped at one; the right side is the mirror
+image. The retraction $I+\Omega+\tfrac12\Omega^2$ loses orthogonality only at fourth order and a
+Newton--Schulz polish restores it (Theorem~\ref{thm:retraction}); no QR or eigendecomposition is
+needed. Dividing by $F$ is Amari's natural gradient~\citep{amari1998natural}, so near the optimum
+every pair contracts at the same rate, independent of its eigen-gap (Theorem~\ref{thm:flow}). The
+rate follows the bias-corrected schedule $\alpha_t=\alpha/(1-(1-\alpha)^t)$, which makes the frame
+a bias-corrected exponential average of per-gradient estimates (Theorem~\ref{thm:schedule}), the
+identity that justifies Adam's bias correction.
+
+\paragraph{The variances that weight the score.}
+$D$ in \eqref{eq:score} is an exponential average of $Z^{\circ2}$ with the frame's own memory
+$\beta_D=1-\alpha$, the profile likelihood with one forgetting factor (Lemma~\ref{lem:profile}),
+shrunk toward its separable (additive-in-log) fit by a positive-part James--Stein factor whose
+noise level is measured from an interleaved odd/even split of the average
+(Proposition~\ref{prop:shrink}, after the core shrinkage of \citet{hoff2023core}). With
+separable statistics the weights become KL-Shampoo's efficient ones; with strongly non-separable
+statistics they become the free maximum-likelihood variances.
+
+\paragraph{The innovation.}
+A gradient with a non-zero mean tilts the uncentred statistic away from the true frame
+(Proposition~\ref{prop:center}); Gimbal fits the frame to the innovation $G_t-c_t\hat M_{t-1}$,
+where $\hat M_{t-1}$ is the previous bias-corrected momentum and $c_t$ its own James--Stein factor,
+$c_t\approx0$ for zero-mean gradients and $c_t\to1$ when a deterministic mean dominates.
+
+\paragraph{Warm start and amortization.}
+The frame starts from the eigenvectors of the first gradient's factors and, after $T_w=50$ steps,
+restarts from the eigenvectors of the pooled factors of those steps, a one-step estimator in Le
+Cam's sense (Remark~\ref{rem:warm}): these are the only two eigendecompositions. The score is
+accumulated over blocks of $k_t$ steps and the frame moves once per block, so the retraction,
+polish and Fisher matrix are paid once per block. The block length is adaptive,
+$k_t=\mathrm{clamp}(\mathrm{round}(K\alpha/\alpha_t),1,K)$ with $K=4$: the amortized step matches
+the per-step flow only to first order in $k\alpha_t$, so the early steps, where $\alpha_t$ is
+large, are not amortized.
+
+\paragraph{Defaults.}
+$\alpha=1-\beta_2=0.05$ (the frame, its variances and Adam's second moment share one estimation
+window of effective size 39, SOAP's convention for its factors), $\delta=0.003$,
+$\theta_{\max}=0.25$, $K=4$, $T_w=50$, $\beta=(0.9,0.95)$. \Cref{alg:gimbal} summarizes one step.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\linewidth}{\small
+\textbf{Algorithm 1: one Gimbal step for a matrix $W$ with gradient $G$} (step $t$, rate $\eta_t$)
+\begin{enumerate}[leftmargin=1.6em,itemsep=1pt,topsep=3pt]
+\item $Z\leftarrow Q_L^\top GQ_R$ \hfill (rotated gradient)
+\item $c\leftarrow$ James--Stein factor of $\hat M_{t-1}$; $\tilde Z\leftarrow Z-c\,\hat M^{\mathrm{rot}}_{t-1}$
+  \hfill (innovation, Prop.~\ref{prop:center})
+\item Adam in the frame: $M^{\mathrm{rot}}\leftarrow\beta_1M^{\mathrm{rot}}+(1-\beta_1)Z$,
+  $V\leftarrow\beta_2V+(1-\beta_2)Z^{\circ2}$;\\
+  $W\leftarrow(1-\eta_t\lambda)W-\eta_tQ_L\big(\hat M^{\mathrm{rot}}\hdiv(\sqrt{\hat V}+\epsilon)\big)Q_R^\top$
+\item $V^F\leftarrow(1-\alpha)V^F+\alpha\tilde Z^{\circ2}$ (and its odd-step half);
+  $D\leftarrow$ shrunk variances \hfill (Prop.~\ref{prop:shrink})
+\item accumulate the scores $S_L-S_L^\top$, $S_R-S_R^\top$ of \eqref{eq:score} at $\tilde Z$, $D$
+\item every $k_t$ steps: $\Omega\leftarrow$ \eqref{eq:flow} with the mean score and the block's rate;
+  $Q\leftarrow\mathrm{polish}(Q(I+\Omega+\tfrac12\Omega^2))$; re-express $M^{\mathrm{rot}}$ in the new frame
+\item at $t=T_w$: restart the frame from the pooled factors' eigenvectors; transport $V$, $V^F$
+  (Theorem~\ref{thm:transport})
+\end{enumerate}}}
+\caption{Gimbal's step. Everything after the warm start is matrix products and elementwise work.}
+\label{alg:gimbal}
+\end{figure}
+
+\paragraph{Cost.}
+Per step Gimbal rotates the gradient, rotates the step back and forms the score: three products
+of cost $m^2n+mn^2$, the same count as SOAP's rotations and factor updates. Once per block it adds
+the Fisher matrix, the retraction and the polish, $O(m^3+n^3)$ products in float32. SOAP adds a
+QR decomposition every $f=10$ steps. Gimbal's state is two frames, the momentum, Adam's second
+moment, the flow's variance average and its odd half, plus the accumulated scores between moves.

@@ -1,0 +1,40 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Kronecker-factored preconditioners.} Shampoo~\citep{gupta2018shampoo,anil2020scalable}
+and K-FAC~\citep{martens2015kfac} precondition with Kronecker factors of the gradient's second
+moment or of the Fisher information. SOAP~\citep{vyas2024soap} runs Adam in Shampoo's eigenbasis.
+KL-Shampoo and KL-SOAP~\citep{lin2025klshampoo} derive the factor update from a KL objective for a
+Kronecker-\emph{product} covariance and observe that SOAP's diagonal cannot be such a product;
+Gimbal instead estimates the frame under the free-diagonal model SOAP's Adam already assumes.
+Purifying Shampoo~\citep{eschenhagen2025purifying} corrects stale and mis-scaled eigenvalues and
+adapts the refresh frequency; the NVIDIA study~\citep{nvidia2026soapmuon} shows that a stale frame
+causes instabilities at large batch and refreshes it every step with the current gradient
+included; COSMOS~\citep{liu2025cosmos} applies SOAP on a leading subspace and Muon elsewhere; ARO
+\citep{gong2026aro} chooses a one-sided rotation by a norm-informed Procrustes policy;
+SPlus~\citep{frans2025splus} uses the sign of the momentum in a stale Shampoo frame. Everett and Qiu
+\citep{everett2026memory} find that the optimal optimizer memory grows with the training horizon,
+which is consistent with the shorter frame memory our small model preferred.
+
+\paragraph{Orthogonalized updates.} Muon~\citep{jordan2024muon,liu2025muonscalable} orthogonalizes
+the momentum by Newton--Schulz iterations and NorMuon~\citep{li2025normuon} adds neuron-wise
+second moments. Gimbal also uses Newton--Schulz iterations, but only to keep its frames orthogonal.
+
+\paragraph{Benchmarks.} Recent controlled comparisons~\citep{wen2025fantastic,semenov2025benchmarking}
+find matrix optimizers ahead of AdamW at small scale by a margin that shrinks with model size, and
+the ranking among them sensitive to tuning and horizon; we follow their emphasis on equal tuning
+budgets.
+
+\paragraph{Where the estimator comes from.} The maximum-likelihood frame of a family of covariance
+matrices that share eigenvectors is the common-principal-components problem~\citep{flury1984cpc}
+and, in signal processing, joint approximate diagonalization~\citep{pham2001joint}. Gimbal's score is
+the skew part of the EASI relative-gradient update~\citep{cardoso1996easi} with a heteroscedastic
+Gaussian score, its Fisher normalization is Amari's natural gradient~\citep{amari1998natural}, and
+its identifiability condition is the Pham--Cardoso condition for separating non-stationary sources
+\citep{pham2001blind}, with time blocks replaced by the other matrix mode. Shrinking a
+matrix-variate covariance toward its separable (Kronecker) part by an empirical-Bayes factor is the
+core shrinkage of \citet{hoff2023core}; centring a second moment on the gradient's running mean is
+centred RMSProp~\citep{graves2013generating} and AdaBelief~\citep{zhuang2020adabelief}, here applied
+only to the frame's statistic and with a James--Stein factor~\citep{james1961estimation}. A search of
+the literature through 2026-10-06 found no optimizer that estimates its frame by this likelihood
+(\cref{app:novelty}).

@@ -1,0 +1,48 @@
+\section{Monte Carlo evidence on synthetic gradient streams}
+\label{sec:montecarlo}
+
+Before any language model was trained, the method was tested where the truth is known: gradient
+streams drawn from $\KRD(U^\star,D)$ with controlled non-separability $\gamma$ (with $\log D$ the sum of
+an additive part and $\gamma$ times an interaction), spectral slope, tied profiles, drifting frames
+and heavy tails. Every peer ran on the same streams at its best memory and at a matched effective
+sample size, on ten paired seeds (\cref{tab:mc}; protocol, gates and every table in
+\texttt{experiments/phase2/report.md}).
+
+\paragraph{Frame efficiency.} Measured by the frame KL $J$ of \eqref{eq:J}, the default's frame is
+better than every peer's in every non-separable cell. Pooled across cells (random effects), SOAP's
+frame KL is \FactorSoap{} times Gimbal's, SOAP real-time's \FactorSoapRt{} times and KL-SOAP's
+\FactorKlsoap{} times. In separable cells, where KL-factor weights are themselves efficient
+(Theorem~\ref{thm:efficiency}.3), the worst ratio of Gimbal to the best peer is \SepWorstRatio{}
+(bootstrap upper bound \SepWorstUpper{}, within the predeclared 25\% margin). Tied row sums, which
+pooled factors cannot resolve, are identified by the likelihood (consistency over a 20-fold longer
+horizon), drifting frames are tracked with lower error, and Student-$t$ noise does not reverse any
+ordering.
+
+\paragraph{Optimization on noisy quadratics.} On quadratics whose curvature and gradient noise
+share a KRD structure, with every method's learning rate tuned on the same grid and evaluated on
+fresh seeds, the default reaches the lowest mean final loss in every configuration (\cref{tab:mc};
+in the separable high-noise configuration not every paired difference is significant); the gate
+\GtwoFourPass. This gate failed once, before the frame statistic was centred on the innovation
+(Proposition~\ref{prop:center}): the deterministic part of a quadratic's gradient tilted the
+uncentred statistic, exactly as item~2 of that proposition predicts.
+
+\paragraph{Theory against simulation.} The predicted frame KL in the linear regime, the plug-in
+inflation of Lemma~\ref{lem:profile} (after a second-order correction that a failed pre-registered
+check made necessary), the split-sample noise estimate, the one-step contraction of
+Theorem~\ref{thm:flow} and the Hessian of $J$ agree with simulation within their predeclared
+tolerances. The cost model (\cref{sec:setup}) and the numerical checks (float32 vs float64,
+orthogonality over $10^4$ steps, scale invariance, degenerate inputs) pass.
+
+\begin{table}[t]
+\centering\small
+\input{generated/e25_table}
+\caption{Noisy quadratics (E2.5): Gimbal's mean final loss and its geometric-mean ratio to each
+peer on paired evaluation seeds (below 1: Gimbal lower), learning rates tuned per method on equal
+grids. $\gamma$: non-separability of the curvature; $\sigma$: noise level.}
+\label{tab:mc}
+\end{table}
+
+\paragraph{What the synthetic evidence does not show.} The streams were drawn from the model whose
+likelihood Gimbal maximizes, with non-separability set by hand. Whether real gradients have
+non-separable variances, and whether a better frame translates into lower language-model loss,
+are separate questions, taken up next.

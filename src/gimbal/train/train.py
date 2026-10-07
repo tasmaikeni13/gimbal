@@ -213,7 +213,7 @@ def diagnostics(spec: dist.OptimizerSpec, buckets: tuple, state: dict, t: int) -
     flow variances D (share of the variance of log D not explained by the additive fit; mean)."""
     from jax.experimental import multihost_utils
 
-    from gimbal.jax.gimbal import _shrunk_variances
+    from gimbal.jax.gimbal import _shrunk_variances, separability_stats
 
     out = {}
     for b in buckets:
@@ -236,6 +236,12 @@ def diagnostics(spec: dist.OptimizerSpec, buckets: tuple, state: dict, t: int) -
 
             stats["kappa_D_mean"] = jnp.mean(jax.vmap(kappa)(
                 st["VF"][:b.count], st["VF_odd"][:b.count], st["w_odd"][:b.count]))
+            stats_fn = partial(separability_stats, w_full=w_full, floor=spec.matrix.floor)
+            raw = jax.vmap(lambda a, b_, c, f=stats_fn: f(a, b_, w_odd=c))(
+                st["VF"][:b.count], st["VF_odd"][:b.count], st["w_odd"][:b.count])
+            for name, v in raw.items():
+                stats[f"{name}_mean"] = jnp.mean(v)
+                stats[f"{name}_median"] = jnp.median(v)
         for k, v in stats.items():
             out[f"{b.key}/{k}"] = float(multihost_utils.process_allgather(v))
     return out

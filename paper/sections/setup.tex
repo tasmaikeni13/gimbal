@@ -1,0 +1,48 @@
+\section{Experimental setup at 125M parameters}
+\label{sec:setup}
+
+\paragraph{Model and data.} A Llama-style decoder~\citep{touvron2023llama}: 12 layers, width 768,
+12 heads, SwiGLU hidden width 2048, rotary position embeddings, pre-norm RMSNorm, no biases, tied
+input and output embeddings, vocabulary 50{,}304, context 1024; 123.6M parameters. Training data
+are the first 2.5B tokens of the shuffled training documents of FineWeb-Edu \texttt{sample-10BT}
+\citep{penedo2024fineweb}, tokenized with the GPT-2 tokenizer; a fixed hash of the document identifier
+assigns 20M-token validation and test splits from disjoint documents (checksums in the repository).
+As a check of the data and loss pipeline, the OpenAI GPT-2 (124M) checkpoint~\citep{radford2019language}
+scores \GptTwoOurVal{} nats on our validation split, against \GptTwoPublished{} reported on the
+FineWeb-Edu validation shard of build-nanogpt~\citep{karpathy2024buildnanogpt}.
+
+\paragraph{Training.} 240 sequences of 1024 tokens per step (245{,}760 tokens): confirmatory runs take
+10{,}172 steps (2.49987B tokens, every training sequence once), tuning runs 2{,}500 steps (614M
+tokens). The learning rate warms up linearly for 5\% of the steps and decays by a cosine to 10\% of
+its peak; gradients are clipped at global norm 1; decoupled weight decay 0.1 applies to the hidden
+matrices only. The hidden matrices use the optimizer under test; embeddings and norms use AdamW
+with identical settings for every method. bfloat16 compute, float32 master weights and optimizer
+state. A seed fixes the initialization and the data order and is shared by all optimizers.
+
+\paragraph{Implementation on a TPU v4-32.} All three optimizers are written in JAX
+\citep{bradbury2018jax} as pure per-matrix steps, verified against the PyTorch references (per-step
+agreement to about $10^{-12}$ in float64 for Gimbal; SOAP against the official implementation). The
+hidden matrices are stored in two buckets of equal shape (48 of $768\times768$ and 36 of
+$768\times2048$); the optimizer state of each bucket is sharded across the 16 chips, each chip
+updates its own matrices with batched products, and only the parameter increments are gathered.
+Every optimizer gets the same layout, batching, sharding and precision (all optimizer products in
+float32). Attention uses the Pallas flash-attention kernel~\citep{dao2022flashattention}: with
+$512\times512$ tiles a training gradient step takes \AttnFlashTuned{}~s against \AttnXla{}~s with
+XLA attention and \AttnFlashDefault{}~s with the kernel's default tiles.
+
+\paragraph{Step time.} Measured as the median, over 20-step blocks, of the mean step time in a
+block (so that SOAP's refresh every 10 steps and Gimbal's frame move every four are included),
+the training step takes \StepAdamw{}~ms with AdamW, \StepSoap{}~ms with SOAP and \StepGimbal{}~ms
+with Gimbal, \StepGimbalOverSoap\% more than SOAP. Gimbal's frame move on the 2048-dimensional side
+(retraction, orthogonality check and Newton--Schulz polish in float32) is the difference; moving the
+frame every two steps or every step would cost \StepKtwoOverSoap\% and \StepKoneOverSoap\% more
+than SOAP.
+
+\paragraph{Tuning (equal budgets).} Each optimizer received the same budget: seven peak learning
+rates on a factor-two grid around its reference default (AdamW $10^{-3}$, SOAP and Gimbal
+$3\cdot10^{-3}$), two seeds each, at the 614M-token horizon, followed by its most sensitive
+secondary knob at the selected rate (AdamW $\beta_2\in\{0.95,0.98,0.999\}$, SOAP's factor memory
+$\beta_s\in\{0.9,0.95,0.99\}$, Gimbal's rate $\alpha\in\{0.025,0.05,0.1\}$), two seeds each.
+Selection used the full validation split; the test split was not read. Selected values:
+AdamW learning rate \LrAdamw{} with $\beta_2=\KnobAdamw$; SOAP \LrSoap{} with $\beta_s=\KnobSoap$;
+Gimbal \LrGimbal{} with $\alpha=\KnobGimbal$ (\cref{app:tuning}).

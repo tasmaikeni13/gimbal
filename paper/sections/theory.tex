@@ -1,0 +1,133 @@
+\section{Theory}
+\label{sec:theory}
+
+Every result carries an evidence label: \lab{L1} observed numerically, \lab{L2} conjectured,
+\lab{L3} proved under additional assumptions, \lab{L4} proved as stated, \lab{L5} machine-checked in
+Lean~4 with Mathlib (53 theorems; every one depends only on the axioms \texttt{propext},
+\texttt{Classical.choice} and \texttt{Quot.sound}; \cref{app:lean} maps statements to Lean names).
+Proofs are in \cref{app:proofs} and in the project's theory document. The Gaussian likelihood is a
+working likelihood that fixes an estimating equation; no claim that gradients are Gaussian is made.
+
+\begin{proposition}[Profile KL; \lab{L4}, per coordinate \lab{L5}]\label{prop:J}
+For every frame $U$ and $S\succ0$, $\min_{D>0}\mathrm{KL}(\mathcal N(0,S)\|\KRD(U,D))=J(U)$ of
+\eqref{eq:J}, attained at $D=d_U$, and $J(U)=0$ iff $S=C(U,d_U)$.
+\end{proposition}
+
+\begin{proposition}[What pooled factors estimate; \lab{L4}]\label{prop:pooled}
+If $S=C(U^\star,D)$ then $\E[GG^\top]=Q_L^\star\diag(r)Q_L^{\star\top}$ with $r_i=\sum_jD_{ij}$ and
+$\E[G^\top G]=Q_R^\star\diag(c)Q_R^{\star\top}$ with $c_j=\sum_iD_{ij}$. Pooled factors are
+consistent only for pairs whose row (column) sums differ; with tied sums the cost of an arbitrary
+choice within the tied plane is unbounded (Example: $D$ with rows $(a,b),(b,a)$; \lab{L5}).
+\end{proposition}
+
+\begin{lemma}[Score; \lab{L4}]\label{lem:score}
+At the true frame the partial derivatives of the negative log-likelihood of one observation with
+respect to the rotation coordinates are the entries of $E_L$ and $E_R$ in \eqref{eq:score}; both
+are skew-symmetric.
+\end{lemma}
+
+\begin{theorem}[Fisher information and identifiability; \lab{L4}, finite-sum statements
+\lab{L5}]\label{thm:fisher}
+In $\KRD(U^\star,D)$ the Fisher information of one observation is diagonal in the rotation
+coordinates, block-orthogonal to $D$, with entries \eqref{eq:fisher}. The rotation of the pair
+$(i,k)$ is locally identifiable iff $D_{i\cdot}\ne D_{k\cdot}$; pooled factors identify it iff
+$\sum_jD_{ij}\ne\sum_jD_{kj}$. The first condition is strictly weaker.
+\end{theorem}
+
+\begin{theorem}[Efficiency; item 1 \lab{L3}, items 2--4 \lab{L5} except one direction of item 3,
+\lab{L4}]\label{thm:efficiency}
+Consider frame estimators from a weighted factor $\hat L_w=\frac1N\sum_tG_tQ_R^\star\diag(w)
+Q_R^{\star\top}G_t^\top$ (SOAP: $w\equiv1$; KL-Shampoo: $w=1/\hat\mu$).
+\begin{enumerate}[nosep]
+\item $\sqrt N\hat\theta^w_{ik}$ is asymptotically normal with variance
+  $V_w=\sum_jw_j^2D_{ij}D_{kj}/(\sum_jw_j(D_{ij}-D_{kj}))^2$.
+\item $V_w\ge1/F_{ik}$, with equality iff $w_j\propto D_{kj}^{-1}-D_{ij}^{-1}$.
+\item One weight vector is efficient for all pairs iff $D^{\circ-1}=\mathbf1\beta^\top+\alpha w^\top$.
+  Under separability $D=\lambda\mu^\top$ this holds with $w=1/\mu$ (KL-Shampoo is efficient
+  exactly under separability); SOAP's $w\equiv1$ then loses the factor $n/n_{\mathrm{eff}}(\mu)$.
+\item There are non-separable arrays on which every single positive weighting is strictly
+  inefficient for several pairs at once; the likelihood score applies pair-dependent weights and
+  attains $1/F$.
+\end{enumerate}
+\end{theorem}
+
+\begin{theorem}[Flow: fixed points, rate, noise; item 1 \lab{L5}, item 2 \lab{L3}, item 3 \lab{L5}]
+\label{thm:flow}
+(1) Frames without within-column cross moments are fixed points of the mean flow. (2) Near
+$U^\star$ the undamped mean step contracts every pair by $1-\alpha$, independent of the eigen-gap;
+with damping by $1-\alpha F/(F+\delta n)$. (3) The linearized recursion has stationary variance
+$\frac{\alpha}{2-\alpha}\frac1F$: the Cram\'er--Rao variance at an effective sample size
+$(2-\alpha)/\alpha$.
+\end{theorem}
+
+\begin{theorem}[Bias-corrected schedule; \lab{L5}]\label{thm:schedule}
+With $a_t=(1-\beta)/(1-\beta^t)$ the recursion $\theta_{t+1}=\theta_t+a_{t+1}(x_t-\theta_t)$ is the
+bias-corrected exponential average of its inputs.
+\end{theorem}
+
+\begin{lemma}[Variances of the flow; item 1 \lab{L5}, item 2 identity \lab{L5}, expansion \lab{L3}]
+\label{lem:profile}
+(1) With forgetting weights the weighted likelihood is maximized over $D$ by the bias-corrected
+average of $Z^{\circ2}$ with the same coefficient: the frame and its variances share one forgetting
+factor. (2) Plug-in weights $w$ cost exactly
+$V_w=1/F+\|w_\perp\|^2/\langle w,w^\star\rangle^2$, $w_\perp\perp w^\star$; for noisy variance
+estimates with relative variance $\bar\varepsilon^2$ the inflation is
+$1+\bar\varepsilon^2K/F+O(\bar\varepsilon^4)$ with an explicit second-order term.
+\end{lemma}
+
+\begin{proposition}[Empirical-Bayes variances; risk identity \lab{L5}, noise estimate \lab{L3}]
+\label{prop:shrink}
+Among $A+c\hat R$ ($A$ the additive fit of $\log V^F$, $\hat R=R+E$ the residual) the risk
+$(c-1)^2\|R\|^2+c^2\nu$ is minimized exactly at $c^\star=\|R\|^2/(\|R\|^2+\nu)$. Gimbal uses the
+positive-part plug-in with $\nu$ from an odd/even split; separable arrays give $c\to0$ (KL-Shampoo's
+efficient weights), strongly non-separable ones $c\to1$ (free maximum likelihood). The shrinkage
+changes the variance of the frame estimate, never its mean.
+\end{proposition}
+
+\begin{remark}[Warm start as a one-step estimator; weighting \lab{L5}, rest \lab{L3}]\label{rem:warm}
+Restarting from pooled factors at $T_w$ and continuing the bias-corrected schedule gives the restart
+value exactly the weight $1-\beta^{T_w}$ that the first $T_w$ per-sample estimates would have had;
+this is Le Cam's one-step construction (a consistent start followed by Fisher scoring).
+\end{remark}
+
+\begin{proposition}[Frame statistic of a gradient with a mean; items 1--2 \lab{L4}, optimal factor
+\lab{L5}, plug-in \lab{L3}]\label{prop:center}
+If $G_t=\mu_t+N_t$ with predictable mean, the expected skew score of the uncentred statistic at
+the true frame is $\Theta(\Theta\had A)^\top-(\Theta\had A)\Theta^\top\ne0$ for $\Theta=Z_{U^\star}(\mu)$;
+subtracting $c\hat M_{t-1}$ scales this bias by $(1-c)^2$ at a variance cost $c^2\eta\,\tr\Sigma$,
+minimized at $c^\star=\|\mu\|^2/(\|\mu\|^2+\eta\tr\Sigma)$ with
+$\eta=(1-\beta_1)(1+\beta_1^{t-1})/((1+\beta_1)(1-\beta_1^{t-1}))$.
+\end{proposition}
+
+\begin{theorem}[Retractions; \lab{L5}]\label{thm:retraction}
+For skew $\Omega$: $(I-\Omega)^{-1}(I+\Omega)$ is orthogonal; $X=I+\Omega+\frac12\Omega^2$ satisfies
+$X^\top X=I+\frac14\Omega^4$; one Newton--Schulz step on $X^\top X=I+E$ leaves
+$-\frac34E^2+\frac14E^3$.
+\end{theorem}
+
+\begin{theorem}[Equivariance; one-step algebra \lab{L5}]\label{thm:equivariance}
+Running Gimbal on $PG_tR^\top$ from $(PQ_L,RQ_R)$ reproduces every rotated quantity and gives
+$\Delta W'=P\Delta WR^\top$. The initialization by eigenvectors is equivariant up to their signs,
+to which the update is invariant once every quantity computed from $\Omega$ is invariant under
+$\Omega\mapsto S\Omega S$; the trust region's power iteration is started from the largest column of
+$\Omega$ for this reason (an earlier fixed start vector made the update depend on the
+eigensolver's sign conventions).
+\end{theorem}
+
+\begin{theorem}[Transport; \lab{L5}]\label{thm:transport}
+If the frame moves by an orthogonal $P$, a diagonal second moment $d$ seen in the new frame is
+$(P^{\circ2})^\top d$; $P^{\circ2}$ is doubly stochastic, and for Kronecker frames
+$(P_L\otimes P_R)^{\circ2}=P_L^{\circ2}\otimes P_R^{\circ2}$.
+\end{theorem}
+
+\begin{theorem}[Descent and scale invariance; \lab{L5}]\label{thm:descent}
+With $\beta_1=0$, $\langle G,U\rangle=\sum_{ij}Z_{ij}^2/(\sqrt{\hat V_{ij}}+\epsilon)\ge0$. Replacing
+every gradient by $cG$ leaves the frame flow unchanged.
+\end{theorem}
+
+\begin{conjecture}[Global convergence; \lab{L2}, numerical support \lab{L1}]
+For KRD statistics with pairwise distinct profiles the minimizers of $J$ are $U^\star$ up to signed
+permutations and every other critical point is a strict saddle. From Haar-random frames the
+noise-free flow reached the global minimum from all \LandscapeGlobal{} of \LandscapeStarts{} starts, and constructed
+critical points were strict saddles that the flow escaped.
+\end{conjecture}
