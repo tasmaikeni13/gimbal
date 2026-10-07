@@ -145,6 +145,14 @@ def main() -> None:
         )
         snap_file.write_text(snapshot + "\n")
     print("snapshot", snapshot, flush=True)
+    # D-009: keep the step-1000 checkpoints of seed 2's SOAP and Gimbal runs for the mid-training
+    # frame probe (the trainer keeps only the two newest periodic checkpoints).
+    for opt in ("soap", "gimbal"):
+        subprocess.Popen(
+            [str(ROOT / "scripts/tpu/keep_checkpoint.sh"), f"runs/main/{opt}/seed2", "1000"],
+            stdout=open(ROOT / "runs/logs" / f"keep_ckpt_{opt}.log", "a"),
+            stderr=subprocess.STDOUT,
+        )
     write_manifest()
     for seed in SEEDS:
         for opt in OPTIMIZERS:
