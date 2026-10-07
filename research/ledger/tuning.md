@@ -6,15 +6,17 @@ Protocol after D-003: 125M model, 2,500 steps of 240 × 1024 tokens (614M tokens
 
 | optimizer | Stage A runs | Stage C runs | total | diverged | TPU hours (16 chips) |
 |---|---|---|---|---|---|
-| adamw | 8 | 0 | 8 | 0 | 0.96 h × 16 chips |
-| soap | 8 | 0 | 8 | 0 | 1.16 h × 16 chips |
-| gimbal | 0 | 0 | 0 | 0 | 0.00 h × 16 chips |
+| adamw | 14 | 0 | 14 | 0 | 1.78 h × 16 chips |
+| soap | 14 | 1 | 15 | 0 | 2.16 h × 16 chips |
+| gimbal | 14 | 0 | 14 | 0 | 2.07 h × 16 chips |
+
+Replicates (not counted): `adamw_lr0.002_b20.95_s0` repeats the Stage A run with the same seed and configuration (a loop error in Stage C, fixed in `tune.py`); final loss identical to the original.
 
 ## Stage A: mean final validation loss by learning rate (two seeds)
 
-* **adamw**: 0.000125: 4.0009; 0.00025: 3.7047; 0.0005: 3.5183; 0.001: 3.4093
-* **soap**: 0.000375: 3.5138; 0.00075: 3.3639; 0.0015: 3.2916; 0.003: 3.2655
-* **gimbal**: 
+* **adamw**: 0.000125: 4.0009; 0.00025: 3.7047; 0.0005: 3.5183; 0.001: 3.4093; 0.002: 3.3622; 0.004: 3.5972; 0.008: 6.0040
+* **soap**: 0.000375: 3.5138; 0.00075: 3.3639; 0.0015: 3.2916; 0.003: 3.2655; 0.006: 3.2657; 0.012: 3.2488; 0.024: 4.7693
+* **gimbal**: 0.000375: 3.5104; 0.00075: 3.3722; 0.0015: 3.3011; 0.003: 3.2867; 0.006: 3.2803; 0.012: 3.3424; 0.024: 4.7494
 
 Figure: `analysis/results/tuning_lr_curves.png`.
 
@@ -40,6 +42,27 @@ Gimbal's first trials ran with Adam's momentum beta_1 = 0.9 while SOAP had its o
 | adamw_lr0.0005_s1 | A | adamw | 0.0005 | b2=0.95 | 1 | 3.5225 | False | 422 | 5741a82 |
 | adamw_lr0.001_s0 | A | adamw | 0.001 | b2=0.95 | 0 | 3.4041 | False | 421 | 5741a82 |
 | adamw_lr0.001_s1 | A | adamw | 0.001 | b2=0.95 | 1 | 3.4144 | False | 422 | 5741a82 |
+| adamw_lr0.002_s0 | A | adamw | 0.002 | b2=0.95 | 0 | 3.3617 | False | 422 | 31b1833 |
+| adamw_lr0.002_s1 | A | adamw | 0.002 | b2=0.95 | 1 | 3.3627 | False | 423 | 31b1833 |
+| adamw_lr0.004_s0 | A | adamw | 0.004 | b2=0.95 | 0 | 3.5972 | False | 422 | 31b1833 |
+| adamw_lr0.004_s1 | A | adamw | 0.004 | b2=0.95 | 1 | 3.5973 | False | 421 | 31b1833 |
+| adamw_lr0.008_s0 | A | adamw | 0.008 | b2=0.95 | 0 | 5.9846 | False | 422 | 31b1833 |
+| adamw_lr0.008_s1 | A | adamw | 0.008 | b2=0.95 | 1 | 6.0234 | False | 423 | 31b1833 |
+| adamw_lr0.002_b20.95_s0 | R | adamw | 0.002 | b2=0.95 | 0 | 3.3617 | False | 422 | 31b1833 |
+| gimbal_lr0.000375_s0 | A | gimbal | 0.000375 | rot_rate=0.05 | 0 | 3.5041 | False | 1006 | 31b1833 |
+| gimbal_lr0.000375_s1 | A | gimbal | 0.000375 | rot_rate=0.05 | 1 | 3.5166 | False | 488 | 31b1833 |
+| gimbal_lr0.00075_s0 | A | gimbal | 0.00075 | rot_rate=0.05 | 0 | 3.3697 | False | 488 | 31b1833 |
+| gimbal_lr0.00075_s1 | A | gimbal | 0.00075 | rot_rate=0.05 | 1 | 3.3746 | False | 488 | 31b1833 |
+| gimbal_lr0.0015_s0 | A | gimbal | 0.0015 | rot_rate=0.05 | 0 | 3.3016 | False | 488 | 31b1833 |
+| gimbal_lr0.0015_s1 | A | gimbal | 0.0015 | rot_rate=0.05 | 1 | 3.3007 | False | 488 | 31b1833 |
+| gimbal_lr0.003_s0 | A | gimbal | 0.003 | rot_rate=0.05 | 0 | 3.2836 | False | 489 | 31b1833 |
+| gimbal_lr0.003_s1 | A | gimbal | 0.003 | rot_rate=0.05 | 1 | 3.2897 | False | 489 | 31b1833 |
+| gimbal_lr0.006_s0 | A | gimbal | 0.006 | rot_rate=0.05 | 0 | 3.2817 | False | 505 | 31b1833 |
+| gimbal_lr0.006_s1 | A | gimbal | 0.006 | rot_rate=0.05 | 1 | 3.2789 | False | 506 | 31b1833 |
+| gimbal_lr0.012_s0 | A | gimbal | 0.012 | rot_rate=0.05 | 0 | 3.3596 | False | 504 | 31b1833 |
+| gimbal_lr0.012_s1 | A | gimbal | 0.012 | rot_rate=0.05 | 1 | 3.3253 | False | 507 | 31b1833 |
+| gimbal_lr0.024_s0 | A | gimbal | 0.024 | rot_rate=0.05 | 0 | 4.7383 | False | 507 | 31b1833 |
+| gimbal_lr0.024_s1 | A | gimbal | 0.024 | rot_rate=0.05 | 1 | 4.7604 | False | 504 | 31b1833 |
 | soap_lr0.000375_s0 | A | soap | 0.000375 | shampoo_beta=0.95 | 0 | 3.5110 | False | 701 | 5741a82 |
 | soap_lr0.000375_s1 | A | soap | 0.000375 | shampoo_beta=0.95 | 1 | 3.5167 | False | 688 | 5741a82 |
 | soap_lr0.00075_s0 | A | soap | 0.00075 | shampoo_beta=0.95 | 0 | 3.3626 | False | 461 | 5741a82 |
@@ -48,6 +71,13 @@ Gimbal's first trials ran with Adam's momentum beta_1 = 0.9 while SOAP had its o
 | soap_lr0.0015_s1 | A | soap | 0.0015 | shampoo_beta=0.95 | 1 | 3.2907 | False | 463 | 5741a82 |
 | soap_lr0.003_s0 | A | soap | 0.003 | shampoo_beta=0.95 | 0 | 3.2641 | False | 463 | 5741a82 |
 | soap_lr0.003_s1 | A | soap | 0.003 | shampoo_beta=0.95 | 1 | 3.2669 | False | 462 | 5741a82 |
+| soap_lr0.006_s0 | A | soap | 0.006 | shampoo_beta=0.95 | 0 | 3.2647 | False | 645 | 31b1833 |
+| soap_lr0.006_s1 | A | soap | 0.006 | shampoo_beta=0.95 | 1 | 3.2666 | False | 463 | 31b1833 |
+| soap_lr0.012_s0 | A | soap | 0.012 | shampoo_beta=0.95 | 0 | 3.2484 | False | 461 | 31b1833 |
+| soap_lr0.012_s1 | A | soap | 0.012 | shampoo_beta=0.95 | 1 | 3.2492 | False | 462 | 31b1833 |
+| soap_lr0.024_s0 | A | soap | 0.024 | shampoo_beta=0.95 | 0 | 4.7785 | False | 462 | 31b1833 |
+| soap_lr0.024_s1 | A | soap | 0.024 | shampoo_beta=0.95 | 1 | 4.7602 | False | 462 | 31b1833 |
+| soap_lr0.012_shampoo_beta0.9_s0 | C | soap | 0.012 | shampoo_beta=0.9 | 0 | 3.2469 | False | 654 | 31b1833 |
 | pre_c019/gimbal_lr0.000375_s0 | A (before C-019) | gimbal | 0.000375 | beta_1=0.9 | 0 | 3.5049 | False | 962 | 5741a82 |
 | pre_c019/gimbal_lr0.000375_s1 | A (before C-019) | gimbal | 0.000375 | beta_1=0.9 | 1 | 3.5129 | False | 503 | 5741a82 |
 | pre_c019/gimbal_lr0.00075_s0 | A (before C-019) | gimbal | 0.00075 | beta_1=0.9 | 0 | 3.3806 | False | 502 | 5741a82 |

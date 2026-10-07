@@ -414,7 +414,10 @@ def tuning_table() -> None:
             fin = json.loads((d / "final.json").read_text())
             opt, lr, key, val, seed = m.groups()
             loss = "diverged" if fin.get("diverged") else f"{fin.get('val_loss', float('nan')):.4f}"
+            defaults = {"adamw": 0.95, "soap": 0.95, "gimbal": 0.05}
             knob = f"{tex(key)}={val}" if key else "default"
+            if key and float(val) == defaults[opt]:
+                knob = "default (replicate)"
             rows.append(f"{opt} & {float(lr):.4g} & {knob} & {seed} & {loss} \\\\")
     (GEN / "tuning_table.tex").write_text(
         "\\begin{tabular}{lcccc}\n\\toprule\noptimizer & peak lr & secondary & seed & "

@@ -49,7 +49,8 @@ def trials(runs: pathlib.Path = RUNS) -> list[dict]:
                 "knob": key or KNOB[opt][0],
                 "value": float(val) if val else KNOB[opt][1],
                 "seed": int(seed),
-                "stage": "C" if key else "A",
+                # a Stage C name with the default value is a replicate of the Stage A run
+                "stage": "A" if not key else "R" if float(val) == KNOB[opt][1] else "C",
                 "diverged": bool(fin.get("diverged")),
                 "val_loss": fin.get("val_loss"),
                 "seconds": fin.get("train_seconds"),
@@ -94,6 +95,30 @@ def main() -> None:
             f"| {opt} | {a} | {c} | {a + c} | {sum(x['diverged'] for x in r)} | "
             f"{hours:.2f} h × 16 chips |"
         )
+    reps = [x for x in rows if x["stage"] == "R"]
+    if reps:
+        lines += [
+            "",
+            "Replicates (not counted): "
+            + "; ".join(
+                f"`{x['run']}` repeats the Stage A run with the same seed and configuration "
+                "(a loop error in Stage C, fixed in `tune.py`); final loss "
+                + (
+                    "identical to the original"
+                    if any(
+                        y["stage"] == "A"
+                        and y["optimizer"] == x["optimizer"]
+                        and y["lr"] == x["lr"]
+                        and y["seed"] == x["seed"]
+                        and y["val_loss"] == x["val_loss"]
+                        for y in rows
+                    )
+                    else "different from the original"
+                )
+                for x in reps
+            )
+            + ".",
+        ]
     lines += ["", "## Stage A: mean final validation loss by learning rate (two seeds)", ""]
     fig, ax = plt.subplots(figsize=(6.5, 4))
     for opt in OPTS:
