@@ -1,4 +1,59 @@
 \section{Results at 125M parameters and 2.5B tokens}
 \label{sec:results}
 
-\emph{Pending: written after Phase 08 from \texttt{analysis/results/phase08.json}.}
+% RESULTS-NARRATIVE: written after Phase 08 from analysis/results/phase08.json and
+% analysis/decision.md; every number below is a macro or a generated table.
+
+\paragraph{Tuning.}
+\Cref{fig:tuning} shows the mean final validation loss of the two tuning seeds against the peak
+learning rate. Selected: AdamW \LrAdamw{} ($\beta_2=\KnobAdamw$), SOAP \LrSoap{}
+($\beta_s=\KnobSoap$), Gimbal \LrGimbal{} ($\alpha=\KnobGimbal$).
+
+\begin{figure}[t]
+\centering
+\IfFileExists{generated/tuning_lr_curves.png}{\includegraphics[width=0.62\linewidth]{generated/tuning_lr_curves.png}}{\pending}
+\caption{Tuning (614M tokens, mean of seeds 0 and 1): final validation loss against the peak
+learning rate (Gimbal with SOAP's momentum, after the repair of \cref{app:diag}).}
+\label{fig:tuning}
+\end{figure}
+
+\paragraph{Confirmatory runs.}
+\Cref{tab:main} lists every run.
+
+\begin{table}[t]
+\centering\small
+\input{generated/main_table}
+\caption{Confirmatory runs (seeds 2 and 3): final validation loss with its block-bootstrap
+standard error, validation perplexity, test loss (read once, after the decision), steady-state step
+time, loss spikes and largest gradient norm after step 500.}
+\label{tab:main}
+\end{table}
+
+\begin{table}[t]
+\centering\small
+\input{generated/paired_table}
+\caption{Gimbal against each competitor $c$, paired by seed: difference of final validation loss
+with its paired bootstrap standard error, tokens Gimbal needs to reach $c$'s final loss on the
+evaluation curve, the token multiplier (full budget over those tokens), and wall-clock to that
+point and $c$'s full wall-clock (steady-state step time $\times$ steps).}
+\label{tab:paired}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\IfFileExists{generated/loss_curves.png}{\includegraphics[width=\linewidth]{generated/loss_curves.png}}{\pending}
+\caption{Validation loss on the 5.24M-token evaluation subset against tokens and against
+wall-clock (steady-state step time $\times$ steps); solid seed 2, dashed seed 3.}
+\label{fig:curves}
+\end{figure}
+
+\paragraph{Mechanism diagnostics.}
+
+\begin{figure}[t]
+\centering
+\IfFileExists{generated/kappa.png}{\includegraphics[width=\linewidth]{generated/kappa.png}}{\pending}
+\caption{Gimbal's runs: noise-corrected non-separability index of the flow's variances (median
+over the matrices of each bucket; the predeclared premise threshold 0.05 dashed) and the
+empirical-Bayes shrinkage factor $c$.}
+\label{fig:kappa}
+\end{figure}
