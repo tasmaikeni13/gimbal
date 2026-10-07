@@ -17,6 +17,9 @@ data/tokens/
 *.bin
 *.npy
 !experiments/**/results/*.npy
+# per-sequence validation/test losses of the TPU runs: the Phase 08 bootstrap reads them
+!runs/**/val_seq_losses.npy
+!runs/**/test_seq_losses.npy
 
 # OS / editors
 .DS_Store
@@ -31,5 +34,6 @@ experiments/phase3/results/lm/snap_*.npz
 runs/**/ckpt/
 runs/profiles/
 runs/hlo/
-runs/logs/
+# raw per-host logs; the driver logs (tune.log, main_runs.log, diag/*.log) feed the compute budget
+runs/logs/**/host*.log
 runs/dev/
