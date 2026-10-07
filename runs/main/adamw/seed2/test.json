@@ -1,0 +1,6 @@
+{
+ "checkpoint_step": 10172,
+ "test_loss": 3.108548641204834,
+ "test_tokens": 19999744,
+ "test_ppl": 22.38852702365713
+}
