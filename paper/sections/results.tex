@@ -27,9 +27,8 @@ standard error (\TwoPooledSe{}); it reaches AdamW's final loss after \TokensToAd
 Against SOAP the differences are \DiffSoapSeedTwo{} and \DiffSoapSeedThree{}: of opposite sign,
 of the order of the seed-to-seed spread (\PooledSeedSd{}), and far below the threshold. Gimbal's
 training step takes \MainStepGimbal{}~ms against SOAP's \MainStepSoap{}~ms. By the predeclared
-rule Gimbal beats AdamW on loss (\BeatsLossAdamw) and on wall-clock (\BeatsWallAdamw), but not
-SOAP on loss (\BeatsLossSoap) or wall-clock (\BeatsWallSoap); the headline claim that it
-outperforms SOAP is \Headline. The test split, read once after the decision, gives the same
+rule Gimbal therefore beats AdamW on loss and on wall-clock but beats SOAP on neither, and the
+headline claim that it outperforms SOAP is \Headline. The test split, read once after the decision, gives the same
 picture: mean test loss \TestAdamw{} (AdamW), \TestSoap{} (SOAP) and \TestGimbal{} (Gimbal).
 
 \begin{table}[t]
@@ -70,8 +69,9 @@ wall-clock (steady-state step time $\times$ steps); solid seed 2, dashed seed 3.
 \end{figure}
 
 \paragraph{Mechanism.}
-The premise that the likelihood frame needs, gradient variances that are not Kronecker-separable
-in the rotated frame, fails at this scale as it did on the small model. The noise-corrected
+The likelihood frame helps when the gradient variances in the rotated frame are not
+Kronecker-separable. At this scale they almost are, as they were on the small model. The
+noise-corrected
 non-separability index of Gimbal's own variance average has median \KappaMainAttn{} in the
 attention matrices and \KappaMainMlp{} in the MLP matrices at the end of training (the raw index,
 \KappaRawMainAttn{} and \KappaRawMainMlp{}, is almost entirely sampling noise), against the
@@ -81,10 +81,10 @@ A cruder estimate from 16 gradients at the final weights, whose noise correction
 gradients, is larger (median \ProbeKappa{} over the probed matrices; the last MLP projection is the
 largest). On held-out validation gradients, each run's own frame fits better than a pooled frame
 estimated from 16 fresh gradients at the same weights in \ProbeOwnBetterGimbal{} matrices for
-Gimbal and \ProbeOwnBetterSoap{} for SOAP; at step 1{,}000 (one seed, an exploratory probe fixed
-before the runs) Gimbal's frame was the better of the two in this sense in \ProbeMidOwnBetterGimbal{}
-matrices and SOAP's in \ProbeMidOwnBetterSoap{}. These probes compare each frame with a reference
-at its own weights, not the two optimizers' frames with each other, and they do not show that the
+Gimbal and \ProbeOwnBetterSoap{} for SOAP. At step 1{,}000 (one seed, an exploratory probe fixed
+before the runs) the run's own frame was the better one in \ProbeMidOwnBetterGimbal{} matrices for
+Gimbal and in \ProbeMidOwnBetterSoap{} for SOAP. These probes compare each frame with a reference
+at its own weights, not the two optimizers' frames with each other, and they do not show that a
 better frame caused Gimbal's lead during training.
 
 \begin{figure}[t]
