@@ -11,6 +11,7 @@ def compute_dtype(g: torch.Tensor) -> torch.Tensor:
 
 
 def eye_like(n: int, ref: torch.Tensor) -> torch.Tensor:
+    """Identity matrix of size ``n`` with the dtype and device of ``ref``."""
     return torch.eye(n, dtype=ref.dtype, device=ref.device)
 
 

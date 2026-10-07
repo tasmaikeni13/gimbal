@@ -22,6 +22,10 @@ from ._linalg import compute_dtype, eigh_desc, qr_orth, rotate, unrotate
 
 
 class SOAP(Optimizer):
+    """SOAP: Adam in the eigenbasis of Shampoo's Kronecker factors (module docstring);
+    ``realtime=True`` selects the real-time variant.
+    """
+
     def __init__(
         self,
         params: Iterable[torch.Tensor],
@@ -50,6 +54,18 @@ class SOAP(Optimizer):
 
     @torch.no_grad()
     def step(self, closure=None):
+        """Perform one optimization step.
+
+        Parameters
+        ----------
+        closure : callable, optional
+            Re-evaluates the model and returns the loss (PyTorch convention).
+
+        Returns
+        -------
+        torch.Tensor or None
+            The closure's loss, if a closure was given.
+        """
         loss = None
         if closure is not None:
             with torch.enable_grad():

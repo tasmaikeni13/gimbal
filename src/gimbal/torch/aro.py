@@ -17,6 +17,8 @@ from ._linalg import compute_dtype, qr_orth, sinkhorn_normalize
 
 
 class AROSinkhorn(Optimizer):
+    """ARO with the Sinkhorn base map; one-sided (left) rotation per matrix (module docstring)."""
+
     def __init__(
         self,
         params: Iterable[torch.Tensor],
@@ -32,6 +34,18 @@ class AROSinkhorn(Optimizer):
 
     @torch.no_grad()
     def step(self, closure=None):
+        """Perform one optimization step.
+
+        Parameters
+        ----------
+        closure : callable, optional
+            Re-evaluates the model and returns the loss (PyTorch convention).
+
+        Returns
+        -------
+        torch.Tensor or None
+            The closure's loss, if a closure was given.
+        """
         loss = None
         if closure is not None:
             with torch.enable_grad():

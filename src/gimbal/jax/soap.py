@@ -38,10 +38,13 @@ class SOAPConfig:
 
     @property
     def sb(self) -> float:
+        """Factor memory: ``shampoo_beta``, or ``b2`` when it is negative (official convention)."""
         return self.shampoo_beta if self.shampoo_beta >= 0 else self.b2
 
 
 class Kind(NamedTuple):
+    """Static kind of a SOAP call, resolved outside ``jit`` (see :func:`schedule`)."""
+
     init: bool  # first call: initialize factors and frame, no parameter update
     refresh: bool  # refresh the frame after this step's factor update
 
@@ -53,6 +56,9 @@ def schedule(call: int, cfg: SOAPConfig) -> Kind:
 
 
 def init_state(shape: tuple[int, int], dtype=jnp.float32) -> dict:
+    """State before the first call for an ``m x n`` matrix: Adam's moments in the frame,
+    the Kronecker factors and the identity frame.
+    """
     m, n = shape
     z = jnp.zeros(shape, dtype)
     return {

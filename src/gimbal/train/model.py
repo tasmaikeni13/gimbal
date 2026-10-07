@@ -25,6 +25,8 @@ COMPUTE = jnp.bfloat16
 
 @dataclass(frozen=True)
 class ModelConfig:
+    """Llama-style decoder: RMSNorm pre-norm, rotary embeddings, SwiGLU MLP, tied embeddings."""
+
     vocab: int = 50304
     d_model: int = 768
     n_layers: int = 12
@@ -42,6 +44,7 @@ class ModelConfig:
 
     @property
     def head_dim(self) -> int:
+        """Width of one attention head."""
         return self.d_model // self.n_heads
 
 
@@ -65,6 +68,7 @@ def init_params(cfg: ModelConfig, key: jax.Array) -> dict:
 
 
 def count_params(params: dict) -> int:
+    """Number of scalar parameters."""
     return sum(int(x.size) for x in jax.tree.leaves(params))
 
 

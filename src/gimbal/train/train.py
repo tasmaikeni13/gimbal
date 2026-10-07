@@ -78,6 +78,7 @@ def lr_at(step: int, peak: float, total: int, warmup: int, final_frac: float) ->
 
 
 def build_spec(cfg: dict, name: str) -> tuple[dist.OptimizerSpec, float]:
+    """Optimizer spec and peak learning rate of optimizer ``name`` from the run config."""
     hp = dict(cfg["optimizers"][name])
     lr = float(hp.pop("lr"))
     hp["weight_decay"] = cfg["train"]["weight_decay"]
@@ -94,6 +95,7 @@ def build_spec(cfg: dict, name: str) -> tuple[dist.OptimizerSpec, float]:
 
 
 def set_path(cfg: dict, dotted: str, value: str) -> None:
+    """Set ``cfg[a][b]... = value`` for ``dotted = 'a.b...'``; ``value`` is parsed as YAML."""
     keys = dotted.split(".")
     node = cfg
     for k in keys[:-1]:
@@ -102,6 +104,10 @@ def set_path(cfg: dict, dotted: str, value: str) -> None:
 
 
 class Trainer:
+    """Model, mesh, optimizer layout and the compiled gradient, update and evaluation
+    functions of one run (16-way data parallel, ZeRO-1 optimizer state).
+    """
+
     def __init__(self, cfg: dict, optimizer: str) -> None:
         self.cfg = cfg
         self.model_cfg = ModelConfig(**cfg["model"])
@@ -129,6 +135,7 @@ class Trainer:
         return params, jax.jit(make, out_shardings=shard)(params)
 
     def init_params_abstract(self) -> dict:
+        """Shapes and dtypes of the parameters (no allocation)."""
         return jax.eval_shape(partial(init_params, self.model_cfg), jax.random.PRNGKey(0))
 
     def abstract_state(self, step: int) -> dict:
@@ -142,6 +149,7 @@ class Trainer:
         return state
 
     def state_shardings(self, state: dict) -> dict:
+        """Shardings of an optimizer state (matrix buckets split along the stack axis)."""
         return jax.tree.map(
             lambda s: NamedSharding(self.mesh, s),
             dist.state_specs(state),
@@ -198,6 +206,7 @@ class Trainer:
         return jax.jit(fn, donate_argnums=(0, 1, 2))
 
     def update(self, state, grads, params, gnorm, lr: float, t: int):
+        """One optimizer step; compiles (once) the update function of this step's kind."""
         kind = self.spec.kind(t)
         key = (kind, tuple(sorted(state["matrix"][self.buckets[0].key])))
         if key not in self._update_fns:
@@ -274,6 +283,7 @@ def diagnostics(spec: dist.OptimizerSpec, buckets: tuple, state: dict, t: int) -
 
 
 def main() -> None:
+    """Command-line entry point of a training run (``python -m gimbal.train.train --help``)."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=str(ROOT / "configs" / "base_125m.yaml"))
     parser.add_argument("--optimizer", required=True, choices=sorted(CONFIGS))

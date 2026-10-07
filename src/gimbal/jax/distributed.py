@@ -35,6 +35,12 @@ OTHER_KEYS = ("embed", "norm_attn", "norm_mlp", "norm_f")
 
 @dataclass(frozen=True)
 class Bucket:
+    """A stack of same-shaped hidden matrices updated together.
+
+    ``count`` real matrices of shape ``shape`` are padded to ``padded``, a multiple of the device
+    count, so that each device owns ``per_device`` of them (ZeRO-1 sharding of the optimizer state).
+    """
+
     key: str
     count: int  # matrices in the stack
     shape: tuple[int, int]  # (m, n) of each matrix
@@ -43,6 +49,9 @@ class Bucket:
 
 
 def make_buckets(param_shapes: dict, n_dev: int) -> tuple[Bucket, ...]:
+    """One bucket per hidden-matrix parameter (``attn``, ``mlp``); the leading (layer, kind)
+    axes are flattened into the stack axis.
+    """
     out = []
     for key in MATRIX_KEYS:
         shape = param_shapes[key]
@@ -64,6 +73,7 @@ class OptimizerSpec:
     other: _adamw.AdamWConfig = field(default_factory=lambda: _adamw.AdamWConfig())
 
     def kind(self, t: int):
+        """Static kind of the matrix optimizer's call ``t`` (``None`` for AdamW)."""
         if self.name == "soap":
             return _soap.schedule(t, self.matrix)
         if self.name == "gimbal":
@@ -111,6 +121,7 @@ def state_specs(state: dict) -> dict:
 
 
 def drop_gimbal_warm_buffers(state: dict) -> dict:
+    """State layout after Gimbal's warm start: the pooled-factor buffers are removed."""
     return {
         **state,
         "matrix": {k: _gimbal.drop_warm_start_buffers(v) for k, v in state["matrix"].items()},

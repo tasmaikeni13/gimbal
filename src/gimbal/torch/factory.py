@@ -40,11 +40,13 @@ class OptimizerPair:
     other: torch.optim.Optimizer | None
 
     def zero_grad(self) -> None:
+        """Clear the gradients of both optimizers (set to ``None``)."""
         for opt in (self.matrix, self.other):
             if opt is not None:
                 opt.zero_grad(set_to_none=True)
 
     def step(self) -> None:
+        """Step both optimizers."""
         for opt in (self.matrix, self.other):
             if opt is not None:
                 opt.step()
@@ -66,6 +68,21 @@ def build(
     matrix_kwargs: dict | None = None,
     other_kwargs: dict | None = None,
 ) -> OptimizerPair:
+    """Pair the matrix optimizer ``name`` (hidden matrices) with AdamW (everything else).
+
+    Parameters
+    ----------
+    name : str
+        Key of ``MATRIX_OPTIMIZERS``.
+    hidden_matrices, other_params : iterable of torch.Tensor
+        The two parameter groups; either may be empty.
+    matrix_kwargs, other_kwargs : dict, optional
+        Keyword arguments of the two optimizers.
+
+    Returns
+    -------
+    OptimizerPair
+    """
     if name not in MATRIX_OPTIMIZERS:
         raise KeyError(f"unknown optimizer {name!r}; choose from {sorted(MATRIX_OPTIMIZERS)}")
     hidden = list(hidden_matrices)

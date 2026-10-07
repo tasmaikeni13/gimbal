@@ -16,6 +16,8 @@ from ._linalg import compute_dtype, rotate, unrotate
 
 
 class SPlus(Optimizer):
+    """SPlus: sign of the momentum in a Shampoo frame, with parameter averaging (see module)."""
+
     def __init__(
         self,
         params: Iterable[torch.Tensor],
@@ -47,6 +49,18 @@ class SPlus(Optimizer):
 
     @torch.no_grad()
     def step(self, closure=None):
+        """Perform one optimization step.
+
+        Parameters
+        ----------
+        closure : callable, optional
+            Re-evaluates the model and returns the loss (PyTorch convention).
+
+        Returns
+        -------
+        torch.Tensor or None
+            The closure's loss, if a closure was given.
+        """
         loss = None
         if closure is not None:
             with torch.enable_grad():

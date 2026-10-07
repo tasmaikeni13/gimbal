@@ -20,12 +20,17 @@ from jax.sharding import NamedSharding
 
 
 class TokenFile:
+    """A flat ``uint16`` token file read as sequences of ``seq_len + 1`` tokens (inputs and
+    shifted targets overlap by one token).
+    """
+
     def __init__(self, path: str | pathlib.Path, seq_len: int = 1024) -> None:
         self.tokens = np.memmap(path, dtype=np.uint16, mode="r")
         self.seq_len = seq_len
         self.n_seq = (len(self.tokens) - 1) // seq_len
 
     def rows(self, idx: np.ndarray) -> np.ndarray:
+        """Sequences ``idx`` as an ``int32`` array ``[len(idx), seq_len + 1]``."""
         out = np.empty((len(idx), self.seq_len + 1), dtype=np.int32)
         for r, i in enumerate(idx):
             start = int(i) * self.seq_len
@@ -34,6 +39,7 @@ class TokenFile:
 
 
 def train_order(n_seq: int, seed: int) -> np.ndarray:
+    """The order in which a run visits the training sequences (a permutation fixed by the seed)."""
     return np.random.default_rng(seed).permutation(n_seq)
 
 

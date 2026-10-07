@@ -1,7 +1,7 @@
 """AdamW (Loshchilov & Hutter, 2019) as a pure per-tensor step, matching ``torch.optim.AdamW``.
 
-Used for every parameter of the AdamW baseline and, with identical settings for every method, for
-the embeddings, norms and output head of the matrix optimizers (Phase 03 routing).
+Used for every parameter of the AdamW baseline and, for the matrix optimizers, for the embeddings,
+norms and output head (Phase 03 routing; in the TPU study at each method's tuned learning rate).
 """
 
 from __future__ import annotations
@@ -14,6 +14,10 @@ import jax.numpy as jnp
 
 @dataclass(frozen=True)
 class AdamWConfig:
+    """Hyper-parameters of AdamW; ``weight_decay`` is decoupled and multiplied by the
+    learning rate (``torch.optim.AdamW`` convention).
+    """
+
     b1: float = 0.9
     b2: float = 0.95
     eps: float = 1e-8
@@ -21,6 +25,7 @@ class AdamWConfig:
 
 
 def init_state(x: jax.Array) -> dict:
+    """Zero first and second moments shaped like ``x`` (float64 kept for tests, else float32)."""
     dtype = jnp.float64 if x.dtype == jnp.float64 else jnp.float32
     return {"m": jnp.zeros_like(x, dtype), "v": jnp.zeros_like(x, dtype)}
 

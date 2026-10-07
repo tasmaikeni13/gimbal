@@ -47,6 +47,9 @@ def save(
     params_only: bool = False,
     keep: int = 2,
 ) -> None:
+    """Write this host's shards of ``params`` (and ``state``) for ``step`` and keep the ``keep``
+    newest checkpoints of the run.
+    """
     tree = {"params": params} if params_only else {"params": params, "state": state}
     leaves, _ = jax.tree.flatten(tree)
     out = ckpt_dir / f"step_{step:06d}" / f"process_{jax.process_index()}"

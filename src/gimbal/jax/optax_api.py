@@ -42,6 +42,7 @@ def _switch(index: jax.Array, kinds: list, fn: Callable) -> object:
 def adamw(
     learning_rate: LearningRate, cfg: _adamw.AdamWConfig | None = None
 ) -> optax.GradientTransformation:
+    """Optax transformation: AdamW on every leaf (see :mod:`gimbal.jax.adamw`)."""
     cfg = cfg or _adamw.AdamWConfig()
 
     def init(params):
@@ -103,6 +104,7 @@ def _matrix_transform(
 def soap(
     learning_rate: LearningRate, cfg: _soap.SOAPConfig | None = None
 ) -> optax.GradientTransformation:
+    """Optax transformation: SOAP on every 2-D leaf (see :mod:`gimbal.jax.soap`)."""
     cfg = cfg or _soap.SOAPConfig()
     kinds = [_soap.Kind(init=a, refresh=b) for a, b in itertools.product((False, True), repeat=2)]
 
@@ -125,6 +127,7 @@ def soap(
 def gimbal(
     learning_rate: LearningRate, cfg: _gimbal.GimbalConfig | None = None
 ) -> optax.GradientTransformation:
+    """Optax transformation: Gimbal on every 2-D leaf (see :mod:`gimbal.jax.gimbal`)."""
     cfg = cfg or _gimbal.GimbalConfig()
     # The move pattern is tabulated until it is periodic (fixed period frame_every once the
     # adaptive k_t has reached it and the warm start is over) and continued periodically after.
