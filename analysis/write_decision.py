@@ -51,9 +51,10 @@ def main() -> None:
         return out
 
     ahead, n_ev, lead = {}, {}, {}
+    adamw_ahead, adamw_lead = {}, {}
     for s in (2, 3):
         curves = {}
-        for o in ("gimbal", "soap"):
+        for o in ("gimbal", "soap", "adamw"):
             path = ROOT / "runs" / "main" / o / f"seed{s}" / "eval.jsonl"
             curves[o] = {
                 x["step"]: x["val_loss_subset"]
@@ -64,6 +65,8 @@ def main() -> None:
         ahead[s] = sum(curves["gimbal"][t] < curves["soap"][t] for t in steps)
         n_ev[s] = len(steps)
         lead[s] = max(curves["soap"][t] - curves["gimbal"][t] for t in steps)
+        adamw_ahead[s] = sum(curves["adamw"][t] < curves["soap"][t] for t in steps)
+        adamw_lead[s] = max(curves["soap"][t] - curves["adamw"][t] for t in steps)
 
     lines = [
         "# Phase 08 decision: Gimbal against AdamW and SOAP at 125M parameters / 2.5B tokens",
@@ -141,7 +144,11 @@ def main() -> None:
         f"steps) Gimbal was ahead of SOAP at {ahead[2]}/{n_ev[2]} (seed 2) and "
         f"{ahead[3]}/{n_ev[3]} (seed 3) "
         f"evaluations, by up to {max(lead.values()):.3f} nats, and SOAP caught up as the learning "
-        "rate decayed (`analysis/results/loss_curves.png`).",
+        "rate decayed (`analysis/results/loss_curves.png`). AdamW, too, was below SOAP at "
+        f"{adamw_ahead[2]}/{n_ev[2]} and {adamw_ahead[3]}/{n_ev[3]} evaluations, by up to "
+        f"{max(adamw_lead.values()):.3f} nats, so the mid-training lead mostly reflects SOAP's "
+        "higher learning rate (observation added after the test evaluation; the decision is "
+        "unchanged).",
         "* Stability: no loss spikes (D-005 definition) in any run; frames orthogonal to about "
         "1e-6 throughout.",
         "",

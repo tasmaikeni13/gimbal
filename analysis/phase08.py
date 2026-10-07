@@ -352,7 +352,7 @@ def figures(runs: dict) -> None:
     import matplotlib.pyplot as plt
 
     colors = {"adamw": "#1f77b4", "soap": "#ff7f0e", "gimbal": "#2ca02c"}
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
     for (opt, seed), r in sorted(runs.items()):
         tps = r["config"]["tokens_per_step"]
         ev = sorted((x["step"], x["val_loss_subset"]) for x in r["eval"])
@@ -371,8 +371,21 @@ def figures(runs: dict) -> None:
             color=colors[opt],
             label=f"{opt} seed {seed}",
         )
+        ref = runs.get(("soap", seed))
+        if ref and opt != "soap":
+            soap = dict((x["step"], x["val_loss_subset"]) for x in ref["eval"])
+            common = [(st, lo - soap[st]) for st, lo in ev if st in soap and st >= 250]
+            if common:
+                st, diff = zip(*common, strict=True)
+                axes[2].plot(
+                    np.array(st) * tps / 1e9,
+                    diff,
+                    style,
+                    color=colors[opt],
+                    label=f"{opt} − soap, seed {seed}",
+                )
     for ax, xl in zip(
-        axes,
+        axes[:2],
         ("tokens (billions)", "wall-clock (minutes, steady-state step time × steps)"),
         strict=True,
     ):
@@ -380,6 +393,12 @@ def figures(runs: dict) -> None:
         ax.set_ylabel("validation loss (5.24M-token subset)")
         ax.set_ylim(top=4.0)
         ax.grid(alpha=0.3)
+    axes[2].axhline(0.0, color="grey", lw=0.8)
+    axes[2].set_xlabel("tokens (billions)")
+    axes[2].set_ylabel("loss minus SOAP's (same seed)")
+    axes[2].set_ylim(-0.08, 0.08)
+    axes[2].grid(alpha=0.3)
+    axes[2].legend(fontsize=8)
     axes[0].legend(fontsize=8)
     fig.tight_layout()
     fig.savefig(OUT / "loss_curves.png", dpi=150)

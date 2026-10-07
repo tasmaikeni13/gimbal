@@ -1,24 +1,36 @@
 \section{Results at 125M parameters and 2.5B tokens}
 \label{sec:results}
 
-% RESULTS-NARRATIVE: written after Phase 08 from analysis/results/phase08.json and
-% analysis/decision.md; every number below is a macro or a generated table.
-
 \paragraph{Tuning.}
 \Cref{fig:tuning} shows the mean final validation loss of the two tuning seeds against the peak
-learning rate. Selected: AdamW \LrAdamw{} ($\beta_2=\KnobAdamw$), SOAP \LrSoap{}
-($\beta_s=\KnobSoap$), Gimbal \LrGimbal{} ($\alpha=\KnobGimbal$).
+learning rate. The selected rates are AdamW \LrAdamw{}, SOAP \LrSoap{} and Gimbal \LrGimbal{}, with
+$\beta_2=\KnobAdamw$, $\beta_s=\KnobSoap$ and $\alpha=\KnobGimbal$. SOAP tolerated twice Gimbal's
+learning rate: at $1.2\cdot10^{-2}$ both had a gradient-norm spike in the first 100 steps, and only
+SOAP recovered fully. Gimbal preferred a much faster frame than its default $\alpha=0.05$; its
+tuning loss improved at every step of the $\alpha$ grid (\cref{app:tuning}).
 
 \begin{figure}[t]
 \centering
 \IfFileExists{generated/tuning_lr_curves.png}{\includegraphics[width=\linewidth]{generated/tuning_lr_curves.png}}{\pending}
 \caption{Tuning (614M tokens, mean of seeds 0 and 1): final validation loss against the peak
-learning rate (Gimbal with SOAP's momentum, after the repair of \cref{app:diag}).}
+learning rate, full range and near the optima (Gimbal with SOAP's momentum, after the repair of
+\cref{app:diag}).}
 \label{fig:tuning}
 \end{figure}
 
-\paragraph{Confirmatory runs.}
-\Cref{tab:main} lists every run.
+\paragraph{The decision.}
+\Cref{tab:main} lists every confirmatory run and \cref{tab:paired} compares Gimbal with each
+competitor on the same seed. Gimbal's final validation loss is lower than AdamW's on both seeds,
+by \DiffAdamwSeedTwo{} and \DiffAdamwSeedThree{} nats, far beyond twice the pooled bootstrap
+standard error (\TwoPooledSe{}); it reaches AdamW's final loss after \TokensToAdamw{}B of the
+2.5B tokens (token multiplier \MultAdamw{}) and, despite its slower step, in less wall-clock time.
+Against SOAP the differences are \DiffSoapSeedTwo{} and \DiffSoapSeedThree{}: of opposite sign,
+of the order of the seed-to-seed spread (\PooledSeedSd{}), and far below the threshold. Gimbal's
+training step takes \MainStepGimbal{}~ms against SOAP's \MainStepSoap{}~ms. By the predeclared
+rule Gimbal beats AdamW on loss (\BeatsLossAdamw) and on wall-clock (\BeatsWallAdamw), but not
+SOAP on loss (\BeatsLossSoap) or wall-clock (\BeatsWallSoap); the headline claim that it
+outperforms SOAP is \Headline. The test split, read once after the decision, gives the same
+picture: mean test loss \TestAdamw{} (AdamW), \TestSoap{} (SOAP) and \TestGimbal{} (Gimbal).
 
 \begin{table}[t]
 \centering\small
@@ -34,10 +46,20 @@ time, loss spikes and largest gradient norm after step 500.}
 \input{generated/paired_table}
 \caption{Gimbal against each competitor $c$, paired by seed: difference of final validation loss
 with its paired bootstrap standard error, tokens Gimbal needs to reach $c$'s final loss on the
-evaluation curve, the token multiplier (full budget over those tokens), and wall-clock to that
-point and $c$'s full wall-clock (steady-state step time $\times$ steps).}
+evaluation curve, the token multiplier (full budget over those tokens), and the wall-clock in
+minutes to that point and to the end of $c$'s run (steady-state step time $\times$ steps).}
 \label{tab:paired}
 \end{table}
+
+\paragraph{The trajectory.}
+The final losses hide how the runs got there (\cref{fig:curves}). On the evaluation subset Gimbal
+was below SOAP at \AheadEvals{} of the evaluations (seeds 2 and 3), by up to \MidLead{} nats near
+the middle of the runs, and SOAP caught up while the learning rate decayed. AdamW, too, was below
+SOAP in the middle of training (at \AheadEvalsAdamw{} evaluations, by up to \MidLeadAdamw{} nats)
+before SOAP passed it for good. The mid-training lead therefore says more about SOAP's high peak
+learning rate, which costs it in the middle and pays off as the rate decays, than about Gimbal's
+frame; Gimbal's lead was more persistent than AdamW's but not larger. The comparison the protocol
+fixes is the final loss, and there Gimbal and SOAP are equal within noise.
 
 \begin{figure}[t]
 \centering
@@ -47,7 +69,23 @@ wall-clock (steady-state step time $\times$ steps); solid seed 2, dashed seed 3.
 \label{fig:curves}
 \end{figure}
 
-\paragraph{Mechanism diagnostics.}
+\paragraph{Mechanism.}
+The premise that the likelihood frame needs, gradient variances that are not Kronecker-separable
+in the rotated frame, fails at this scale as it did on the small model. The noise-corrected
+non-separability index of Gimbal's own variance average has median \KappaMainAttn{} in the
+attention matrices and \KappaMainMlp{} in the MLP matrices at the end of training (the raw index,
+\KappaRawMainAttn{} and \KappaRawMainMlp{}, is almost entirely sampling noise), against the
+predeclared threshold of 0.05 (\cref{fig:kappa}); the empirical-Bayes factor is accordingly about
+\ShrinkMainMlp{}, so Gimbal's score weights are essentially the separable ones that KL-Shampoo uses.
+A cruder estimate from 16 gradients at the final weights, whose noise correction assumes Gaussian
+gradients, is larger (median \ProbeKappa{} over the probed matrices; the last MLP projection is the
+largest). On held-out validation gradients, each run's own frame fits better than a pooled frame
+estimated from 16 fresh gradients at the same weights in \ProbeOwnBetterGimbal{} matrices for
+Gimbal and \ProbeOwnBetterSoap{} for SOAP; at step 1{,}000 (one seed, an exploratory probe fixed
+before the runs) Gimbal's frame was the better of the two in this sense in \ProbeMidOwnBetterGimbal{}
+matrices and SOAP's in \ProbeMidOwnBetterSoap{}. These probes compare each frame with a reference
+at its own weights, not the two optimizers' frames with each other, and they do not show that the
+better frame caused Gimbal's lead during training.
 
 \begin{figure}[t]
 \centering
@@ -57,3 +95,9 @@ over the matrices of each bucket; the predeclared premise threshold 0.05 dashed)
 empirical-Bayes shrinkage factor $c$.}
 \label{fig:kappa}
 \end{figure}
+
+\paragraph{Cost.}
+Including tuning, the repaired trials and diagnostics, the study used \ChipHoursAdamw{} (AdamW),
+\ChipHoursSoap{} (SOAP) and \ChipHoursGimbal{} (Gimbal) TPU~v4 chip-hours; Gimbal's share includes
+its replaced first tuning trials and the diagnosis of \cref{app:diag}. A repeated tuning run with
+the same seed and configuration reproduced every training loss bit for bit.

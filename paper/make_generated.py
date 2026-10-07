@@ -202,6 +202,32 @@ def _mean(vals):
     return float(np.mean(vals)) if vals and all(v is not None for v in vals) else None
 
 
+def trajectory_macros(main_dir: pathlib.Path, seeds: tuple, opt: str, tag: str) -> None:
+    """``AheadEvals<tag>``: evaluations at which ``opt`` was below SOAP (per seed);
+    ``MidLead<tag>``: its largest lead over SOAP on the evaluation curve (same seed)."""
+    leads, ahead = [], []
+    for s in seeds:
+        curves = {}
+        for o in (opt, "soap"):
+            path = main_dir / o / f"seed{s}" / "eval.jsonl"
+            curves[o] = (
+                {
+                    x["step"]: x["val_loss_subset"]
+                    for x in map(json.loads, path.read_text().splitlines())
+                    if "val_loss_subset" in x
+                }
+                if path.exists()
+                else {}
+            )
+        steps = sorted(set(curves[opt]) & set(curves["soap"]))
+        if steps:
+            leads.append(max(curves["soap"][t] - curves[opt][t] for t in steps))
+            n_ahead = sum(curves[opt][t] < curves["soap"][t] for t in steps)
+            ahead.append(f"{n_ahead}/{len(steps)}")
+    mac(f"MidLead{tag}", max(leads) if len(leads) == len(seeds) else None, "{:.3f}")
+    mac(f"AheadEvals{tag}", " and ".join(ahead) if len(ahead) == len(seeds) else None)
+
+
 def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
     """Confirmatory runs: macros and tables from ``phase08.json``, ``compute.json`` and the
     one-time test evaluations (``runs/main/<optimizer>/seed<k>/test.json``)."""
@@ -340,6 +366,9 @@ def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
                 for s in seeds
             ]
             mac(f"{mn}{bn}", _mean(vals), fmt)
+    # Evaluation curves: how often and by how much Gimbal (and, for comparison, AdamW) led SOAP.
+    for opt, tag in (("gimbal", ""), ("adamw", "Adamw")):
+        trajectory_macros(main_dir, seeds, opt, tag)
     # Frame probes: final checkpoints (D-005 item 8) and step 1000 of seed 2 (D-009).
     for prefix, tag in (("probe/", ""), ("probe_step1000/", "Mid")):
         for opt, name in (("soap", "Soap"), ("gimbal", "Gimbal")):
