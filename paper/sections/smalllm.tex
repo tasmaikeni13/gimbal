@@ -4,7 +4,8 @@
 A byte-level Llama-style model ($d=128$, four layers, sequence length 128, batch 32, 800 steps) on a
 FineWeb-Edu sample gives a cheap test on real gradients. Every optimizer received the same
 four-point learning-rate grid (factor two, extended at an edge) on seed 0 and was then run on two
-more seeds at its selected rate. Ten optimizers were compared in PyTorch.
+more seeds at its selected rate. Nine optimizers, and Gimbal with a frame move at every step,
+were compared in PyTorch.
 
 \paragraph{The default first lost to SOAP.} \Cref{tab:smalllm} lists the outcome. The default of the
 time (amortized frame moves every four steps, rotation rate $\alpha=0.02$) lost to SOAP on every seed;
