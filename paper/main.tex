@@ -6,6 +6,7 @@
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{threeparttable}
 \usepackage{caption}
 \usepackage{enumitem}
@@ -32,6 +33,9 @@
 \newcommand{\lab}[1]{\textsf{[#1]}}
 
 \input{generated/macros}
+
+% Long identifiers and file paths in \texttt have no hyphenation points.
+\emergencystretch=2em
 
 \title{Gimbal: Adam in a Maximum-Likelihood Kronecker Frame}
 \author{Tasmai Keni}

@@ -211,7 +211,9 @@ def lean_table() -> None:
             names = ", ".join("\\texttt{" + tex(n.strip(" `")) + "}" for n in names.split(","))
             rows.append(f"{tex(item)} & {names} & \\texttt{{{tex(file)}}} \\\\")
     (GEN / "lean_table.tex").write_text(
-        "\\begin{tabular}{p{2.6cm}p{8.6cm}p{2.6cm}}\n\\toprule\nstatement & Lean names & file "
+        "\\begin{tabular}{>{\\raggedright\\arraybackslash}p{2.6cm}"
+        ">{\\raggedright\\arraybackslash}p{9.0cm}>{\\raggedright\\arraybackslash}p{3.2cm}}"
+        "\n\\toprule\nstatement & Lean names & file "
         "\\\\\n\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
     mac("LeanCount", str(sum(1 for line in (ROOT / "formal" / "audit" / "axioms_output.txt")
                              .read_text().splitlines() if "depends on axioms" in line)))

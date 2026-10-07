@@ -3,14 +3,15 @@
 
 Every result carries an evidence label: \lab{L1} observed numerically, \lab{L2} conjectured,
 \lab{L3} proved under additional assumptions, \lab{L4} proved as stated, \lab{L5} machine-checked in
-Lean~4 with Mathlib (53 theorems; every one depends only on the axioms \texttt{propext},
+Lean~4 with Mathlib (\LeanCount{} theorems; every one depends only on the axioms \texttt{propext},
 \texttt{Classical.choice} and \texttt{Quot.sound}; \cref{app:lean} maps statements to Lean names).
 Proofs are in \cref{app:proofs} and in the project's theory document. The Gaussian likelihood is a
 working likelihood that fixes an estimating equation; no claim that gradients are Gaussian is made.
 
 \begin{proposition}[Profile KL; \lab{L4}, per coordinate \lab{L5}]\label{prop:J}
-For every frame $U$ and $S\succ0$, $\min_{D>0}\mathrm{KL}(\mathcal N(0,S)\|\KRD(U,D))=J(U)$ of
-\eqref{eq:J}, attained at $D=d_U$, and $J(U)=0$ iff $S=C(U,d_U)$.
+For every frame $U$ and $S\succ0$,
+\[\min_{D>0}\mathrm{KL}\bigl(\mathcal N(0,S)\,\|\,\KRD(U,D)\bigr)=J(U)\]
+with $J$ of \eqref{eq:J}, attained at $D=d_U$, and $J(U)=0$ iff $S=C(U,d_U)$.
 \end{proposition}
 
 \begin{proposition}[What pooled factors estimate; \lab{L4}]\label{prop:pooled}
