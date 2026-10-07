@@ -340,23 +340,32 @@ def main_runs(results: pathlib.Path, main_dir: pathlib.Path) -> None:
                 for s in seeds
             ]
             mac(f"{mn}{bn}", _mean(vals), fmt)
-    for opt, name in (("soap", "Soap"), ("gimbal", "Gimbal")):
-        own = [
+    # Frame probes: final checkpoints (D-005 item 8) and step 1000 of seed 2 (D-009).
+    for prefix, tag in (("probe/", ""), ("probe_step1000/", "Mid")):
+        for opt, name in (("soap", "Soap"), ("gimbal", "Gimbal")):
+            own = [
+                v
+                for s in seeds
+                for k, v in res["runs"].get(f"{opt}/seed{s}", {}).get("mechanism", {}).items()
+                if k.startswith(prefix) and k.endswith("/own_minus_pooled")
+            ]
+            mac(
+                f"Probe{tag}OwnMinusPooled{name}",
+                float(np.median(own)) if own else None,
+                "{:,.0f}",
+            )
+            mac(
+                f"Probe{tag}OwnBetter{name}",
+                f"{sum(v < 0 for v in own)}/{len(own)}" if own else None,
+            )
+        kp = [
             v
             for s in seeds
-            for k, v in res["runs"].get(f"{opt}/seed{s}", {}).get("mechanism", {}).items()
-            if k.endswith("/own_minus_pooled")
+            for o in ("soap", "gimbal")
+            for k, v in res["runs"].get(f"{o}/seed{s}", {}).get("mechanism", {}).items()
+            if k.startswith(prefix) and k.endswith("/kappa_pooled_frame")
         ]
-        mac(f"ProbeOwnMinusPooled{name}", float(np.median(own)) if own else None, "{:,.0f}")
-        mac(f"ProbeOwnBetter{name}", f"{sum(v < 0 for v in own)}/{len(own)}" if own else None)
-    kp = [
-        v
-        for s in seeds
-        for o in ("soap", "gimbal")
-        for k, v in res["runs"].get(f"{o}/seed{s}", {}).get("mechanism", {}).items()
-        if k.endswith("/kappa_pooled_frame")
-    ]
-    mac("ProbeKappa", float(np.median(kp)) if kp else None, "{:.4f}")
+        mac(f"Probe{tag}Kappa", float(np.median(kp)) if kp else None, "{:.4f}")
 
 
 def tex(s: str) -> str:
